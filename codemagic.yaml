@@ -1,15 +1,18 @@
 workflows:
-  ios-build:
-    name: iOS Build
+  ios-capacitor:
+    name: iOS Capacitor Build
+    instance_type: mac_mini_m1
     max_build_duration: 60
+
     environment:
       node: 18
       xcode: latest
+
     scripts:
       - npm install
       - npm run build || true
       - npx cap sync ios
-      - npx cap open ios
+
     artifacts:
       - ios/**/*.app
       - ios/**/*.ipa
