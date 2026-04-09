@@ -10,6 +10,7 @@ workflows:
     
     scripts:
       - npm install
+      - chmod +x node_modules/.bin/cap
       - npm run build || true
       - npx cap sync ios
     
