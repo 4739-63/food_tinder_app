@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Swipeat 🍔</title>
+
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" href="/logo.png">
+
+<style>
+:root {
+    --primary: #ff7e00;
+    --primary-light: #ffb347;
+    --background: #f8f9fb;
+    --card: #ffffff;
+    --text: #1c1c1e;
+    --subtext: #6e6e73;
+    --border: #e5e5ea;
+    --success: #34c759;
+    --danger: #ff3b30;
+}
+
+#splash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 9999;
+    transition: opacity 0.8s ease;
+}
+
+#logo {
+    width: 180px;
+    animation: logoAnim 1.2s ease;
+}
+
+@keyframes logoAnim {
+    0% {
+        transform: scale(0.6);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}    
+.label {
+    position: absolute;
+    top: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.likeLabel {
+    right: 20px;
+    color: green;
+    transform: rotate(15deg);
+}
+
+.nopeLabel {
+    left: 20px;
+    color: red;
+    transform: rotate(-15deg);
+}    
+
+body {
+
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;   /* centre horizontal */
+    align-items: center;       /* centre vertical */
+
+    padding-bottom: 80px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 25px;
+    width: 320px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+
+    position: relative;
+}
+
+img {
+    width: 100%;
+    border-radius: 10px;
+}
+
+.buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 15px;
+}
+
+button {
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-size: 16px;
+    border: none;
+    font-weight: 500;
+}
+
+.like {
+    background: var(--success);
+    color: white;
+}
+
+.dislike {
+    background: var(--danger);
+    color: white;
+}
+
+#recipePanel {
+    position: fixed;
+    bottom: -100%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background: white;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 20px;
+    overflow-y: auto;
+    transition: bottom 0.4s ease;
+    z-index: 1000;
+}
+
+#recipePanel.open {
+    bottom: 0;
+}
+
+#bottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 10px;
+
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+}
+
+#bottomNav button {
+    flex: 1;
+    margin: 0 5px;
+
+    padding: 10px 0;
+
+    border-radius: 12px;
+
+    font-size: 14px;
+    color: var(--subtext);
+}
+
+.filter-group {
+    margin-bottom: 25px;
+}
+
+.filter-group h4 {
+    color: var(--subtext);
+    margin-bottom: 10px;
+}
+
+.toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.toggle input {
+    transform: scale(1.2);
+}
+
+.primary-btn {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    margin-top: 10px;
+}
+
+.secondary-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+<div id="splash">
+    <img src="/static/logo.png" id="logo">
+</div>    
+
+<div class="card" id="card">
+    <div id="likeLabel" class="label likeLabel">❤️ LIKE</div>
+    <div id="nopeLabel" class="label nopeLabel">❌ NOPE</div>
+
+    <h2 id="nom">Chargement...</h2>
+    <img id="image" src="">
+
+    <div class="buttons">
+        <button class="dislike" onclick="choix(false)">👎</button>
+        <button class="like" onclick="choix(true)">👍</button>
+    </div>
+
+</div>
+
+<div id="recipePanel">
+    <h3>Recette</h3>
+    <div id="recipeContent"></div>
+</div>
+
+<div id="favorisScreen" style="display:none; padding:20px;"></div>
+
+<div id="bottomNav">
+    <button onclick="showSwipe()">🍔 Discover</button>
+    <button onclick="showFavoris()">❤️ Favorites</button>
+    <button onclick="showAdvanced()">⚡ Advanced</button>
+    <button onclick="showSubscription()">💳 Subscription</button>
+</div>
+
+<script>
+
+let token = localStorage.getItem("token") || null;
+
+// 🧠 préférences (session uniquement)
+let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
+    sucre: 0,
+    sale: 0,
+    rapide: 0,
+    sante: 0,
+    viande: 0,
+    chaud: 0
+};
+
+let currentPlat = null;
+let nextPlat = null;
+let favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+let advancedFilters = {};
+
+
+let isSwiping = false;
+
+const card = document.getElementById("card");
+
+const likeLabel = document.getElementById("likeLabel");
+const nopeLabel = document.getElementById("nopeLabel");
+
+const imageElement = document.getElementById("image");
+
+imageElement.onerror = () => {
+    imageElement.src = "";
+};
+
+let startX = 0;
+let currentX = 0;
+let isDragging = false;
+let startY = 0;
+let currentY = 0;
+
+// 🔥 analyser un plat API
+function analyserPlat(meal) {
+    const instructions = (meal.strInstructions || "").toLowerCase();
+    const category = meal.strCategory?.toLowerCase() || "";
+    const tags = meal.strTags?.toLowerCase() || "";
+
+    const ingredients = [];
+    for (let i = 1; i <= 20; i++) {
+        const ing = meal["strIngredient" + i];
+        if (ing) ingredients.push(ing.toLowerCase());
+    }
+
+    return {
+        nom: meal.strMeal,
+        image: meal.strMealThumb,
+
+        // 🔥 AJOUT RECETTE
+        recette: meal.strInstructions,
+        ingredients: Array.from({length: 20}, (_, i) => {
+            const ing = meal["strIngredient" + (i+1)];
+            const meas = meal["strMeasure" + (i+1)];
+            return ing ? `${meas} ${ing}` : null;
+        }).filter(i => i),
+
+        sucre: category.includes("dessert"),
+
+        sale: !category.includes("dessert"),
+
+        rapide: instructions.length < 300,
+
+        sante:
+            category.includes("salad") ||
+            ingredients.includes("vegetable") ||
+            ingredients.includes("chicken"),
+
+        viande:
+            ingredients.some(i =>
+                ["chicken", "beef", "pork", "fish"].some(m => i.includes(m))
+            ),
+        vegan: !ingredients.some(i =>
+            [
+                "chicken", "beef", "pork", "fish", "salmon", "tuna",
+                "egg", "milk", "cheese", "butter", "cream", "yogurt"
+            ].some(m => i.includes(m))
+        ),    
+        
+        gluten: ingredients.some(i =>
+            ["flour", "bread", "pasta", "wheat"].some(g => i.includes(g))
+        ),
+
+        arachide: ingredients.some(i =>
+            ["peanut", "groundnut"].some(a => i.includes(a))
+        ),
+        chaud: !category.includes("dessert")
+    };
+
+}
+
+function showRecipe(plat) {
+     if (!plat) return;
+    const panel = document.getElementById("recipePanel");
+    const content = document.getElementById("recipeContent");
+
+    content.innerHTML = `
+        <h4>Ingredients:</h4>
+        <ul>
+            ${(plat.ingredients || []).map(i => `<li>${i}</li>`).join("")}
+        </ul>
+
+        <h4>Instructions:</h4>
+        <p>${plat.recette || "No recipe available"}</p>
+
+        <button onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
+    `;
+
+    panel.classList.add("open");
+}
+
+function hideRecipe() {
+    document.getElementById("recipePanel").classList.remove("open");
+}
+
+function saveRecipe(plat) {
+    if (!plat) return;
+
+    // éviter doublons
+    if (favoris.some(f => f.nom === plat.nom)) {
+        alert("Already saved 😉");
+        return;
+    }
+
+    favoris.push(plat);
+
+    localStorage.setItem("favoris", JSON.stringify(favoris));
+
+    alert("Recipe saved ❤️");
+}
+
+
+
+// 🍔 récupérer plat API
+async function getPlatFromAPI() {
+    try {
+        const res = await fetch("https://www.themealdb.com/api/json/v1/1/random.php");
+
+        // 🛑 vérifier réponse HTTP
+        if (!res.ok) {
+            console.error("Erreur HTTP :", res.status);
+            return null;
+        }
+
+        const data = await res.json();
+
+        // 🛑 vérifier structure API
+        if (!data || !data.meals || !data.meals[0]) {
+            console.error("Réponse API invalide");
+            return null;
+        }
+
+        const meal = data.meals[0];
+
+        // 🛑 sécurité supplémentaire
+        if (!meal.strMeal || !meal.strMealThumb) {
+            console.error("Plat incomplet");
+            return null;
+        }
+
+        return analyserPlat(meal);
+
+    } catch (error) {
+        console.error("Erreur API", error);
+        return null;
+    }
+}
+
+// 🧠 update préférences
+function updatePreferences(plat, like) {
+    for (let key in preferences) {
+        if (plat[key]) {
+            if (like) {
+                preferences[key] += 1;
+            } else {
+                preferences[key] -= 1;
+            }
+        }
+    }
+    // 💾 sauvegarde dans la session
+    sessionStorage.setItem("preferences", JSON.stringify(preferences));    
+}
+
+async function generateBestPlat() {
+    try {
+        const promises = [];
+
+        for (let i = 0; i < 5; i++) {
+            promises.push(getPlatFromAPI());
+        }
+
+        const results = await Promise.all(promises);
+        const plats = results.filter(p => p !== null);
+
+        if (plats.length === 0) return null;
+
+        let bestPlat = null;
+        let bestScore = -Infinity;
+
+        for (let plat of plats) {
+            let score = 0;
+
+        // 🔥 BLOCAGE VEGAN STRICT
+        if (advancedFilters.vegan && !plat.vegan) {
+            continue; // ⛔ skip ce plat
+        }
+
+        // 🔥 BLOCAGE GLUTEN
+        if (advancedFilters.gluten && plat.gluten) {
+            continue;
+        }
+
+        // 🔥 BLOCAGE ARACHIDE
+        if (advancedFilters.arachide && plat.arachide) {
+            continue;
+        }
+
+            for (let key in preferences) {
+                if (plat[key]) {
+                    score += preferences[key];
+                }
+            }
+
+// 🔥 AJOUT FILTRES PREMIUM
+            for (let key in advancedFilters) {
+                if (advancedFilters[key] && plat[key]) {
+                    score += 5; // boost fort
+                }
+            }
+
+            score += Math.random() * 5;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestPlat = plat;
+            }
+        }
+
+if (!bestPlat) {
+    console.log("No match with filters, fallback...");
+
+    // 🔥 essayer de trouver au moins un plat valide
+    const filtered = plats.filter(p => !advancedFilters.vegan || p.vegan);
+
+    if (filtered.length > 0) {
+        return filtered[Math.floor(Math.random() * filtered.length)];
+    }
+
+    // 🚨 dernier recours (aucun vegan trouvé)
+    return plats[Math.floor(Math.random() * plats.length)];
+}
+
+        return bestPlat;
+
+    } catch (error) {
+        console.error("Erreur generateBestPlat :", error);
+        return null;
+    }
+}
+
+
+
+// 👍👎 action utilisateur
+async function choix(like) {
+    updatePreferences(currentPlat, like);
+
+    // 🔥 afficher instantanément le suivant
+    currentPlat = nextPlat;
+
+    if (!currentPlat) {
+        document.getElementById("nom").innerText = "Erreur 😢";
+        return;
+    }
+
+    document.getElementById("nom").innerText = currentPlat.nom;
+    document.getElementById("image").src = currentPlat.image;
+
+    // ⚡ charger le prochain en arrière-plan
+    nextPlat = await generateBestPlat();
+}
+
+async function swipe(like) {
+    
+    if (isSwiping) return; // 🛑 bloque spam
+    isSwiping = true;
+    
+    isSwiping = false;
+    
+    
+    let direction = like ? 1 : -1;
+
+    card.style.transform = `translateX(${direction * 500}px) rotate(${direction * 20}deg)`;
+    card.style.opacity = "0";
+
+    setTimeout(async () => {
+
+        card.style.transition = "none";
+        card.style.transform = "translateX(0px) rotate(0deg)";
+        card.style.opacity = "1";
+        
+        likeLabel.style.opacity = 0;
+        nopeLabel.style.opacity = 0;
+
+        await choix(like);        
+
+        setTimeout(() => {
+            card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+        }, 50);
+
+    }, 300);
+}
+
+// 🚀 démarrage
+(async () => {
+    document.getElementById("nom").innerText = "Chargement...";
+
+    // 🔥 0. détecter premium + afficher UI
+    if (token) {
+        await setupPremiumUI();
+    }
+
+    // 🔥 1. charger local en premier
+    advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
+
+    // 🔥 2. si connecté → charger backend
+    if (token) {
+        await loadFiltersBackend();
+    }
+
+    currentPlat = await generateBestPlat();
+    nextPlat = await generateBestPlat();
+
+    if (!currentPlat) {
+        document.getElementById("nom").innerText = "Erreur 😢";
+        return;
+    }
+
+    document.getElementById("nom").innerText = currentPlat.nom;
+    document.getElementById("image").src = currentPlat.image;
+
+    setTimeout(() => {
+        const splash = document.getElementById("splash");
+
+        splash.style.opacity = 0;
+
+        setTimeout(() => {
+            splash.style.display = "none";
+        }, 800);
+    }, 1800);
+})();
+
+// 🖱️ / 📱 START
+card.addEventListener("pointerdown", (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    card.style.transition = "none";
+});
+
+// 🖱️ / 📱 MOVE
+card.addEventListener("pointermove", (e) => {
+    if (!isDragging) return;
+
+    currentX = e.clientX - startX;
+    currentY = e.clientY - startY;
+
+    // 👇 swipe vers le bas
+    if (currentY > 150 && Math.abs(currentX) < 50) {
+        showRecipe(currentPlat);
+        isDragging = false;
+        return;
+    }
+
+    let rotation = currentX * 0.05;
+    card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+
+    // 🔥 intensité swipe (0 → 1)
+    let intensity = Math.min(Math.abs(currentX) / 150, 1);
+
+    // 💡 effet transparence
+    card.style.opacity = 1 - intensity * 0.3;
+
+    // ❤️ / ❌ affichage dynamique
+    if (currentX > 0) {
+        likeLabel.style.opacity = intensity;
+        nopeLabel.style.opacity = 0;
+    } else {
+        nopeLabel.style.opacity = intensity;
+        likeLabel.style.opacity = 0;
+    }
+});
+
+// 🖱️ / 📱 END
+card.addEventListener("pointerup", () => {
+    isDragging = false;
+
+    card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+
+    // reset labels
+    likeLabel.style.opacity = 0;
+    nopeLabel.style.opacity = 0;
+
+    if (currentX > 100) {
+        swipe(true);
+    } else if (currentX < -100) {
+        swipe(false);
+    } else {
+        card.style.transform = "translateX(0px) rotate(0deg)";
+        card.style.opacity = 1;
+    }
+    currentX = 0;
+});
+
+function showFavoris() {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("recipePanel").classList.remove("open");
+
+    const container = document.getElementById("favorisScreen");
+    container.style.display = "block";
+
+    container.innerHTML = "<h2>My Recipes ❤️</h2>";
+
+    if (favoris.length === 0) {
+        container.innerHTML += "<p>No saved recipes</p>";
+        return;
+    }
+
+    favoris.forEach(f => {
+        container.innerHTML += `
+            <div style="margin-bottom:20px; position:relative;">
+        
+                <h3 onclick="openFavori('${f.nom}')" style="cursor:pointer;">
+                    ${f.nom}
+                </h3>
+
+                <img src="${f.image}" 
+                    style="width:100%; border-radius:10px; cursor:pointer;"
+                    onclick="openFavori('${f.nom}')">
+
+                <button onclick="deleteFavori('${f.nom}')" 
+                        style="
+                            position:absolute;
+                            top:10px;
+                            right:10px;
+                            background:red;
+                            color:white;
+                            border:none;
+                            border-radius:50%;
+                            width:30px;
+                            height:30px;
+                            font-size:16px;
+                        ">
+                    ❌
+                </button>
+
+            </div>
+        `;
+    });
+}
+
+function showSwipe() {
+    document.getElementById("card").style.display = "block";
+    document.getElementById("favorisScreen").style.display = "none";
+    document.getElementById("premiumScreen").style.display = "none"; // 🔥 important
+    document.getElementById("paywallScreen").style.display = "none";
+}
+
+async function showAdvanced() {
+
+    const premium = await isPremium();
+
+    if (!premium) {
+        showPremium();
+        return;
+    }
+
+    document.getElementById("card").style.display = "none";
+    document.getElementById("favorisScreen").style.display = "none";
+    document.getElementById("premiumScreen").style.display = "block";
+
+    document.getElementById("paywallScreen").style.display = "none";
+
+    loadFilters();
+}
+
+async function isPremium() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch("/is-premium", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token: token })
+        });
+
+        const data = await res.json();
+        return data.premium;
+    } catch {
+        return false;
+    }
+}
+
+function saveFilters() {
+    advancedFilters = {
+        sucre: document.getElementById("filter_sucre").checked,
+        sale: document.getElementById("filter_sale").checked,
+        rapide: document.getElementById("filter_rapide").checked,
+        sante: document.getElementById("filter_sante").checked,
+        viande: document.getElementById("filter_viande").checked,
+        vegan: document.getElementById("filter_vegan").checked,
+        chaud: document.getElementById("filter_chaud").checked,
+        gluten: document.getElementById("filter_gluten").checked,
+        arachide: document.getElementById("filter_arachide").checked
+    };
+
+    // 🔥 1. toujours sauvegarde locale
+    localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
+
+    // 🔥 2. sauvegarde backend si connecté
+    if (token) {
+        fetch("/save-filters", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                token,
+                filters: advancedFilters
+            })
+        });
+    }
+}
+
+function loadFilters() {
+    advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
+
+    document.getElementById("filter_sucre").checked = advancedFilters.sucre || false;
+    document.getElementById("filter_sale").checked = advancedFilters.sale || false;
+    document.getElementById("filter_rapide").checked = advancedFilters.rapide || false;
+    document.getElementById("filter_sante").checked = advancedFilters.sante || false;
+    document.getElementById("filter_viande").checked = advancedFilters.viande || false;
+    document.getElementById("filter_vegan").checked = advancedFilters.vegan || false;
+    document.getElementById("filter_chaud").checked = advancedFilters.chaud || false;
+    document.getElementById("filter_gluten").checked = advancedFilters.gluten || false;
+    document.getElementById("filter_arachide").checked = advancedFilters.arachide || false;
+}
+
+function openFavori(nom) {
+    const plat = favoris.find(f => f.nom === nom);
+
+    if (!plat) return;
+
+    currentPlat = plat;
+    showRecipe(plat);
+}
+
+function deleteFavori(nom) {
+    favoris = favoris.filter(f => f.nom !== nom);
+
+    localStorage.setItem("favoris", JSON.stringify(favoris));
+
+    showFavoris();
+
+    alert("Removed ❌");
+}
+
+// 🔥 SERVICE WORKER DÉSACTIVÉ (DEV MODE)
+// if ("serviceWorker" in navigator) {
+//     navigator.serviceWorker.register("/static/service-worker.js")
+//         .then(() => console.log("Service Worker OK"))
+//         .catch(err => console.log("Erreur SW", err));
+// }
+
+document.getElementById("recipePanel").addEventListener("click", hideRecipe);
+
+async function goPremium() {
+    console.log("🔥 CLICK BUY");
+
+    if (!token) {
+        alert("You must login first 🔐");
+        return;
+    }
+
+    const res = await fetch("/create-checkout-session", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ token: token })
+    });
+
+    const data = await res.json();
+
+    console.log("🔥 RESPONSE:", data);
+
+    if (data.url) {
+        window.location.href = data.url;
+    } else {
+        alert("Payment error");
+    }
+}
+
+function showPremium() {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("favorisScreen").style.display = "none";
+
+    document.getElementById("paywallScreen").style.display = "block"; // ✅ PAYWALL
+    document.getElementById("premiumScreen").style.display = "none";  // ❌ cache filtres
+}
+
+function buyPremium() {
+    goPremium(); // 🔥 redirection Stripe
+}
+async function loginUser(email, password) {
+    const res = await fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (data.token) {
+        localStorage.setItem("token", data.token);
+        token = data.token;
+
+        // 🔥 charger filtres backend
+        await loadFiltersBackend();
+
+        alert("Logged in ✅");
+    } else {
+        alert("Login failed ❌");
+    }
+}
+
+async function registerUser(email, password) {
+    const res = await fetch("/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (data.message) {
+        alert("Account created ✅");
+    } else {
+        alert(data.error || "Error");
+    }
+}
+
+async function loadFiltersBackend() {
+    if (!token) return;
+
+    try {
+        const res = await fetch("/get-filters", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (data.filters) {
+            advancedFilters = data.filters;
+
+            // 💾 sync local
+            localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
+
+            console.log("✅ Filtres backend chargés", advancedFilters);
+        }
+    } catch (e) {
+        console.log("Erreur loadFiltersBackend", e);
+    }
+}
+
+async function checkPremium() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch("/is-premium", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+        return data.premium;
+    } catch (e) {
+        console.log("Erreur checkPremium", e);
+        return false;
+    }
+}
+
+async function setupPremiumUI() {
+    const section = document.getElementById("advancedFiltersSection");
+
+    // 🔒 sécurité : si l'élément n'existe pas
+    if (!section) return;
+
+    const isPremium = await checkPremium();
+
+    if (isPremium) {
+        section.style.display = "block";
+        console.log("💎 User premium");
+    } else {
+        section.style.display = "none";
+        console.log("🆓 User free");
+    }
+}
+
+async function showSubscription() {
+
+    document.getElementById("card").style.display = "none";
+    document.getElementById("favorisScreen").style.display = "none";
+    document.getElementById("premiumScreen").style.display = "none";
+    document.getElementById("paywallScreen").style.display = "none";
+
+    const screen = document.getElementById("subscriptionScreen");
+    screen.style.display = "block";
+
+    const premium = await isPremium();
+
+    const statusText = document.getElementById("subStatus");
+
+    if (premium) {
+        statusText.innerText = "✅ You are Premium";
+    } else {
+        statusText.innerText = "🆓 Free Plan";
+    }
+}
+
+async function cancelSubscription() {
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    const res = await fetch("/cancel-subscription", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ token: token })
+    });
+
+    const data = await res.json();
+
+    if (data.message) {
+        alert("Subscription canceled ❌");
+    } else {
+        alert("Error canceling");
+    }
+}
+
+</script>
+
+<div id="premiumScreen" style="display:none; padding:25px;">
+
+    <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
+
+    <div class="filter-group">
+        <h4>Preferences</h4>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_sucre">
+            <span>🍭 Sweet</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_sale">
+            <span>🧂 Savory</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_rapide">
+            <span>⚡ Quick</span>
+        </label>
+    </div>
+
+    <div class="filter-group">
+        <h4>Diet</h4>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_vegan">
+            <span>🌱 Vegan</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_viande">
+            <span>🥩 Meat</span>
+        </label>
+    </div>
+
+    <div class="filter-group">
+        <h4>Allergies</h4>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_gluten">
+            <span>🚫 Gluten</span>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" id="filter_arachide">
+            <span>🥜 No Peanuts</span>
+        </label>
+    </div>
+
+    <button class="primary-btn" onclick="saveFilters()">Save</button>
+    <button class="secondary-btn" onclick="showSwipe()">Back</button>
+
+</div>
+
+<div id="paywallScreen" style="display:none; padding:20px;">
+
+    <h2>🚀 Advanced Plan</h2>
+
+    <p>
+        this paid option offers you an advanced filter that allows you to direct the algorithm more quickly towards your current preferences. whether it is for a cold meal, or more salty or sweet. The advance filter allows you to show only vegan dishes that do not have a basic algorithm. 
+    </p>
+
+    <h3>$1/month</h3>
+
+    <button onclick="buyPremium()">💳 Buy Now</button>
+
+    <br><br>
+    <button onclick="showSwipe()">⬅ Back</button>
+
+    <h3>Login / Register</h3>
+
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="loginUser(
+        document.getElementById('email').value,
+        document.getElementById('password').value
+    )">Login</button>
+
+    <button onclick="registerUser(
+        document.getElementById('email').value,
+        document.getElementById('password').value
+    )">Register</button>
+    
+</div>
+
+<div id="advancedFiltersSection"></div>
+
+<div id="subscriptionScreen" style="display:none; padding:20px;">
+
+    <h2>💳 My Subscription</h2>
+
+    <p id="subStatus">Loading...</p>
+
+    <button onclick="cancelSubscription()" 
+            style="background:red; color:white; padding:10px; border:none; border-radius:10px;">
+        Cancel Subscription
+    </button>
+
+    <br><br>
+
+    <button onclick="showSwipe()">⬅ Back</button>
+
+</div>
+
+</body>
+</html>
