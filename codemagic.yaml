@@ -1,0 +1,15 @@
+workflows:
+  ios-build:
+    name: iOS Build
+    max_build_duration: 60
+    environment:
+      node: 18
+      xcode: latest
+    scripts:
+      - npm install
+      - npm run build || true
+      - npx cap sync ios
+      - npx cap open ios
+    artifacts:
+      - ios/**/*.app
+      - ios/**/*.ipa
