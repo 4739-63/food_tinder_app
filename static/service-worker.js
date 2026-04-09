@@ -2,9 +2,9 @@ const CACHE_NAME = "food-app-v1";
 
 const urlsToCache = [
   "/",
-  "/index.html",
-  "/manifest.json",
-  "/logo.png"
+  "/static/index.html",
+  "/static/manifest.json",
+  "/static/logo.png"
 ];
 
 self.addEventListener("install", (event) => {
