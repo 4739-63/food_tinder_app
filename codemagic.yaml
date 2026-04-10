@@ -14,7 +14,7 @@ workflows:
       - npm run build || true
       - npx cap sync ios 
       
-      - cd ios/App
+      
       - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug build
     artifacts:
-      - ios/**/*.app
+      - build/**/Build/Products/**/*.app
