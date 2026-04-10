@@ -12,9 +12,8 @@ workflows:
       - npm install
       - chmod +x node_modules/.bin/cap
       - npm run build || true
-      - npx cap sync ios 
-      
-      
-      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug build
+      - npx cap sync ios
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build
+
     artifacts:
       - build/**/Build/Products/**/*.app
