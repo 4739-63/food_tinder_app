@@ -7,9 +7,9 @@ workflows:
     environment:
       node: 22
       xcode: latest
-        vars:
-          XCODE_PROJECT: ios/App/App.xcodeproj
-          XCODE_SCHEME: App
+      vars:
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
 
     integrations:
       app_store_connect: Codemagic
@@ -25,7 +25,14 @@ workflows:
           -scheme App \
           -sdk iphoneos \
           -configuration Release \
+          -derivedDataPath build \
+          archive
 
+      - xcodebuild \
+          -exportArchive \
+          -archivePath build/App.xcarchive \
+          -exportOptionsPlist ExportOptions.plist \
+          -exportPath build
 
     artifacts:
-      - build/**/Build/Products/**/*.api
+      - build/**/*.ipa
