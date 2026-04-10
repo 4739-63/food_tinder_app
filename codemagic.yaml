@@ -15,6 +15,6 @@ workflows:
       - npx cap sync ios 
       
       - cd ios/App
-      - xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug build
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug build
     artifacts:
       - ios/**/*.app
