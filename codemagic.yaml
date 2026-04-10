@@ -1,19 +1,24 @@
 workflows:
-  ios-capacitor:
-    name: iOS Capacitor Build
+  ios_release:
+    name: iOS Release Build
     instance_type: mac_mini_m1
     max_build_duration: 60
 
     environment:
       node: 22
       xcode: latest
-    
+
+    integrations:
+      app_store_connect: Codemagic
+
     scripts:
       - npm install
       - chmod +x node_modules/.bin/cap
       - npm run build || true
       - npx cap sync ios
-      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphoneos -configuration Release -archivePath build/App.xcarchive archive
+      - xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build
+
 
     artifacts:
-      - build/**/Build/Products/**/*.app
+      - build/**/Build/Products/**/*.api
