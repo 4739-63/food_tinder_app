@@ -6,7 +6,7 @@ workflows:
 
     environment:
       node: 22
-      xcode: latest    
+      xcode: latest
 
       ios_signing:
         distribution_type: app_store
@@ -30,15 +30,23 @@ workflows:
 
       - name: Sync Capacitor
         script: |
-          chmod +x node_modules/.bin/cap
+          chmod +x node_modules/.bin/cap || true
           npx cap sync ios
 
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.chris.foodtinder" --type IOS_APP_STORE
+
+          app-store-connect fetch-signing-files "com.chris.foodtinder" \
+            --type IOS_APP_STORE \
+            --create
+
           keychain add-certificates
           xcode-project use-profiles
+
+      - name: Verify signing (debug)
+        script: |
+          xcode-project show-build-settings --project ios/App/App.xcodeproj --scheme App | grep -i signing || true
 
       - name: Build IPA
         script: |
@@ -48,3 +56,4 @@ workflows:
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - /Users/builder/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
