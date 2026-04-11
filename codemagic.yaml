@@ -19,7 +19,7 @@ workflows:
       - npm run build || true
       - npx cap sync ios
 
-      - xcode-project build-ipa
+      - xcode-project build-ipa --workspace ios/App/App.xcodeproj/App.xcworkspace --scheme App
 
     artifacts:
       - build/ios/ipa/*.ipa
