@@ -56,4 +56,4 @@ workflows:
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - /Users/builder/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+      - /Users/builder/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM      
