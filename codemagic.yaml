@@ -21,10 +21,16 @@ workflows:
 
       - |
         cat <<EOF > export_options.plist
-        {
-          "method": "app-store",
-          "signingStyle": "automatic"
-        }
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+        </dict>
+        </plist>
         EOF
 
       - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist
