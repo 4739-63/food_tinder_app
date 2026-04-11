@@ -7,15 +7,14 @@ workflows:
     environment:
       node: 22
       xcode: latest    
+
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: "com.chris.foodtinder"
+        bundle_identifier: com.chris.foodtinder
 
       vars:
-        XCODE_PROJECT: "ios/App/App.xcodeproj"
-        XCODE_SCHEME: "App"
-
-      node: latest
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
 
     integrations:
       app_store_connect: Codemagic
@@ -37,7 +36,7 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_IDENTIFIER" --type IOS_APP_STORE
+          app-store-connect fetch-signing-files "com.chris.foodtinder" --type IOS_APP_STORE
           keychain add-certificates
           xcode-project use-profiles
 
