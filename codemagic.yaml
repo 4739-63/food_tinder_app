@@ -33,7 +33,7 @@ workflows:
         </plist>
         EOF
 
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist --archive-xcargs "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=4AUJ52N26K"
     
     artifacts:
       - build/ios/ipa/*.ipa
