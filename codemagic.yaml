@@ -19,9 +19,12 @@ workflows:
       - npm run build || true
       - npx cap sync ios
 
-      - ls ios/App
+      - echo '{
+        "method": "app-store",
+        "signingStyle": "automatic"
+      }' > export_options.plist
 
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist
     
     artifacts:
       - build/ios/ipa/*.ipa
