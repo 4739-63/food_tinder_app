@@ -19,6 +19,8 @@ workflows:
       - npm run build || true
       - npx cap sync ios
 
+      - xcode-project use-profiles
+
       - |
         cat <<EOF > export_options.plist
         <?xml version="1.0" encoding="UTF-8"?>
@@ -33,7 +35,7 @@ workflows:
         </plist>
         EOF
 
-      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist --archive-xcargs "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=4AUJ52N26K"
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App --export-options-plist export_options.plist
     
     artifacts:
       - build/ios/ipa/*.ipa
