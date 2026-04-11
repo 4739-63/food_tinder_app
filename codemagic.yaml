@@ -21,7 +21,7 @@ workflows:
 
       - ls ios/App
 
-      - xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+      - xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
     
     artifacts:
       - build/ios/ipa/*.ipa
