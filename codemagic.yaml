@@ -19,10 +19,7 @@ workflows:
       - chmod +x node_modules/.bin/cap
       - npm run build || true
       - npx cap sync ios
-
-      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphoneos -configuration Release DEVELOPMENT_TEAM=4AUJ52N26K -allowProvisioningUpdates archive
-
-      - xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build
+      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphoneos -configuration Release -allowProvisioningUpdates archive
 
     artifacts:
-      - build/**/*.ipa
+      - build/**/Build/Products/**/*.ipa
