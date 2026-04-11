@@ -2,14 +2,13 @@ workflows:
   ios_release:
     name: iOS Release Build
     instance_type: mac_mini_m1
-    max_build_duration: 60
 
     environment:
       node: 22
       xcode: latest
-      vars:
-        XCODE_PROJECT: ios/App/App.xcodeproj
-        XCODE_SCHEME: App
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.chris.foodtinder
 
     integrations:
       app_store_connect: Codemagic
@@ -19,7 +18,10 @@ workflows:
       - chmod +x node_modules/.bin/cap
       - npm run build || true
       - npx cap sync ios
-      - xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphoneos -configuration Release -archivePath build/App.xcarchive DEVELOPMENT_TEAM=4AUJ52N26K CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates archive
+
+      - xcode-project build-ipa \
+          --project ios/App/App.xcodeproj \
+          --scheme App
 
     artifacts:
-      - build/**/Build/Products/**/*.ipa
+      - build/ios/ipa/*.ipa
