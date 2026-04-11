@@ -1,27 +1,50 @@
 workflows:
-  ios_release:
-    name: iOS Release Build
-    instance_type: mac_mini_m1
+  ios-release:
+    name: iOS Release FoodTinder
+    instance_type: mac_mini_m2
+    max_build_duration: 60
 
     environment:
       node: 22
-      xcode: latest
+      xcode: latest    
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.chris.foodtinder
+        bundle_identifier: "com.chris.foodtinder"
+
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+
+      node: latest
 
     integrations:
       app_store_connect: Codemagic
 
     scripts:
-      - npm install
-      - chmod +x node_modules/.bin/cap
-      - npm run build || true
-      - npx cap sync ios
+      - name: Install dependencies
+        script: |
+          npm install
 
-      - xcode-project build-ipa \
-          --project ios/App/App.xcodeproj \
-          --scheme App
-    
+      - name: Build web app
+        script: |
+          npm run build || true
+
+      - name: Sync Capacitor
+        script: |
+          npx cap sync ios
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_IDENTIFIER" --type IOS_APP_STORE
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
     artifacts:
       - build/ios/ipa/*.ipa
