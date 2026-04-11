@@ -31,6 +31,7 @@ workflows:
 
       - name: Sync Capacitor
         script: |
+          chmod +x node_modules/.bin/cap
           npx cap sync ios
 
       - name: Set up code signing
