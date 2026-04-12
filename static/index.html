@@ -92,41 +92,25 @@ body {
 .card {
     background: var(--card);
     border-radius: 25px;
-    width: 320px;
+    width: 90%;           /* ✅ au lieu de 90px */
+    max-width: 420px;
     padding: 20px;
     text-align: center;
     box-shadow: 0 15px 40px rgba(0,0,0,0.08);
 
     position: relative;
+
+    will-change: transform;
+    touch-action: none;
+
+transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
 img {
     width: 100%;
-    border-radius: 10px;
-}
-
-.buttons {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 15px;
-}
-
-button {
-    border-radius: 14px;
-    padding: 12px 18px;
-    font-size: 16px;
-    border: none;
-    font-weight: 500;
-}
-
-.like {
-    background: var(--success);
-    color: white;
-}
-
-.dislike {
-    background: var(--danger);
-    color: white;
+    height: 320px;
+    object-fit: cover;
+    border-radius: 16px;
 }
 
 #recipePanel {
@@ -134,13 +118,21 @@ button {
     bottom: -100%;
     left: 0;
     width: 100%;
-    height: 60%;
-    background: white;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
+    height: 65%;
+
+    background: rgba(30, 30, 30, 0.85); /* 🔥 sombre transparent */
+    backdrop-filter: blur(20px); /* 🔥 effet iOS */
+    color: white;
+
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+
     padding: 20px;
     overflow-y: auto;
-    transition: bottom 0.4s ease;
+
+    transition: bottom 0.25s ease, opacity 0.25s ease;
+    opacity: 0;
+
     z-index: 1000;
 }
 
@@ -165,16 +157,24 @@ button {
     border-top: 1px solid var(--border);
 }
 
+#bottomNav {
+    padding: 12px;
+}
+
 #bottomNav button {
     flex: 1;
-    margin: 0 5px;
+    margin: 0 6px;
+    padding: 16px 0;
+    border-radius: 18px;
+    font-size: 15px;
+    font-weight: 600;
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease;
+}
 
-    padding: 10px 0;
-
-    border-radius: 12px;
-
-    font-size: 14px;
-    color: var(--subtext);
+#bottomNav button:active {
+    transform: scale(0.95);
 }
 
 .filter-group {
@@ -216,7 +216,7 @@ button {
 
 <body>
 <div id="splash">
-    <img src="/static/logo.png" id="logo">
+    <img src="static/logo.png" id="logo">
 </div>    
 
 <div class="card" id="card">
@@ -225,12 +225,6 @@ button {
 
     <h2 id="nom">Chargement...</h2>
     <img id="image" src="">
-
-    <div class="buttons">
-        <button class="dislike" onclick="choix(false)">👎</button>
-        <button class="like" onclick="choix(true)">👍</button>
-    </div>
-
 </div>
 
 <div id="recipePanel">
@@ -384,8 +378,6 @@ function saveRecipe(plat) {
     alert("Recipe saved ❤️");
 }
 
-
-
 // 🍔 récupérer plat API
 async function getPlatFromAPI() {
     try {
@@ -535,34 +527,33 @@ async function choix(like) {
 }
 
 async function swipe(like) {
-    
-    if (isSwiping) return; // 🛑 bloque spam
+    if (isSwiping) return;
     isSwiping = true;
-    
-    isSwiping = false;
-    
-    
+
     let direction = like ? 1 : -1;
 
-    card.style.transform = `translateX(${direction * 500}px) rotate(${direction * 20}deg)`;
+    // 🔥 animation clean horizontale (plus de cercle)
+    card.style.transition = "transform 0.4s cubic-bezier(.22,1,.36,1), opacity 0.4s ease";
+    card.style.transform = `translateX(${direction * 800}px)`; // 🔥 sort écran direct
     card.style.opacity = "0";
 
     setTimeout(async () => {
 
+        // reset instant
         card.style.transition = "none";
-        card.style.transform = "translateX(0px) rotate(0deg)";
+        card.style.transform = "translateX(0px)";
         card.style.opacity = "1";
-        
-        likeLabel.style.opacity = 0;
-        nopeLabel.style.opacity = 0;
 
-        await choix(like);        
+        await choix(like);
 
+        // réactiver animation
         setTimeout(() => {
-            card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+            card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
         }, 50);
 
-    }, 300);
+        isSwiping = false;
+
+    }, 400);
 }
 
 // 🚀 démarrage
@@ -605,37 +596,39 @@ async function swipe(like) {
 })();
 
 // 🖱️ / 📱 START
-card.addEventListener("pointerdown", (e) => {
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    card.style.transition = "none";
-});
-
-// 🖱️ / 📱 MOVE
 card.addEventListener("pointermove", (e) => {
     if (!isDragging) return;
 
     currentX = e.clientX - startX;
     currentY = e.clientY - startY;
 
-    // 👇 swipe vers le bas
-    if (currentY > 150 && Math.abs(currentX) < 50) {
-        showRecipe(currentPlat);
-        isDragging = false;
+    let rotation = currentX * 0.05;
+    let scale = 1 - Math.min(Math.abs(currentX) / 500, 0.05);
+
+    card.style.transform = `
+        translate(${currentX}px, ${currentY}px)
+        rotate(${rotation}deg)
+        scale(${scale})
+    `;
+
+    // 🔥 swipe down contrôlé
+    if (currentY > 50 && Math.abs(currentX) < 80) {
+        const panel = document.getElementById("recipePanel");
+
+        let progress = Math.min(currentY / 300, 1);
+
+        panel.style.bottom = `${-100 + progress * 100}%`;
+        panel.style.opacity = progress;
+
+        document.body.style.backdropFilter = `blur(${progress * 8}px)`;
+
         return;
     }
 
-    let rotation = currentX * 0.05;
-    card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
-
-    // 🔥 intensité swipe (0 → 1)
+    // ❤️ / ❌ horizontal
     let intensity = Math.min(Math.abs(currentX) / 150, 1);
-
-    // 💡 effet transparence
     card.style.opacity = 1 - intensity * 0.3;
 
-    // ❤️ / ❌ affichage dynamique
     if (currentX > 0) {
         likeLabel.style.opacity = intensity;
         nopeLabel.style.opacity = 0;
@@ -649,21 +642,44 @@ card.addEventListener("pointermove", (e) => {
 card.addEventListener("pointerup", () => {
     isDragging = false;
 
-    card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+    card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
 
-    // reset labels
-    likeLabel.style.opacity = 0;
-    nopeLabel.style.opacity = 0;
+    const panel = document.getElementById("recipePanel");
 
-    if (currentX > 100) {
-        swipe(true);
-    } else if (currentX < -100) {
-        swipe(false);
+    // reset blur
+    document.body.style.backdropFilter = "blur(0px)";
+
+    // 🔥 priorité au swipe horizontal
+    if (Math.abs(currentX) > Math.abs(currentY)) {
+        panel.classList.remove("open");
+        panel.style.bottom = "-100%";
+        panel.style.opacity = 0;
+
+        if (currentX > 120) {
+            swipe(true);
+        } else if (currentX < -120) {
+            swipe(false);
+        } else {
+            card.style.transform = "translate(0px, 0px) rotate(0deg) scale(1)";
+            card.style.opacity = 1;
+        }
     } else {
-        card.style.transform = "translateX(0px) rotate(0deg)";
+        // 🔥 swipe vertical
+        if (currentY > 120) {
+            panel.classList.add("open");
+            panel.style.opacity = 1;
+        } else {
+            panel.classList.remove("open");
+            panel.style.bottom = "-100%";
+            panel.style.opacity = 0;
+        }
+
+        card.style.transform = "translate(0px, 0px) rotate(0deg) scale(1)";
         card.style.opacity = 1;
     }
+
     currentX = 0;
+    currentY = 0;
 });
 
 function showFavoris() {
@@ -960,18 +976,22 @@ async function setupPremiumUI() {
     }
 }
 
-async function showSubscription() {
-
+function hideAllScreens() {
     document.getElementById("card").style.display = "none";
     document.getElementById("favorisScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
+    document.getElementById("subscriptionScreen").style.display = "none";
+}
+
+async function showSubscription() {
+
+    hideAllScreens(); // 👈 IMPORTANT (remplace tout ton code de hide)
 
     const screen = document.getElementById("subscriptionScreen");
     screen.style.display = "block";
 
     const premium = await isPremium();
-
     const statusText = document.getElementById("subStatus");
 
     if (premium) {
