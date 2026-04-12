@@ -89,11 +89,34 @@ body {
     padding-bottom: 90px;
 }
 
+#recipeHandle {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    background: rgba(40, 40, 40, 0.6); /* 🔥 gris foncé transparent */
+    color: white;
+
+    padding: 8px 18px;
+    border-radius: 20px;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    backdrop-filter: blur(10px);
+
+    z-index: 9999;
+
+    cursor: pointer;
+}
+
 .card {
-    width: calc(100% - 24px); /* ~12px de chaque côté */
+    z-index: 1;
+    width: calc(100% - 48px); /* 24px gauche + 24px droite */
     height: 70vh;
 
-    margin: 12px auto; /* centre + espace autour */
+    margin: 24px auto; /* espace autour (haut/bas + centrage) */
 
     border-radius: 28px;
     overflow: hidden;
@@ -117,7 +140,7 @@ body {
 }
 
 img {
-    width: 100%;
+    width: 90%;
     height: 88%;
     object-fit: cover;
     border-radius: 18px;
@@ -160,25 +183,25 @@ img {
     left: 0;
     right: 0;
 
+    z-index: 9999; /* 🔥 très haut = toujours visible */
+
     display: flex;
     justify-content: space-between;
     align-items: center;
 
-    padding: 12px; /* ✅ fusion des deux */
+    padding: 12px;
 
     background: rgba(255,255,255,0.9);
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--border);
-
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
 }
 
 #bottomNav button {
     flex: 1;
     margin: 0 6px;
-    padding: 30px 0;
-    border-radius: 22px;
-    font-size: 18px;
+    padding: 60px 0;
+    border-radius: 40px;
+    font-size: 30px;
     font-weight: 600;
     background: white;
     box-shadow: 0 5px 15px rgba(0,0,0,0.08);
@@ -230,6 +253,10 @@ img {
 <div id="splash">
     <img src="./logo.png" id="logo">
 </div>    
+
+<div id="recipeHandle">
+    Recipe ↓
+</div>
 
 <div class="card" id="card">
     <div id="likeLabel" class="label likeLabel">❤️ LIKE</div>
@@ -608,6 +635,69 @@ async function swipe(like) {
 })();
 
 // 🖱️ / 📱 START
+// move ricipe
+let startYGlobal = 0;
+let currentYGlobal = 0;
+let isSwipingDown = false;
+
+document.addEventListener("pointerdown", (e) => {
+    const cardTop = card.getBoundingClientRect().top;
+
+    // 🔥 seulement si on clique AU-DESSUS de la card
+    if (e.clientY < cardTop) {
+        startYGlobal = e.clientY;
+        isSwipingDown = true;
+    }
+});
+
+document.addEventListener("pointermove", (e) => {
+    if (!isSwipingDown) return;
+
+    const panel = document.getElementById("recipePanel");
+
+    currentYGlobal = e.clientY - startYGlobal;
+
+    const cardTop = card.getBoundingClientRect().top;
+
+    // 🔥 swipe DOWN = ouvrir
+    if (e.clientY < cardTop && currentYGlobal > 0) {
+
+        let progress = Math.min(currentYGlobal / 300, 1);
+
+        panel.style.bottom = `${-100 + progress * 100}%`;
+        panel.style.opacity = progress;
+
+        document.body.style.backdropFilter = `blur(${progress * 8}px)`;
+    }
+
+    // 🔥 swipe UP = fermer (AJOUT ICI)
+    if (panel.classList.contains("open") && currentYGlobal < -80) {
+        panel.classList.remove("open");
+        panel.style.bottom = "-100%";
+        panel.style.opacity = 0;
+    }
+});
+
+document.addEventListener("pointerup", () => {
+    if (!isSwipingDown) return;
+
+    const panel = document.getElementById("recipePanel");
+
+    document.body.style.backdropFilter = "blur(0px)";
+
+    if (currentYGlobal > 120) {
+        panel.classList.add("open");
+        panel.style.opacity = 1;
+    } else {
+        panel.classList.remove("open");
+        panel.style.bottom = "-100%";
+        panel.style.opacity = 0;
+    }
+
+    isSwipingDown = false;
+    currentYGlobal = 0;
+});
+
 card.addEventListener("pointerdown", (e) => {
     isDragging = true;
 
@@ -637,20 +727,6 @@ card.addEventListener("pointermove", (e) => {
         scale(${scale})
     `;
 
-    // 🔥 swipe down contrôlé
-    if (currentY > 50 && Math.abs(currentX) < 80) {
-        const panel = document.getElementById("recipePanel");
-
-        let progress = Math.min(currentY / 300, 1);
-
-        panel.style.bottom = `${-100 + progress * 100}%`;
-        panel.style.opacity = progress;
-
-        document.body.style.backdropFilter = `blur(${progress * 8}px)`;
-
-        return;
-    }
-
     // ❤️ / ❌ horizontal
     let intensity = Math.min(Math.abs(currentX) / 150, 1);
     card.style.opacity = 1 - intensity * 0.3;
@@ -662,6 +738,13 @@ card.addEventListener("pointermove", (e) => {
         nopeLabel.style.opacity = intensity;
         likeLabel.style.opacity = 0;
     }
+});
+
+// 🔥 AJOUTE ÇA ICI (en bas)
+document.getElementById("recipeHandle").addEventListener("click", () => {
+    const panel = document.getElementById("recipePanel");
+    panel.classList.add("open");
+    panel.style.opacity = 1;
 });
 
 // 🖱️ / 📱 END
