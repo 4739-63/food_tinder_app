@@ -28,6 +28,16 @@ workflows:
         script: |
           npm run build || true
 
+      - name: Set iOS build number
+        script: |
+          cd ios/App
+
+          echo "Build number: $CM_BUILD_NUMBER"
+
+          agvtool new-version -all $CM_BUILD_NUMBER
+
+          cd ../..
+
       - name: Sync Capacitor
         script: |
           chmod +x node_modules/.bin/cap || true
