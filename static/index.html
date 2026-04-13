@@ -113,10 +113,11 @@ body {
 
 .card {
     z-index: 1;
-    width: calc(100% - 48px); /* 24px gauche + 24px droite */
+
+    width: calc(100% - 48px);
     height: 70vh;
 
-    margin: 24px auto; /* espace autour (haut/bas + centrage) */
+    margin: 24px auto;
 
     border-radius: 28px;
     overflow: hidden;
@@ -129,6 +130,11 @@ body {
     touch-action: pan-y;
     will-change: transform;
     transition: transform 0.25s ease, opacity 0.25s ease;
+
+    /* 🔥 CENTRAGE IMAGE */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .card:active {
@@ -139,13 +145,16 @@ body {
     transform: none;
 }
 
-img {
+.card img {
     width: 90%;
     height: 88%;
-    object-fit: cover;
-    border-radius: 18px;
 
+    object-fit: cover;
+
+    border-radius: 18px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+
+    display: block;
 }
 
 #recipePanel {
@@ -183,7 +192,7 @@ img {
     left: 0;
     right: 0;
 
-    z-index: 9999; /* 🔥 très haut = toujours visible */
+    z-index: 9999;
 
     display: flex;
     justify-content: space-between;
@@ -194,18 +203,26 @@ img {
     background: rgba(255,255,255,0.9);
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--border);
+
+    transform: translateZ(0); /* 🔥 fix mobile flicker */
 }
 
 #bottomNav button {
     flex: 1;
     margin: 0 6px;
-    padding: 60px 0;
-    border-radius: 40px;
-    font-size: 30px;
+
+    padding: 70px 0; 
+
+    border-radius: 35px; 
+
+    font-size: 28px; 
     font-weight: 600;
+
     background: white;
     box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+
     transition: transform 0.2s ease;
+    touch-action: manipulation;
 }
 
 #bottomNav button:active {
@@ -246,10 +263,42 @@ img {
     border: 1px solid var(--border);
     margin-top: 10px;
 }
+
+body.splash-active #bottomNav,
+body.splash-active #card,
+body.splash-active #favorisScreen,
+body.splash-active #premiumScreen,
+body.splash-active #paywallScreen,
+body.splash-active #subscriptionScreen {
+    display: none !important;
+}
+
+#recipeBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+
+    background: rgba(0,0,0,0.5);
+    color: white;
+
+    padding: 10px 16px;
+    border-radius: 20px;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    backdrop-filter: blur(10px);
+
+    z-index: 9999;
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="recipeBtn">🍽 Recipe</div>    
+
 <div id="splash">
     <img src="./logo.png" id="logo">
 </div>    
@@ -281,6 +330,7 @@ img {
 </div>
 
 <script>
+document.body.classList.add("splash-active");
 
 let token = localStorage.getItem("token") || null;
 
@@ -635,68 +685,7 @@ async function swipe(like) {
 })();
 
 // 🖱️ / 📱 START
-// move ricipe
-let startYGlobal = 0;
-let currentYGlobal = 0;
-let isSwipingDown = false;
 
-document.addEventListener("pointerdown", (e) => {
-    const cardTop = card.getBoundingClientRect().top;
-
-    // 🔥 seulement si on clique AU-DESSUS de la card
-    if (e.clientY < cardTop) {
-        startYGlobal = e.clientY;
-        isSwipingDown = true;
-    }
-});
-
-document.addEventListener("pointermove", (e) => {
-    if (!isSwipingDown) return;
-
-    const panel = document.getElementById("recipePanel");
-
-    currentYGlobal = e.clientY - startYGlobal;
-
-    const cardTop = card.getBoundingClientRect().top;
-
-    // 🔥 swipe DOWN = ouvrir
-    if (e.clientY < cardTop && currentYGlobal > 0) {
-
-        let progress = Math.min(currentYGlobal / 300, 1);
-
-        panel.style.bottom = `${-100 + progress * 100}%`;
-        panel.style.opacity = progress;
-
-        document.body.style.backdropFilter = `blur(${progress * 8}px)`;
-    }
-
-    // 🔥 swipe UP = fermer (AJOUT ICI)
-    if (panel.classList.contains("open") && currentYGlobal < -80) {
-        panel.classList.remove("open");
-        panel.style.bottom = "-100%";
-        panel.style.opacity = 0;
-    }
-});
-
-document.addEventListener("pointerup", () => {
-    if (!isSwipingDown) return;
-
-    const panel = document.getElementById("recipePanel");
-
-    document.body.style.backdropFilter = "blur(0px)";
-
-    if (currentYGlobal > 120) {
-        panel.classList.add("open");
-        panel.style.opacity = 1;
-    } else {
-        panel.classList.remove("open");
-        panel.style.bottom = "-100%";
-        panel.style.opacity = 0;
-    }
-
-    isSwipingDown = false;
-    currentYGlobal = 0;
-});
 
 card.addEventListener("pointerdown", (e) => {
     isDragging = true;
@@ -741,10 +730,20 @@ card.addEventListener("pointermove", (e) => {
 });
 
 // 🔥 AJOUTE ÇA ICI (en bas)
-document.getElementById("recipeHandle").addEventListener("click", () => {
+document.getElementById("recipeBtn").addEventListener("click", () => {
     const panel = document.getElementById("recipePanel");
+
     panel.classList.add("open");
+    panel.style.bottom = "0";
     panel.style.opacity = 1;
+});
+
+document.getElementById("recipePanel").addEventListener("click", () => {
+    const panel = document.getElementById("recipePanel");
+
+    panel.classList.remove("open");
+    panel.style.bottom = "-100%";
+    panel.style.opacity = 0;
 });
 
 // 🖱️ / 📱 END
@@ -1132,6 +1131,25 @@ async function cancelSubscription() {
         alert("Error canceling");
     }
 }
+
+window.addEventListener("load", () => {
+    setTimeout(() => {
+
+        document.getElementById("splash").style.display = "none";
+
+        document.body.classList.remove("splash-active");
+
+    }, 1200); // ajuste durée du logo
+});
+
+document.getElementById("recipeBtn").addEventListener("click", () => {
+    const panel = document.getElementById("recipePanel");
+
+    panel.classList.add("open");
+    panel.style.opacity = 1;
+
+    document.body.style.backdropFilter = "blur(8px)";
+});
 
 </script>
 
