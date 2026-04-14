@@ -305,38 +305,6 @@ body.splash-active #recipeBtn {
     z-index: 9999;
 }
 
-.screen-box {
-    background: rgba(20, 20, 20, 0.7);
-    backdrop-filter: blur(12px);
-
-    padding: 20px;
-    border-radius: 20px;
-
-    color: white;
-
-    margin-bottom: 20px;
-
-    border: 1px solid rgba(255,255,255,0.1); /* 🔥 AJOUT ICI */
-}
-
-.screen-box h2 {
-    font-size: 26px;
-    margin-bottom: 15px;
-}
-
-.screen-box h3 {
-    font-size: 22px;
-    margin-bottom: 10px;
-}
-
-.screen-box p,
-.screen-box li,
-.screen-box label,
-.screen-box span {
-    font-size: 18px;
-    line-height: 1.5;
-}
-
 </style>
 </head>
 
@@ -349,8 +317,8 @@ body.splash-active #recipeBtn {
 </div>    
 
 <div class="card" id="card">
-    <div id="likeLabel" class="label likeLabel"> LIKE</div>
-    <div id="nopeLabel" class="label nopeLabel"> NOPE</div>
+    <div id="likeLabel" class="label likeLabel">❤️ LIKE</div>
+    <div id="nopeLabel" class="label nopeLabel">❌ NOPE</div>
 
     <img id="image" src="">
 
@@ -814,11 +782,7 @@ function showFavoris() {
     const container = document.getElementById("favorisScreen");
     container.style.display = "block";
 
-    container.innerHTML = `
-    <div class="screen-box">
-        <h2>My Recipes ❤️</h2>
-    </div>
-`;
+    container.innerHTML = "<h2>My Recipes ❤️</h2>";
 
     if (favoris.length === 0) {
         container.innerHTML += "<p>No saved recipes</p>";
@@ -1172,11 +1136,8 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
-    <div class="screen-box">
-    </div>
-</div>
- 
-<h2 style="margin-bottom:20px;">⚙️ Filters</h2>
+
+    <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
 
     <div class="filter-group">
         <h4>Preferences</h4>
@@ -1265,11 +1226,8 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
 <div id="advancedFiltersSection"></div>
 
 <div id="subscriptionScreen" style="display:none; padding:20px;">
-    <div class="screen-box">
-    </div>
-</div>
- 
-<h2>💳 My Subscription</h2>
+
+    <h2>💳 My Subscription</h2>
 
     <p id="subStatus">Loading...</p>
 
