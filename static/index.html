@@ -176,16 +176,16 @@ body {
     bottom: -100%;
     left: 0;
     width: 100%;
-    height: 65%;
+    height: 78vh;
 
-    background: rgba(30, 30, 30, 0.85); /* 🔥 sombre transparent */
-    backdrop-filter: blur(20px); /* 🔥 effet iOS */
+    background: rgba(30, 30, 30, 0.88);
+    backdrop-filter: blur(20px);
     color: white;
 
     border-top-left-radius: 25px;
     border-top-right-radius: 25px;
 
-    padding: 20px;
+    padding: 20px 20px calc(40px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
 
     -webkit-overflow-scrolling: touch;
@@ -193,7 +193,8 @@ body {
     transition: bottom 0.25s ease, opacity 0.25s ease;
     opacity: 0;
 
-    z-index: 1000;
+    z-index: 10000; /* plus haut que la nav */
+    box-sizing: border-box;
 }
 
 #recipePanel.open {
@@ -205,6 +206,7 @@ body {
     left: 0;
     right: 0;
     bottom: env(safe-area-inset-bottom, 0);
+
     z-index: 9999;
 
     display: flex;
@@ -213,27 +215,25 @@ body {
 
     padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0));
 
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+    background: rgba(0,0,0,0.4); /* 🔥 gris foncé transparent */
+    backdrop-filter: blur(12px);
 
-    transform: translateZ(0);
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 #bottomNav button {
     flex: 1;
     margin: 0 6px;
 
-    padding: 70px 0; 
+    padding: 60px 0; 
 
     border-radius: 35px; 
 
     font-size: 28px; 
     font-weight: 600;
 
-    background: white;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.08); /* 🔥 semi transparent */
+    color: white;
 
     transition: transform 0.2s ease;
     touch-action: manipulation;
@@ -241,6 +241,7 @@ body {
 
 #bottomNav button:active {
     transform: scale(0.95);
+    background: rgba(255,255,255,0.15);
 }
 
 .filter-group {
@@ -314,22 +315,29 @@ body {
 .screen-box {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
-    padding: 20px;
+
+    width: 85%;              /* 🔥 AJOUT → moins large */
+    max-width: 420px;        /* 🔥 AJOUT → style mobile */
+    margin: 0 auto 20px;     /* 🔥 MODIF → centré */
+
+    padding: 25px;           /* 🔥 légèrement plus grand */
+
     border-radius: 20px;
     color: white;
-    margin-bottom: 20px;
+
     border: 1px solid rgba(255,255,255,0.1);
+
     font-weight: 500;
     letter-spacing: 0.3px;
 }
 
 .screen-box h2 {
-    font-size: 28px;
+    font-size: 30px;         /* 🔥 un peu plus gros */
     font-weight: 700;
 }
 
 .screen-box h3 {
-    font-size: 24px;
+    font-size: 26px;         /* 🔥 un peu plus gros */
     font-weight: 700;
 }
 
@@ -337,8 +345,47 @@ body {
 .screen-box li,
 .screen-box label,
 .screen-box span {
-    font-size: 20px;
+    font-size: 21px;         /* 🔥 plus lisible mobile */
     line-height: 1.6;
+}
+
+.recipe-btn {
+    width: 100%;
+
+    padding: 22px;            /* 🔥 taille globale */
+    font-size: 22px;          /* 🔥 taille du texte */
+
+    border-radius: 16px;
+    border: none;
+
+    background: var(--primary);
+    color: white;
+
+    font-weight: 600;
+
+    margin-top: 15px;
+
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+
+    transition: transform 0.2s ease;
+}
+
+.recipe-btn:active {
+    transform: scale(0.96);
+}
+
+#favorisScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 </style>
@@ -366,7 +413,7 @@ body {
     <div id="recipeContent"></div>
 </div>
 
-<div id="favorisScreen" style="display:none; padding:20px;"></div>
+<div id="favorisScreen" style="display:none;"></div>
 
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
@@ -488,7 +535,7 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
+        <button class="recipe-btn" onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
     `;
 
     panel.classList.add("open");
@@ -817,7 +864,8 @@ function showFavoris() {
 
     const container = document.getElementById("favorisScreen");
     container.style.display = "block";
-
+    container.scrollTop = 0;
+    
     container.innerHTML = `
         <div class="screen-box">
             <h2>My Recipes </h2>
@@ -1239,15 +1287,19 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
         <h2>Advanced Plan</h2>
 
         <p>
-            this paid option offers you an advanced filter that allows you to direct the algorithm more quickly towards your current preferences. whether it is for a cold meal, or more salty or sweet. The advance filter allows you to show only vegan dishes that do not have a basic algorithm.
+            Upgrade to the Advanced Plan and take full control of your food experience.
+
+            Customize your recommendations with smart filters based on your preferences — from sweet to savory, quick meals and more. Activate the Vegan mode to discover only vegan dishes, and stay safe with allergy filters that remove meals containing gluten or peanuts.
+
+            Plus, save as many recipes as you want with unlimited favorites.
         </p>
 
-        <h3>$1/month</h3>
+        <h3>$2,99/month</h3>
 
-        <button onclick="buyPremium()">💳 Buy Now</button>
+        <button onclick="buyPremium()"> Buy Now</button>
 
         <br><br>
-        <button onclick="showSwipe()">⬅ Back</button>
+        <button onclick="showSwipe()"> Back</button>
 
         <h3>Login / Register</h3>
 
