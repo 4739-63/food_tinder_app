@@ -97,6 +97,8 @@ body {
     align-items: center;
     padding-bottom: 90px;
     -webkit-tap-highlight-color: transparent;
+
+    overscroll-behavior: none;
 }
 
 
@@ -195,6 +197,7 @@ body {
 
     z-index: 10000; /* plus haut que la nav */
     box-sizing: border-box;
+    transform: translateZ(0);
 }
 
 #recipePanel.open {
@@ -205,7 +208,9 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: env(safe-area-inset-bottom, 0);
+
+    bottom: 0; /* 🔥 important */
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 
     z-index: 9999;
 
@@ -213,12 +218,16 @@ body {
     justify-content: space-between;
     align-items: center;
 
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0));
+    padding-top: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
 
-    background: rgba(0,0,0,0.4); /* 🔥 gris foncé transparent */
+    background: rgba(0,0,0,0.4);
     backdrop-filter: blur(12px);
 
     border-top: 1px solid rgba(255,255,255,0.1);
+
+    transform: translateZ(0); /* 🔥 FIX iOS */
 }
 
 #bottomNav button {
@@ -316,11 +325,11 @@ body {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
 
-    width: 85%;              /* 🔥 AJOUT → moins large */
-    max-width: 420px;        /* 🔥 AJOUT → style mobile */
+    width: 95%;              /* 🔥 AJOUT → moins large */
+    max-width: 500px;        /* 🔥 AJOUT → style mobile */
     margin: 0 auto 20px;     /* 🔥 MODIF → centré */
 
-    padding: 25px;           /* 🔥 légèrement plus grand */
+    padding: 35px;           /* 🔥 légèrement plus grand */
 
     border-radius: 20px;
     color: white;
@@ -332,12 +341,12 @@ body {
 }
 
 .screen-box h2 {
-    font-size: 30px;         /* 🔥 un peu plus gros */
+    font-size: 50px;         /* 🔥 un peu plus gros */
     font-weight: 700;
 }
 
 .screen-box h3 {
-    font-size: 26px;         /* 🔥 un peu plus gros */
+    font-size: 50px;         /* 🔥 un peu plus gros */
     font-weight: 700;
 }
 
@@ -345,7 +354,7 @@ body {
 .screen-box li,
 .screen-box label,
 .screen-box span {
-    font-size: 21px;         /* 🔥 plus lisible mobile */
+    font-size: 31px;         /* 🔥 plus lisible mobile */
     line-height: 1.6;
 }
 
@@ -388,12 +397,30 @@ body {
     box-sizing: border-box;
 }
 
+#recipePanel h3 {
+    font-size: 26px;
+}
+
+#recipePanel h4 {
+    font-size: 22px;
+}
+
+#recipePanel p {
+    font-size: 25px;
+    line-height: 1.7;
+}
+
+#recipePanel li {
+    font-size: 25px;
+    margin-bottom: 6px;
+}
+
 </style>
 </head>
 
 <body>
 
-<div id="recipeBtn">🍽 Recipe</div>    
+<div id="recipeBtn"> Recipe</div>    
 
 <div id="splash">
     <img src="./logo.png" id="logo">
@@ -548,6 +575,7 @@ function hideRecipe() {
     panel.classList.remove("open");
     panel.style.bottom = "-100%";
     panel.style.opacity = 0;
+    document.body.style.transform = "translateY(0)";
 }
 
 function saveRecipe(plat) {
