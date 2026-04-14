@@ -86,6 +86,8 @@ html, body {
     overscroll-behavior: none;
     position: fixed;
     touch-action: manipulation;
+
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
 
 body {
@@ -288,8 +290,8 @@ body.splash-active #recipeBtn {
 
 #recipeBtn {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 16px);
-    right: 16px;
+    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    right: 30px;
 
     background: rgba(0,0,0,0.5);
     color: white;
@@ -297,7 +299,7 @@ body.splash-active #recipeBtn {
     padding: 10px 16px;
     border-radius: 20px;
 
-    font-size: 14px;
+    font-size: 24px;
     font-weight: 500;
 
     backdrop-filter: blur(10px);
