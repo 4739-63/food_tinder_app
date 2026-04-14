@@ -290,8 +290,8 @@ body.splash-active #recipeBtn {
 
 #recipeBtn {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 64px);
-    right: 30px;
+    top: calc(env(safe-area-inset-top, 0px) + 200px);
+    right: 60px;
 
     background: rgba(0,0,0,0.5);
     color: white;
@@ -299,12 +299,46 @@ body.splash-active #recipeBtn {
     padding: 10px 16px;
     border-radius: 20px;
 
-    font-size: 24px;
+    font-size: 50px;
     font-weight: 500;
 
     backdrop-filter: blur(10px);
 
     z-index: 9999;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.screen-box {
+    background: rgba(20, 20, 20, 0.7);
+    backdrop-filter: blur(12px);
+    padding: 20px;
+    border-radius: 20px;
+    color: white;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.screen-box h2 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.screen-box h3 {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.screen-box p,
+.screen-box li,
+.screen-box label,
+.screen-box span {
+    font-size: 20px;
+    line-height: 1.6;
 }
 
 </style>
@@ -784,7 +818,11 @@ function showFavoris() {
     const container = document.getElementById("favorisScreen");
     container.style.display = "block";
 
-    container.innerHTML = "<h2>My Recipes ❤️</h2>";
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>My Recipes </h2>
+        </div>
+    `;
 
     if (favoris.length === 0) {
         container.innerHTML += "<p>No saved recipes</p>";
@@ -793,7 +831,7 @@ function showFavoris() {
 
     favoris.forEach(f => {
         container.innerHTML += `
-            <div style="margin-bottom:20px; position:relative;">
+            <div class="screen-box" style="position:relative;">
         
                 <h3 onclick="openFavori('${f.nom}')" style="cursor:pointer;">
                     ${f.nom}
@@ -1139,108 +1177,114 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
 
 <div id="premiumScreen" style="display:none; padding:25px;">
 
-    <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
+    <div class="screen-box">
+        <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
 
-    <div class="filter-group">
-        <h4>Preferences</h4>
+        <div class="filter-group">
+            <h4>Preferences</h4>
 
-        <label class="toggle">
-            <input type="checkbox" id="filter_sucre">
-            <span>🍭 Sweet</span>
-        </label>
+            <label class="toggle">
+                <input type="checkbox" id="filter_sucre">
+                <span> Sweet</span>
+            </label>
 
-        <label class="toggle">
-            <input type="checkbox" id="filter_sale">
-            <span>🧂 Savory</span>
-        </label>
+            <label class="toggle">
+                <input type="checkbox" id="filter_sale">
+                <span> Savory</span>
+            </label>
 
-        <label class="toggle">
-            <input type="checkbox" id="filter_rapide">
-            <span>⚡ Quick</span>
-        </label>
+            <label class="toggle">
+                <input type="checkbox" id="filter_rapide">
+                <span> Quick</span>
+            </label>
+        </div>
+
+        <div class="filter-group">
+            <h4>Diet</h4>
+
+            <label class="toggle">
+                <input type="checkbox" id="filter_vegan">
+                <span> Vegan</span>
+            </label>
+
+            <label class="toggle">
+                <input type="checkbox" id="filter_viande">
+                <span> Meat</span>
+            </label>
+        </div>
+
+        <div class="filter-group">
+            <h4>Allergies</h4>
+
+            <label class="toggle">
+                <input type="checkbox" id="filter_gluten">
+                <span> Gluten</span>
+            </label>
+
+            <label class="toggle">
+                <input type="checkbox" id="filter_arachide">
+                <span> No Peanuts</span>
+            </label>
+        </div>
+
+        <button class="primary-btn" onclick="saveFilters()">Save</button>
+        <button class="secondary-btn" onclick="showSwipe()">Back</button>
     </div>
-
-    <div class="filter-group">
-        <h4>Diet</h4>
-
-        <label class="toggle">
-            <input type="checkbox" id="filter_vegan">
-            <span>🌱 Vegan</span>
-        </label>
-
-        <label class="toggle">
-            <input type="checkbox" id="filter_viande">
-            <span>🥩 Meat</span>
-        </label>
-    </div>
-
-    <div class="filter-group">
-        <h4>Allergies</h4>
-
-        <label class="toggle">
-            <input type="checkbox" id="filter_gluten">
-            <span>🚫 Gluten</span>
-        </label>
-
-        <label class="toggle">
-            <input type="checkbox" id="filter_arachide">
-            <span>🥜 No Peanuts</span>
-        </label>
-    </div>
-
-    <button class="primary-btn" onclick="saveFilters()">Save</button>
-    <button class="secondary-btn" onclick="showSwipe()">Back</button>
 
 </div>
 
 <div id="paywallScreen" style="display:none; padding:20px;">
 
-    <h2>🚀 Advanced Plan</h2>
+    <div class="screen-box">
+        <h2>Advanced Plan</h2>
 
-    <p>
-        this paid option offers you an advanced filter that allows you to direct the algorithm more quickly towards your current preferences. whether it is for a cold meal, or more salty or sweet. The advance filter allows you to show only vegan dishes that do not have a basic algorithm. 
-    </p>
+        <p>
+            this paid option offers you an advanced filter that allows you to direct the algorithm more quickly towards your current preferences. whether it is for a cold meal, or more salty or sweet. The advance filter allows you to show only vegan dishes that do not have a basic algorithm.
+        </p>
 
-    <h3>$1/month</h3>
+        <h3>$1/month</h3>
 
-    <button onclick="buyPremium()">💳 Buy Now</button>
+        <button onclick="buyPremium()">💳 Buy Now</button>
 
-    <br><br>
-    <button onclick="showSwipe()">⬅ Back</button>
+        <br><br>
+        <button onclick="showSwipe()">⬅ Back</button>
 
-    <h3>Login / Register</h3>
+        <h3>Login / Register</h3>
 
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
+        <input id="email" placeholder="Email">
+        <input id="password" type="password" placeholder="Password">
 
-    <button onclick="loginUser(
-        document.getElementById('email').value,
-        document.getElementById('password').value
-    )">Login</button>
+        <button onclick="loginUser(
+            document.getElementById('email').value,
+            document.getElementById('password').value
+        )">Login</button>
 
-    <button onclick="registerUser(
-        document.getElementById('email').value,
-        document.getElementById('password').value
-    )">Register</button>
-    
+        <button onclick="registerUser(
+            document.getElementById('email').value,
+            document.getElementById('password').value
+        )">Register</button>
+    </div>
+
 </div>
 
 <div id="advancedFiltersSection"></div>
 
 <div id="subscriptionScreen" style="display:none; padding:20px;">
 
-    <h2>💳 My Subscription</h2>
+    <div class="screen-box">
+        <h2>My Subscription</h2>
 
-    <p id="subStatus">Loading...</p>
+        <p id="subStatus">Loading...</p>
 
-    <button onclick="cancelSubscription()" 
-            style="background:red; color:white; padding:10px; border:none; border-radius:10px;">
-        Cancel Subscription
-    </button>
+        <button onclick="cancelSubscription()" 
+                style="background:red; color:white; padding:10px; border:none; border-radius:10px;">
+            Cancel Subscription
+        </button>
 
-    <br><br>
+        <br><br>
 
-    <button onclick="showSwipe()">⬅ Back</button>
+        <button onclick="showSwipe()">⬅ Back</button>
+    </div>
 
 </div>
 
