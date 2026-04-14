@@ -77,64 +77,56 @@
     transform: rotate(-15deg);
 }    
 
-body {
-
-    background: linear-gradient(135deg, #ff7e00, #ffb347);
-    min-height: 100vh;
-
-    display: flex;
-    justify-content: center;   /* centre horizontal */
-    align-items: center;       /* centre vertical */
-
-    padding-bottom: 90px;
-}
-
-#recipeHandle {
-    position: fixed;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    background: rgba(40, 40, 40, 0.6); /* 🔥 gris foncé transparent */
-    color: white;
-
-    padding: 8px 18px;
-    border-radius: 20px;
-
-    font-size: 14px;
-    font-weight: 500;
-
-    backdrop-filter: blur(10px);
-
-    z-index: 9999;
-
-    cursor: pointer;
-}
-
-.card {
-    z-index: 1;
-
-    width: calc(100% - 48px);
-    height: 70vh;
-
-    margin: 24px auto;
-
-    border-radius: 28px;
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    touch-action: manipulation;
+}
 
-    background: var(--card);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
-
-    position: relative;
-
-    touch-action: pan-y;
-    will-change: transform;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-
-    /* 🔥 CENTRAGE IMAGE */
+body {
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
     display: flex;
     justify-content: center;
     align-items: center;
+    padding-bottom: 90px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+
+.card {
+    z-index: 1;
+    width: calc(100% - 48px);
+    height: 70vh;
+    margin: 24px auto;
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--card);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+    position: relative;
+    touch-action: none;
+    will-change: transform;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+    z-index: 1;
 }
 
 .card:active {
@@ -146,15 +138,35 @@ body {
 }
 
 .card img {
-    width: 90%;
-    height: 88%;
+    width: 92%;
+    height: 82%;
 
     object-fit: cover;
+    object-position: center; /* 🔥 IMPORTANT */
 
     border-radius: 18px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.15);
 
     display: block;
+}
+
+#nom {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+
+    color: white;
+    font-size: 24px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+
+    text-align: left;
+
+    z-index: 2;
+
+    /* 🔥 effet lisibilité */
+    text-shadow: 0 4px 15px rgba(0,0,0,0.8);
 }
 
 #recipePanel {
@@ -188,23 +200,23 @@ body {
 
 #bottomNav {
     position: fixed;
-    bottom: 0;
     left: 0;
     right: 0;
-
+    bottom: env(safe-area-inset-bottom, 0);
     z-index: 9999;
 
     display: flex;
     justify-content: space-between;
     align-items: center;
 
-    padding: 12px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0));
 
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.92);
     backdrop-filter: blur(10px);
     border-top: 1px solid var(--border);
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
 
-    transform: translateZ(0); /* 🔥 fix mobile flicker */
+    transform: translateZ(0);
 }
 
 #bottomNav button {
@@ -269,14 +281,15 @@ body.splash-active #card,
 body.splash-active #favorisScreen,
 body.splash-active #premiumScreen,
 body.splash-active #paywallScreen,
-body.splash-active #subscriptionScreen {
+body.splash-active #subscriptionScreen,
+body.splash-active #recipeBtn {
     display: none !important;
 }
 
 #recipeBtn {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    right: 16px;
 
     background: rgba(0,0,0,0.5);
     color: white;
@@ -292,6 +305,38 @@ body.splash-active #subscriptionScreen {
     z-index: 9999;
 }
 
+.screen-box {
+    background: rgba(20, 20, 20, 0.7);
+    backdrop-filter: blur(12px);
+
+    padding: 20px;
+    border-radius: 20px;
+
+    color: white;
+
+    margin-bottom: 20px;
+
+    border: 1px solid rgba(255,255,255,0.1); /* 🔥 AJOUT ICI */
+}
+
+.screen-box h2 {
+    font-size: 26px;
+    margin-bottom: 15px;
+}
+
+.screen-box h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.screen-box p,
+.screen-box li,
+.screen-box label,
+.screen-box span {
+    font-size: 18px;
+    line-height: 1.5;
+}
+
 </style>
 </head>
 
@@ -303,16 +348,13 @@ body.splash-active #subscriptionScreen {
     <img src="./logo.png" id="logo">
 </div>    
 
-<div id="recipeHandle">
-    Recipe ↓
-</div>
-
 <div class="card" id="card">
-    <div id="likeLabel" class="label likeLabel">❤️ LIKE</div>
-    <div id="nopeLabel" class="label nopeLabel">❌ NOPE</div>
+    <div id="likeLabel" class="label likeLabel"> LIKE</div>
+    <div id="nopeLabel" class="label nopeLabel"> NOPE</div>
 
-    <h2 id="nom">Chargement...</h2>
     <img id="image" src="">
+
+    <div id="nom">Chargement...</div>
 </div>
 
 <div id="recipePanel">
@@ -323,10 +365,10 @@ body.splash-active #subscriptionScreen {
 <div id="favorisScreen" style="display:none; padding:20px;"></div>
 
 <div id="bottomNav">
-    <button onclick="showSwipe()">🍔 Discover</button>
-    <button onclick="showFavoris()">❤️ Favorites</button>
-    <button onclick="showAdvanced()">⚡ Advanced</button>
-    <button onclick="showSubscription()">💳 Subscription</button>
+    <button onclick="showSwipe()"> Discover</button>
+    <button onclick="showFavoris()"> Favorites</button>
+    <button onclick="showAdvanced()"> Advanced</button>
+    <button onclick="showSubscription()"> Subscription</button>
 </div>
 
 <script>
@@ -428,7 +470,8 @@ function analyserPlat(meal) {
 }
 
 function showRecipe(plat) {
-     if (!plat) return;
+    if (!plat) return;
+
     const panel = document.getElementById("recipePanel");
     const content = document.getElementById("recipeContent");
 
@@ -445,10 +488,15 @@ function showRecipe(plat) {
     `;
 
     panel.classList.add("open");
+    panel.style.bottom = "0";
+    panel.style.opacity = 1;
 }
 
 function hideRecipe() {
-    document.getElementById("recipePanel").classList.remove("open");
+    const panel = document.getElementById("recipePanel");
+    panel.classList.remove("open");
+    panel.style.bottom = "-100%";
+    panel.style.opacity = 0;
 }
 
 function saveRecipe(plat) {
@@ -621,28 +669,25 @@ async function swipe(like) {
 
     let direction = like ? 1 : -1;
 
-    // 🔥 animation clean horizontale (plus de cercle)
-    card.style.transition = "transform 0.4s cubic-bezier(.22,1,.36,1), opacity 0.4s ease";
-    card.style.transform = `translateX(${direction * 800}px)`; // 🔥 sort écran direct
+    card.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+    card.style.transform = `translateX(${direction * 500}px) rotate(${direction * 12}deg) scale(0.98)`;
     card.style.opacity = "0";
 
     setTimeout(async () => {
-
-        // reset instant
         card.style.transition = "none";
-        card.style.transform = "translateX(0px)";
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
         card.style.opacity = "1";
+
+        likeLabel.style.opacity = 0;
+        nopeLabel.style.opacity = 0;
 
         await choix(like);
 
-        // réactiver animation
         setTimeout(() => {
             card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+            isSwiping = false;
         }, 50);
-
-        isSwiping = false;
-
-    }, 400);
+    }, 300);
 }
 
 // 🚀 démarrage
@@ -707,16 +752,15 @@ card.addEventListener("pointermove", (e) => {
     currentX = e.clientX - startX;
     currentY = e.clientY - startY;
 
-    let rotation = currentX * 0.05;
+    let rotation = currentX * 0.04;
     let scale = 1 - Math.min(Math.abs(currentX) / 500, 0.05);
 
     card.style.transform = `
-        translate(${currentX}px, ${currentY}px)
+        translateX(${currentX}px)
         rotate(${rotation}deg)
         scale(${scale})
     `;
 
-    // ❤️ / ❌ horizontal
     let intensity = Math.min(Math.abs(currentX) / 150, 1);
     card.style.opacity = 1 - intensity * 0.3;
 
@@ -731,62 +775,32 @@ card.addEventListener("pointermove", (e) => {
 
 // 🔥 AJOUTE ÇA ICI (en bas)
 document.getElementById("recipeBtn").addEventListener("click", () => {
-    const panel = document.getElementById("recipePanel");
-
-    panel.classList.add("open");
-    panel.style.bottom = "0";
-    panel.style.opacity = 1;
+    if (!currentPlat) return;
+    showRecipe(currentPlat);
 });
 
 document.getElementById("recipePanel").addEventListener("click", () => {
-    const panel = document.getElementById("recipePanel");
-
-    panel.classList.remove("open");
-    panel.style.bottom = "-100%";
-    panel.style.opacity = 0;
+    hideRecipe();
 });
 
 // 🖱️ / 📱 END
 card.addEventListener("pointerup", () => {
     isDragging = false;
-
     card.classList.remove("dragging");
 
     card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
 
-    const panel = document.getElementById("recipePanel");
-
-    // reset blur
-    document.body.style.backdropFilter = "blur(0px)";
-
-    // 🔥 priorité au swipe horizontal
-    if (Math.abs(currentX) > Math.abs(currentY)) {
-        panel.classList.remove("open");
-        panel.style.bottom = "-100%";
-        panel.style.opacity = 0;
-
-        if (currentX > 120) {
-            swipe(true);
-        } else if (currentX < -120) {
-            swipe(false);
-        } else {
-            card.style.transform = "translate(0px, 0px) rotate(0deg) scale(1)";
-            card.style.opacity = 1;
-        }
+    if (currentX > 120) {
+        swipe(true);
+    } else if (currentX < -120) {
+        swipe(false);
     } else {
-        // 🔥 swipe vertical
-        if (currentY > 120) {
-            panel.classList.add("open");
-            panel.style.opacity = 1;
-        } else {
-            panel.classList.remove("open");
-            panel.style.bottom = "-100%";
-            panel.style.opacity = 0;
-        }
-
-        card.style.transform = "translate(0px, 0px) rotate(0deg) scale(1)";
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
         card.style.opacity = 1;
     }
+
+    likeLabel.style.opacity = 0;
+    nopeLabel.style.opacity = 0;
 
     currentX = 0;
     currentY = 0;
@@ -800,7 +814,11 @@ function showFavoris() {
     const container = document.getElementById("favorisScreen");
     container.style.display = "block";
 
-    container.innerHTML = "<h2>My Recipes ❤️</h2>";
+    container.innerHTML = `
+    <div class="screen-box">
+        <h2>My Recipes ❤️</h2>
+    </div>
+`;
 
     if (favoris.length === 0) {
         container.innerHTML += "<p>No saved recipes</p>";
@@ -1154,8 +1172,11 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
-
-    <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
+    <div class="screen-box">
+    </div>
+</div>
+ 
+<h2 style="margin-bottom:20px;">⚙️ Filters</h2>
 
     <div class="filter-group">
         <h4>Preferences</h4>
@@ -1244,8 +1265,11 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
 <div id="advancedFiltersSection"></div>
 
 <div id="subscriptionScreen" style="display:none; padding:20px;">
-
-    <h2>💳 My Subscription</h2>
+    <div class="screen-box">
+    </div>
+</div>
+ 
+<h2>💳 My Subscription</h2>
 
     <p id="subStatus">Loading...</p>
 
