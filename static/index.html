@@ -420,10 +420,10 @@ body {
 .auth-btn {
     width: 100%;
 
-    padding: 18px;
+    padding: 50px;
     margin-top: 12px;
 
-    font-size: 18px;
+    font-size: 30px;
     font-weight: 600;
 
     border-radius: 14px;
@@ -439,6 +439,10 @@ body {
 
 .auth-btn:active {
     transform: scale(0.96);
+}
+
+#bottomNav.hidden {
+    display: none !important;
 }
 
 </style>
@@ -476,9 +480,7 @@ body {
 </div>
 
 <script>
-document.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-}, { passive: false });
+
 
 document.body.classList.add("splash-active");
 
@@ -582,6 +584,7 @@ function showRecipe(plat) {
 
     const panel = document.getElementById("recipePanel");
     const content = document.getElementById("recipeContent");
+    const bottomNav = document.getElementById("bottomNav");
 
     content.innerHTML = `
         <h4>Ingredients:</h4>
@@ -592,21 +595,26 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button class="recipe-btn" onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
+        <button class="recipe-btn" onclick="saveRecipe(currentPlat)"> Save Recipe</button>
     `;
 
     panel.classList.add("open");
     panel.style.bottom = "0";
     panel.style.opacity = 1;
+
+    bottomNav.classList.add("hidden");
 }
+
 
 function hideRecipe() {
     const panel = document.getElementById("recipePanel");
+    const bottomNav = document.getElementById("bottomNav");
+
     panel.classList.remove("open");
     panel.style.bottom = "-100%";
     panel.style.opacity = 0;
-    document.body.style.transform = "translateY(0)";
-    window.scrollTo(0, 0);
+
+    bottomNav.classList.remove("hidden");
 }
 
 function saveRecipe(plat) {
