@@ -156,7 +156,7 @@ body {
 
 #nom {
     position: absolute;
-    bottom: 20px;
+    top: 20px;
     left: 20px;
     right: 20px;
 
@@ -169,8 +169,24 @@ body {
 
     z-index: 2;
 
-    /* 🔥 effet lisibilité */
     text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+}
+
+#recipeHint {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: left;
+
+    z-index: 2;
+
+    text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    opacity: 0.9;
 }
 
 #recipePanel {
@@ -295,29 +311,10 @@ body.splash-active #card,
 body.splash-active #favorisScreen,
 body.splash-active #premiumScreen,
 body.splash-active #paywallScreen,
-body.splash-active #subscriptionScreen,
-body.splash-active #recipeBtn {
+body.splash-active #subscriptionScreen {
     display: none !important;
 }
 
-#recipeBtn {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 200px);
-    right: 60px;
-
-    background: rgba(0,0,0,0.5);
-    color: white;
-
-    padding: 10px 16px;
-    border-radius: 20px;
-
-    font-size: 50px;
-    font-weight: 500;
-
-    backdrop-filter: blur(10px);
-
-    z-index: 9999;
-}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -420,10 +417,10 @@ body {
 .auth-btn {
     width: 100%;
 
-    padding: 50px;
+    padding: 25px;
     margin-top: 12px;
 
-    font-size: 30px;
+    font-size: 25px;
     font-weight: 600;
 
     border-radius: 14px;
@@ -445,12 +442,31 @@ body {
     display: none !important;
 }
 
+.auth-input {
+    width: 100%;
+
+    padding: 30px !important;     /* 🔥 GROS CHAMP */
+    margin-top: 12px;
+
+    font-size: 25px !important;   /* 🔥 TEXTE GROS */
+
+    border-radius: 16px;
+    border: none;
+
+    background: rgba(255,255,255,0.12);
+    color: white;
+
+    backdrop-filter: blur(8px);
+
+    outline: none;
+    box-sizing: border-box;
+}
+
 </style>
 </head>
 
 <body>
-
-<div id="recipeBtn"> Recipe</div>    
+    
 
 <div id="splash">
     <img src="./logo.png" id="logo">
@@ -460,9 +476,11 @@ body {
     <div id="likeLabel" class="label likeLabel"> LIKE</div>
     <div id="nopeLabel" class="label nopeLabel"> NOPE</div>
 
+    <div id="nom">Chargement...</div>
+
     <img id="image" src="">
 
-    <div id="nom">Chargement...</div>
+    <div id="recipeHint">Recipe</div>
 </div>
 
 <div id="recipePanel">
@@ -595,7 +613,7 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button class="recipe-btn" onclick="saveRecipe(currentPlat)"> Save Recipe</button>
+        <button class="recipe-btn" onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
     `;
 
     panel.classList.add("open");
@@ -908,10 +926,16 @@ card.addEventListener("pointerup", () => {
 
     card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
 
+    const movedEnough = Math.abs(currentX) > 10 || Math.abs(currentY) > 10;
+
     if (currentX > 120) {
         swipe(true);
     } else if (currentX < -120) {
         swipe(false);
+    } else if (!movedEnough) {
+        showRecipe(currentPlat); // 👉 tap simple = ouvre recette
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+        card.style.opacity = 1;
     } else {
         card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
         card.style.opacity = 1;
@@ -981,11 +1005,12 @@ function showSwipe() {
     hideAllScreens();
 
     document.getElementById("card").style.display = "block";
-    document.getElementById("recipeBtn").style.display = "block";
 
     document.getElementById("recipePanel").classList.remove("open");
     document.getElementById("recipePanel").style.bottom = "-100%";
     document.getElementById("recipePanel").style.opacity = 0;
+
+    document.getElementById("bottomNav").classList.remove("hidden");
 }
 
 async function showAdvanced() {
@@ -1231,7 +1256,6 @@ function hideAllScreens() {
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
-    document.getElementById("recipeBtn").style.display = "none";
 }
 
 async function showSubscription() {
@@ -1359,7 +1383,7 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
         <p>
             Upgrade to the Advanced Plan and take full control of your food experience.
 
-            Customize your recommendations with smart filters based on your preferences — from sweet to savory, quick meals and more. Activate the Vegan mode to discover only vegan dishes, and stay safe with allergy filters that remove meals containing gluten or peanuts.
+            Customize your recommendations with smart filters based on your preferences from sweet to savory, quick meals and more. Activate the Vegan mode to discover only vegan dishes, and stay safe with allergy filters that remove meals containing gluten or peanuts.
 
             Plus, save as many recipes as you want with unlimited favorites.
         </p>
