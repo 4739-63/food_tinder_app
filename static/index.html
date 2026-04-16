@@ -417,12 +417,12 @@ body {
 }
 
 #recipePanel p {
-    font-size: 22px;
+    font-size: 18px;
     line-height: 1.7;
 }
 
 #recipePanel li {
-    font-size: 16px;
+    font-size: 18px;
     margin-bottom: 6px;
 }
 
@@ -1375,6 +1375,7 @@ window.addEventListener("load", () => {
     }, 1200); // ajuste durée du logo
 });
 
+
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
@@ -1459,9 +1460,9 @@ window.addEventListener("load", () => {
 
         <input class="auth-input" id="email" placeholder="Email">
         <input class="auth-input" id="password" type="password" placeholder="Password">
-        
-        <input class="auth-input" id="email" placeholder="Email">
-        <input class="auth-input" id="password" type="password" placeholder="Password">
+
+        <button id="loginBtn" class="auth-btn">Login</button>
+        <button id="registerBtn" class="auth-btn">Create your account</button>
     </div>
 
 </div>
@@ -1493,16 +1494,28 @@ const registerBtn = document.getElementById("registerBtn");
 
 if (loginBtn) {
     loginBtn.addEventListener("click", () => {
-        const email = document.getElementById("email").value;
+        const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
+
+        if (!email || !password) {
+            alert("Please enter your email and password");
+            return;
+        }
+
         loginUser(email, password);
     });
 }
 
 if (registerBtn) {
     registerBtn.addEventListener("click", () => {
-        const email = document.getElementById("email").value;
+        const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
+
+        if (!email || !password) {
+            alert("Please enter your email and password");
+            return;
+        }
+
         registerUser(email, password);
     });
 }
