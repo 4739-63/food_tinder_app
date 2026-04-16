@@ -417,12 +417,12 @@ body {
 }
 
 #recipePanel p {
-    font-size: 25px;
+    font-size: 22px;
     line-height: 1.7;
 }
 
 #recipePanel li {
-    font-size: 20px;
+    font-size: 16px;
     margin-bottom: 6px;
 }
 
@@ -1375,25 +1375,6 @@ window.addEventListener("load", () => {
     }, 1200); // ajuste durée du logo
 });
 
-const loginBtn = document.getElementById("loginBtn");
-const registerBtn = document.getElementById("registerBtn");
-
-if (loginBtn) {
-    loginBtn.addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        loginUser(email, password);
-    });
-}
-
-if (registerBtn) {
-    registerBtn.addEventListener("click", () => {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        registerUser(email, password);
-    });
-}
-
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
@@ -1479,9 +1460,8 @@ if (registerBtn) {
         <input class="auth-input" id="email" placeholder="Email">
         <input class="auth-input" id="password" type="password" placeholder="Password">
         
-        <button id="loginBtn" class="auth-btn">Login</button>
-
-        <button id="registerBtn" class="auth-btn">Create your account</button>
+        <input class="auth-input" id="email" placeholder="Email">
+        <input class="auth-input" id="password" type="password" placeholder="Password">
     </div>
 
 </div>
@@ -1506,6 +1486,27 @@ if (registerBtn) {
     </div>
 
 </div>
+
+<script>
+const loginBtn = document.getElementById("loginBtn");
+const registerBtn = document.getElementById("registerBtn");
+
+if (loginBtn) {
+    loginBtn.addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        loginUser(email, password);
+    });
+}
+
+if (registerBtn) {
+    registerBtn.addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        registerUser(email, password);
+    });
+}
+</script>
 
 </body>
 </html>
