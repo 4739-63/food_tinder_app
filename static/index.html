@@ -324,8 +324,8 @@ body {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
 
-    width: 100%;
-    max-width: 500px;
+    width: calc(100% - 32px);  /* 🔥 clé → marge sécurisée */
+    max-width: 600px;          /* 🔥 limite propre */
 
     margin: 0 auto 20px;
 
@@ -339,7 +339,7 @@ body {
     font-weight: 500;
     letter-spacing: 0.3px;
 
-    box-sizing: border-box; /* 🔥 IMPORTANT */
+    box-sizing: border-box;    /* 🔥 IMPORTANT */
 }
 
 .screen-box h2 {
@@ -361,8 +361,12 @@ body {
 }
 
 #subscriptionScreen .screen-box {
-    max-width: 800px;
-    padding: 40px;
+    width: calc(100% - 10px);  /* 🔥 presque toute la largeur */
+    max-width: none;           /* 🔥 enlève la limite */
+
+    padding: 40px;             /* 🔥 plus grand visuellement */
+
+    border-radius: 20px;
 }
 
 .recipe-btn {
@@ -473,6 +477,7 @@ body {
 #recipeInner {
     pointer-events: auto;
 }
+
 
 .favori-img {
     width: 100%;
@@ -689,13 +694,24 @@ function hideRecipe() {
 function saveRecipe(plat) {
     if (!plat) return;
 
+    // relire ce qui est vraiment stocké
+    favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+
     // éviter doublons
     if (favoris.some(f => f.nom === plat.nom)) {
         alert("Already saved 😉");
         return;
     }
 
-    favoris.push(plat);
+    // faire une vraie copie
+    const platToSave = {
+        nom: plat.nom,
+        image: plat.image,
+        recette: plat.recette,
+        ingredients: plat.ingredients
+    };
+
+    favoris.push(platToSave);
 
     localStorage.setItem("favoris", JSON.stringify(favoris));
 
@@ -994,13 +1010,15 @@ function showFavoris() {
     document.getElementById("card").style.display = "none";
     document.getElementById("recipePanel").classList.remove("open");
 
+    favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+
     const container = document.getElementById("favorisScreen");
     container.style.display = "block";
     container.scrollTop = 0;
-    
+
     container.innerHTML = `
         <div class="screen-box">
-            <h2>My Recipes </h2>
+            <h2>My Recipes</h2>
         </div>
     `;
 
@@ -1154,13 +1172,18 @@ function deleteFavori(nom) {
 //         .catch(err => console.log("Erreur SW", err));
 // }
 
-document.getElementById("recipePanel").addEventListener("click", () => {
-    hideRecipe();
-});
+const panel = document.getElementById("recipePanel");
+const inner = document.getElementById("recipeInner");
 
-document.getElementById("recipeInner").addEventListener("click", (e) => {
-    e.stopPropagation();
-});
+if (panel) {
+    panel.addEventListener("click", hideRecipe);
+}
+
+if (inner) {
+    inner.addEventListener("click", (e) => {
+        e.stopPropagation();
+    });
+}
 
 async function goPremium() {
     console.log("🔥 CLICK BUY");
