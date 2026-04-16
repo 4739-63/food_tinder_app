@@ -324,11 +324,12 @@ body {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
 
-    width: 100%;              /* 🔥 AJOUT → moins large */
-    max-width: none;        /* 🔥 AJOUT → style mobile */
-    margin: 0 auto 20px;     /* 🔥 MODIF → centré */
+    width: 100%;
+    max-width: 500px;
 
-    padding: 35px;           /* 🔥 légèrement plus grand */
+    margin: 0 auto 20px;
+
+    padding: 25px;
 
     border-radius: 20px;
     color: white;
@@ -337,6 +338,8 @@ body {
 
     font-weight: 500;
     letter-spacing: 0.3px;
+
+    box-sizing: border-box; /* 🔥 IMPORTANT */
 }
 
 .screen-box h2 {
@@ -355,6 +358,11 @@ body {
 .screen-box span {
     font-size: 31px;         /* 🔥 plus lisible mobile */
     line-height: 1.6;
+}
+
+#subscriptionScreen .screen-box {
+    max-width: 800px;
+    padding: 40px;
 }
 
 .recipe-btn {
@@ -462,6 +470,47 @@ body {
     box-sizing: border-box;
 }
 
+#recipeInner {
+    pointer-events: auto;
+}
+
+.favori-img {
+    width: 100%;
+    height: 180px;              /* 🔥 taille fixe propre */
+
+    object-fit: cover;          /* 🔥 garde proportions */
+    object-position: center;
+
+    border-radius: 12px;
+
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.buy-btn {
+    width: 100%;
+
+    padding: 18px;
+    margin-top: 15px;
+
+    font-size: 20px;
+    font-weight: 700;
+
+    border-radius: 16px;
+    border: none;
+
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+    color: white;
+
+    box-shadow: 0 8px 20px rgba(255,126,0,0.4);
+
+    transition: transform 0.15s ease;
+}
+
+.buy-btn:active {
+    transform: scale(0.97);
+}
+
 </style>
 </head>
 
@@ -484,8 +533,10 @@ body {
 </div>
 
 <div id="recipePanel">
-    <h3>Recette</h3>
-    <div id="recipeContent"></div>
+    <div id="recipeInner">
+        <h3>Recette</h3>
+        <div id="recipeContent"></div>
+    </div>
 </div>
 
 <div id="favorisScreen" style="display:none;"></div>
@@ -966,8 +1017,7 @@ function showFavoris() {
                     ${f.nom}
                 </h3>
 
-                <img src="${f.image}" 
-                    style="width:100%; border-radius:10px; cursor:pointer;"
+                <img class="favori-img" src="${f.image}" 
                     onclick="openFavori('${f.nom}')">
 
                 <button onclick="deleteFavori('${f.nom}')" 
@@ -1104,7 +1154,13 @@ function deleteFavori(nom) {
 //         .catch(err => console.log("Erreur SW", err));
 // }
 
-document.getElementById("recipePanel").addEventListener("click", hideRecipe);
+document.getElementById("recipePanel").addEventListener("click", () => {
+    hideRecipe();
+});
+
+document.getElementById("recipeInner").addEventListener("click", (e) => {
+    e.stopPropagation();
+});
 
 async function goPremium() {
     console.log("🔥 CLICK BUY");
@@ -1372,7 +1428,7 @@ window.addEventListener("load", () => {
 
         <h3>$2,99/month</h3>
 
-        <button onclick="buyPremium()"> Buy Now</button>
+        <button class="buy-btn" onclick="buyPremium()"> Buy Now</button>
 
         <br><br>
         <button onclick="showSwipe()"> Back</button>
