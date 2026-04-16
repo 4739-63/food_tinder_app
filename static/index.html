@@ -555,6 +555,7 @@ body {
 
 <script>
 
+const API_BASE = "https://food-tinder-app.onrender.com";
 
 document.body.classList.add("splash-active");
 
@@ -1090,7 +1091,7 @@ async function isPremium() {
     if (!token) return false;
 
     try {
-        const res = await fetch("/is-premium", {
+        const res = await fetch(`${API_BASE}/is-premium`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ token: token })
@@ -1121,7 +1122,7 @@ function saveFilters() {
 
     // 🔥 2. sauvegarde backend si connecté
     if (token) {
-        fetch("/save-filters", {
+        fetch(`${API_BASE}/save-filters`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
@@ -1193,7 +1194,7 @@ async function goPremium() {
         return;
     }
 
-    const res = await fetch("/create-checkout-session", {
+    const res = await fetch(`${API_BASE}/create-checkout-session`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ token: token })
@@ -1222,40 +1223,49 @@ function buyPremium() {
     goPremium(); // 🔥 redirection Stripe
 }
 async function loginUser(email, password) {
-    const res = await fetch("/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email, password })
-    });
+    try {
+        const res = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email, password })
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (data.token) {
-        localStorage.setItem("token", data.token);
-        token = data.token;
+        if (data.token) {
+            localStorage.setItem("token", data.token);
+            token = data.token;
 
-        // 🔥 charger filtres backend
-        await loadFiltersBackend();
+            await loadFiltersBackend();
 
-        alert("Logged in ✅");
-    } else {
-        alert("Login failed ❌");
+            alert("Logged in ✅");
+        } else {
+            alert(data.error || "Login failed ❌");
+        }
+    } catch (e) {
+        console.error("Login error:", e);
+        alert("Unable to reach server ❌");
     }
 }
 
 async function registerUser(email, password) {
-    const res = await fetch("/register", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email, password })
-    });
+    try {
+        const res = await fetch(`${API_BASE}/register`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email, password })
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (data.message) {
-        alert("Account created ✅");
-    } else {
-        alert(data.error || "Error");
+        if (data.message) {
+            alert("Account created ✅");
+        } else {
+            alert(data.error || "Error");
+        }
+    } catch (e) {
+        console.error("Register error:", e);
+        alert("Unable to reach server ❌");
     }
 }
 
@@ -1263,7 +1273,7 @@ async function loadFiltersBackend() {
     if (!token) return;
 
     try {
-        const res = await fetch("/get-filters", {
+        const res = await fetch(`${API_BASE}/get-filters`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ token })
@@ -1288,7 +1298,7 @@ async function checkPremium() {
     if (!token) return false;
 
     try {
-        const res = await fetch("/is-premium", {
+        const res = await fetch(`${API_BASE}/is-premium`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ token })
@@ -1350,7 +1360,7 @@ async function cancelSubscription() {
         return;
     }
 
-    const res = await fetch("/cancel-subscription", {
+    const res = await fetch(`${API_BASE}/cancel-subscription`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ token: token })
