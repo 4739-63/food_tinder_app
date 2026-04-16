@@ -915,9 +915,7 @@ document.getElementById("recipeBtn").addEventListener("click", () => {
     showRecipe(currentPlat);
 });
 
-document.getElementById("recipePanel").addEventListener("click", () => {
-    hideRecipe();
-});
+
 
 // 🖱️ / 📱 END
 card.addEventListener("pointerup", () => {
@@ -1306,14 +1304,6 @@ window.addEventListener("load", () => {
     }, 1200); // ajuste durée du logo
 });
 
-document.getElementById("recipeBtn").addEventListener("click", () => {
-    const panel = document.getElementById("recipePanel");
-
-    panel.classList.add("open");
-    panel.style.opacity = 1;
-
-    document.body.style.backdropFilter = "blur(8px)";
-});
 
 </script>
 
