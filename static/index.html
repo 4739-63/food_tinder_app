@@ -669,7 +669,7 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button class="recipe-btn" onclick="saveRecipe(currentPlat)">💾 Save Recipe</button>
+        <button class="recipe-btn" onclick="event.stopPropagation(); saveRecipe(currentPlat)"> Save Recipe</button>
     `;
 
     panel.classList.add("open");
@@ -1340,7 +1340,7 @@ async function showSubscription() {
     if (premium) {
         statusText.innerText = "✅ You are Premium";
     } else {
-        statusText.innerText = "🆓 Free Plan";
+        statusText.innerText = " Free Plan";
     }
 }
 
@@ -1375,6 +1375,24 @@ window.addEventListener("load", () => {
     }, 1200); // ajuste durée du logo
 });
 
+const loginBtn = document.getElementById("loginBtn");
+const registerBtn = document.getElementById("registerBtn");
+
+if (loginBtn) {
+    loginBtn.addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        loginUser(email, password);
+    });
+}
+
+if (registerBtn) {
+    registerBtn.addEventListener("click", () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        registerUser(email, password);
+    });
+}
 
 </script>
 
@@ -1461,15 +1479,9 @@ window.addEventListener("load", () => {
         <input class="auth-input" id="email" placeholder="Email">
         <input class="auth-input" id="password" type="password" placeholder="Password">
         
-        <button class="auth-btn" onclick="loginUser(
-            document.getElementById('email').value,
-            document.getElementById('password').value
-)       ">Login</button>
+        <button id="loginBtn" class="auth-btn">Login</button>
 
-        <button class="auth-btn" onclick="registerUser(
-            document.getElementById('email').value,
-            document.getElementById('password').value
-        )">Create your account</button>
+        <button id="registerBtn" class="auth-btn">Create your account</button>
     </div>
 
 </div>
