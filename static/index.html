@@ -516,6 +516,68 @@ body {
     transform: scale(0.97);
 }
 
+#feedScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.feed-post {
+    background: rgba(20, 20, 20, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.feed-header {
+    padding: 16px 18px 10px;
+    font-size: 18px;
+}
+
+.feed-img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    display: block;
+}
+
+.feed-body {
+    padding: 16px 18px 20px;
+}
+
+.feed-caption {
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.feed-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.feed-action-btn {
+    flex: 1;
+    padding: 14px 0;
+    border: none;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.08);
+    color: white;
+    font-size: 17px;
+    font-weight: 600;
+}
+
 </style>
 </head>
 
@@ -546,9 +608,12 @@ body {
 
 <div id="favorisScreen" style="display:none;"></div>
 
+<div id="feedScreen" style="display:none;"></div>
+
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
     <button onclick="showFavoris()"> Favorites</button>
+    <button onclick="showFeed()"> Feed</button>
     <button onclick="showAdvanced()"> Advanced</button>
     <button onclick="showSubscription()"> Subscription</button>
 </div>
@@ -1418,6 +1483,7 @@ async function setupPremiumUI() {
 function hideAllScreens() {
     document.getElementById("card").style.display = "none";
     document.getElementById("favorisScreen").style.display = "none";
+    document.getElementById("feedScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -1485,6 +1551,81 @@ function restorePurchases() {
             alert("Restore failed ❌");
         });
 }
+
+function showFeed() {
+    hideAllScreens();
+
+    const container = document.getElementById("feedScreen");
+    container.style.display = "block";
+    container.scrollTop = 0;
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Feed</h2>
+            <p>See what people are cooking and sharing.</p>
+        </div>
+    `;
+
+    demoPosts.forEach(post => {
+        container.innerHTML += `
+            <div class="feed-post">
+                <div class="feed-header">
+                    <strong>${post.author}</strong>
+                </div>
+
+                <img class="feed-img" src="${post.image}" alt="post image">
+
+                <div class="feed-body">
+                    <p class="feed-caption">${post.caption}</p>
+
+                    <div class="feed-actions">
+                        <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
+                        <button class="feed-action-btn" onclick="commentPost(${post.id})">💬 ${post.comments}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function likePost(postId) {
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    post.likes += 1;
+    showFeed();
+}
+
+function commentPost(postId) {
+    alert("Comments system coming soon 💬");
+}
+
+let demoPosts = [
+    {
+        id: 1,
+        author: "Chris",
+        image: "https://www.themealdb.com/images/media/meals/1525873040.jpg",
+        caption: "Homemade pasta tonight 🍝",
+        likes: 12,
+        comments: 3
+    },
+    {
+        id: 2,
+        author: "Emma",
+        image: "https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg",
+        caption: "Healthy salmon bowl 🥗",
+        likes: 21,
+        comments: 5
+    },
+    {
+        id: 3,
+        author: "Lucas",
+        image: "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
+        caption: "Burger night 🍔",
+        likes: 34,
+        comments: 8
+    }
+];
 
 </script>
 
