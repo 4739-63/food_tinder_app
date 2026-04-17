@@ -600,14 +600,19 @@ let currentY = 0;
 let storeReady = false;
 
 function setupAppleIAP() {
+    console.log("setupAppleIAP called");
+
     if (!window.CdvPurchase || !window.CdvPurchase.store) {
         console.log("IAP plugin not available");
+        alert("IAP plugin not available");
         return;
     }
 
     const store = window.CdvPurchase.store;
     const ProductType = window.CdvPurchase.ProductType;
     const Platform = window.CdvPurchase.Platform;
+
+    console.log("Registering product:", APPLE_SUBSCRIPTION_ID);
 
     store.register([{
         id: APPLE_SUBSCRIPTION_ID,
@@ -618,9 +623,7 @@ function setupAppleIAP() {
     store.when()
         .approved(transaction => {
             console.log("Purchase approved:", transaction);
-
             localStorage.setItem("premium", "true");
-
             transaction.finish();
             alert("Premium activated 🎉");
         });
@@ -634,20 +637,23 @@ function setupAppleIAP() {
     store.when()
         .unverified(receipt => {
             console.log("Receipt unverified:", receipt);
+            alert("Receipt unverified");
         });
 
     store.error(err => {
         console.log("Store error:", err);
-        alert("Purchase error ❌");
+        alert("Store error: " + JSON.stringify(err));
     });
 
     store.initialize([Platform.APPLE_APPSTORE])
         .then(() => {
             storeReady = true;
             console.log("Store initialized");
+            alert("Store initialized");
         })
         .catch(err => {
             console.log("Store init failed:", err);
+            alert("Store init failed: " + JSON.stringify(err));
         });
 }
 
