@@ -608,6 +608,18 @@ body {
     resize: none;
 }
 
+.big-back-btn {
+    width: 100%;
+    padding: 18px;
+    margin-top: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    border-radius: 16px;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
 </style>
 </head>
 
@@ -1177,9 +1189,7 @@ function showFavoris() {
 
     container.innerHTML = `
         <div class="screen-box">
-            <h2>Feed</h2>
-            <p>See what people are cooking and sharing.</p>
-            <button class="buy-btn" onclick="showCreatePost()">Create Post</button>
+            <h2>My Recipes</h2>
         </div>
     `;
 
@@ -1598,6 +1608,7 @@ function showFeed() {
         <div class="screen-box">
             <h2>Feed</h2>
             <p>See what people are cooking and sharing.</p>
+            <button class="buy-btn" onclick="showCreatePost()">Create Post</button>
         </div>
     `;
 
@@ -1677,7 +1688,7 @@ function showCreatePost() {
             <textarea id="postCaption" class="post-textarea" placeholder="Write a caption..."></textarea>
 
             <button class="buy-btn" onclick="publishPost()">Publish</button>
-            <button class="secondary-btn" onclick="showFeed()">Back</button>
+            <button class="buy-btn" onclick="showFeed()">Back</button>
         </div>
     `;
 }
