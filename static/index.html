@@ -578,6 +578,36 @@ body {
     font-weight: 600;
 }
 
+#createPostScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.post-textarea {
+    width: 100%;
+    min-height: 180px;
+    margin-top: 12px;
+    padding: 20px;
+    font-size: 22px;
+    border-radius: 16px;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    backdrop-filter: blur(8px);
+    outline: none;
+    box-sizing: border-box;
+    resize: none;
+}
+
 </style>
 </head>
 
@@ -609,6 +639,8 @@ body {
 <div id="favorisScreen" style="display:none;"></div>
 
 <div id="feedScreen" style="display:none;"></div>
+
+<div id="createPostScreen" style="display:none;"></div>
 
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
@@ -1145,7 +1177,9 @@ function showFavoris() {
 
     container.innerHTML = `
         <div class="screen-box">
-            <h2>My Recipes</h2>
+            <h2>Feed</h2>
+            <p>See what people are cooking and sharing.</p>
+            <button class="buy-btn" onclick="showCreatePost()">Create Post</button>
         </div>
     `;
 
@@ -1484,6 +1518,7 @@ function hideAllScreens() {
     document.getElementById("card").style.display = "none";
     document.getElementById("favorisScreen").style.display = "none";
     document.getElementById("feedScreen").style.display = "none";
+    document.getElementById("createPostScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -1626,6 +1661,49 @@ let demoPosts = [
         comments: 8
     }
 ];
+
+function showCreatePost() {
+    hideAllScreens();
+
+    const container = document.getElementById("createPostScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Create Post</h2>
+
+            <input id="postAuthor" class="auth-input" placeholder="Your name">
+            <input id="postImage" class="auth-input" placeholder="Image URL">
+            <textarea id="postCaption" class="post-textarea" placeholder="Write a caption..."></textarea>
+
+            <button class="buy-btn" onclick="publishPost()">Publish</button>
+            <button class="secondary-btn" onclick="showFeed()">Back</button>
+        </div>
+    `;
+}
+
+function publishPost() {
+    const author = document.getElementById("postAuthor").value.trim();
+    const image = document.getElementById("postImage").value.trim();
+    const caption = document.getElementById("postCaption").value.trim();
+
+    if (!author || !image || !caption) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    const newPost = {
+        id: Date.now(),
+        author,
+        image,
+        caption,
+        likes: 0,
+        comments: 0
+    };
+
+    demoPosts.unshift(newPost);
+    showFeed();
+}
 
 </script>
 
