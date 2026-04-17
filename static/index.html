@@ -556,6 +556,7 @@ body {
 <script>
 
 const API_BASE = "https://food-tinder-app.onrender.com";
+const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
 
 document.body.classList.add("splash-active");
 
@@ -595,6 +596,60 @@ let currentX = 0;
 let isDragging = false;
 let startY = 0;
 let currentY = 0;
+
+let storeReady = false;
+
+function setupAppleIAP() {
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        console.log("IAP plugin not available");
+        return;
+    }
+
+    const store = window.CdvPurchase.store;
+    const ProductType = window.CdvPurchase.ProductType;
+    const Platform = window.CdvPurchase.Platform;
+
+    store.register([{
+        id: APPLE_SUBSCRIPTION_ID,
+        type: ProductType.PAID_SUBSCRIPTION,
+        platform: Platform.APPLE_APPSTORE
+    }]);
+
+    store.when()
+        .approved(transaction => {
+            console.log("Purchase approved:", transaction);
+
+            localStorage.setItem("premium", "true");
+
+            transaction.finish();
+            alert("Premium activated 🎉");
+        });
+
+    store.when()
+        .verified(receipt => {
+            console.log("Receipt verified:", receipt);
+            localStorage.setItem("premium", "true");
+        });
+
+    store.when()
+        .unverified(receipt => {
+            console.log("Receipt unverified:", receipt);
+        });
+
+    store.error(err => {
+        console.log("Store error:", err);
+        alert("Purchase error ❌");
+    });
+
+    store.initialize([Platform.APPLE_APPSTORE])
+        .then(() => {
+            storeReady = true;
+            console.log("Store initialized");
+        })
+        .catch(err => {
+            console.log("Store init failed:", err);
+        });
+}
 
 // 🔥 analyser un plat API
 function analyserPlat(meal) {
@@ -1075,7 +1130,8 @@ function showSwipe() {
 async function showAdvanced() {
     hideAllScreens();
 
-    const premium = await isPremium();
+    const localPremium = localStorage.getItem("premium") === "true";
+    const premium = localPremium || await isPremium();
 
     if (!premium) {
         showPremium();
@@ -1083,7 +1139,6 @@ async function showAdvanced() {
     }
 
     document.getElementById("premiumScreen").style.display = "block";
-
     loadFilters();
 }
 
@@ -1218,8 +1273,38 @@ function showPremium() {
 }
 
 function buyPremium() {
-    goPremium(); // 🔥 redirection Stripe
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        alert("Store not available");
+        return;
+    }
+
+    const store = window.CdvPurchase.store;
+
+    if (!storeReady) {
+        alert("Store is still loading, please try again");
+        return;
+    }
+
+    const product = store.get(APPLE_SUBSCRIPTION_ID);
+
+    if (!product) {
+        alert("Subscription not available yet");
+        return;
+    }
+
+    const offer = product.getOffer ? product.getOffer() : null;
+
+    if (!offer) {
+        alert("No offer available");
+        return;
+    }
+
+    offer.order().catch(err => {
+        console.log("Order failed:", err);
+        alert("Unable to start purchase ❌");
+    });
 }
+
 async function loginUser(email, password) {
     try {
         const res = await fetch(`${API_BASE}/login`, {
@@ -1371,15 +1456,29 @@ async function cancelSubscription() {
 }
 
 window.addEventListener("load", () => {
+    setupAppleIAP();
+
     setTimeout(() => {
-
         document.getElementById("splash").style.display = "none";
-
         document.body.classList.remove("splash-active");
-
-    }, 1200); // ajuste durée du logo
+    }, 1200);
 });
 
+function restorePurchases() {
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        alert("Store not available");
+        return;
+    }
+
+    window.CdvPurchase.store.restorePurchases()
+        .then(() => {
+            alert("Restore requested");
+        })
+        .catch(err => {
+            console.log("Restore failed:", err);
+            alert("Restore failed ❌");
+        });
+}
 
 </script>
 
@@ -1457,6 +1556,8 @@ window.addEventListener("load", () => {
         <h3>$2,99/month</h3>
 
         <button class="buy-btn" onclick="buyPremium()"> Buy Now</button>
+
+        <button class="secondary-btn" onclick="restorePurchases()">Restore Purchases</button>
 
         <br><br>
         <button onclick="showSwipe()"> Back</button>

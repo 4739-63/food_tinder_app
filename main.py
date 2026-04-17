@@ -75,7 +75,8 @@ def is_subscription_valid(user):
 from fastapi import HTTPException
 
 def require_premium(user):
-    return
+    if not user or not is_subscription_valid(user):
+        raise HTTPException(status_code=403, detail="Premium required")
 # ========================
 # DATABASE
 # ========================
