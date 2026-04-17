@@ -1117,10 +1117,8 @@ function saveFilters() {
         arachide: document.getElementById("filter_arachide").checked
     };
 
-    // 🔥 1. toujours sauvegarde locale
     localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
 
-    // 🔥 2. sauvegarde backend si connecté
     if (token) {
         fetch(`${API_BASE}/save-filters`, {
             method: "POST",
@@ -1283,10 +1281,7 @@ async function loadFiltersBackend() {
 
         if (data.filters) {
             advancedFilters = data.filters;
-
-            // 💾 sync local
             localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
-
             console.log("✅ Filtres backend chargés", advancedFilters);
         }
     } catch (e) {
