@@ -11,7 +11,9 @@ import os
 import random
 import stripe
 
-from passlib.context import CryptContext
+import hashlib
+import hmac
+import secrets
 from jose import jwt
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
@@ -23,8 +25,31 @@ from fastapi import Request
 # ========================
 # CONFIG
 # ========================
-pwd_context = CryptContext(schemes=["bcrypt"])
+
 SECRET = os.getenv("SECRET_KEY", "dev-secret")
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100000
+    ).hex()
+    return f"{salt}${hashed}"
+
+def verify_password(password: str, stored_password: str) -> bool:
+    try:
+        salt, saved_hash = stored_password.split("$", 1)
+        check_hash = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt.encode("utf-8"),
+            100000
+        ).hex()
+        return hmac.compare_digest(saved_hash, check_hash)
+    except Exception:
+        return False
 
 # lien webhook
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_88258daee3745fa170a37bae7b5be12b3f1a0eb67db594e9cfa8b3311a99aed6")
@@ -128,9 +153,8 @@ def register(data: dict):
         if existing:
             return {"error": "User already exists"}
 
-        # 🔥 FIX PASSWORD
-        password = data["password"].encode("utf-8")[:72].decode("utf-8", "ignore")
-        hashed = pwd_context.hash(password)
+        password = data["password"]
+        hashed = hash_password(password)
 
         user = User(
             email=data["email"],
@@ -141,6 +165,11 @@ def register(data: dict):
         db.commit()
 
         return {"message": "Account created"}
+
+    except Exception as e:
+        print("REGISTER ERROR:", str(e))
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
     finally:
         db.close()
 
@@ -151,9 +180,9 @@ def login(data: dict):
     try:
         user = db.query(User).filter(User.email == data["email"]).first()
 
-        password = data["password"].encode("utf-8")[:72].decode("utf-8", "ignore")
+        password = data["password"]
 
-        if not user or not pwd_context.verify(password, user.password):
+        if not user or not verify_password(password, user.password):
             return {"error": "invalid credentials"}
 
         token = jwt.encode(
@@ -163,6 +192,11 @@ def login(data: dict):
         )
 
         return {"token": token}
+
+    except Exception as e:
+        print("LOGIN ERROR:", str(e))
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
     finally:
         db.close()
 
