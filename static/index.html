@@ -634,7 +634,7 @@ body {
     bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 0 0 220px 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 0 40px 0;
     box-sizing: border-box;
     background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
@@ -662,22 +662,18 @@ body {
 }
 
 .comments-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    padding: calc(env(safe-area-inset-top, 0px) + 14px) 12px 12px;
-    background: rgba(20, 20, 20, 0.55);
-    backdrop-filter: blur(10px);
+    padding: 0 12px 12px;
+    background: transparent;
 }
 
 .comments-back-btn {
     border: none;
-    background: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.16);
     color: white;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    padding: 14px 18px;
-    border-radius: 14px;
+    padding: 16px 20px;
+    border-radius: 16px;
 }
 
 .comments-post-card {
@@ -694,7 +690,7 @@ body {
 
 .comments-post-img {
     width: 100%;
-    height: 520px;
+    height: 500px;
     object-fit: cover;
     display: block;
 }
@@ -726,17 +722,13 @@ body {
 }
 
 .comments-input-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(110px + env(safe-area-inset-bottom, 0px));
     display: flex;
     gap: 12px;
     align-items: center;
-    padding: 14px;
-    background: rgba(20, 20, 20, 0.92);
+    padding: 14px 12px 18px;
+    background: rgba(20, 20, 20, 0.85);
     backdrop-filter: blur(12px);
-    z-index: 10001;
+    margin: 0 0 14px 0;
 }
 
 .comment-input-facebook {
@@ -744,7 +736,7 @@ body {
     border: none;
     border-radius: 22px;
     padding: 18px 18px;
-    font-size: 19px;
+    font-size: 20px;
     background: rgba(255,255,255,0.12);
     color: white;
     outline: none;
@@ -753,8 +745,8 @@ body {
 .comment-send-btn {
     border: none;
     border-radius: 18px;
-    padding: 18px 22px;
-    font-size: 18px;
+    padding: 18px 24px;
+    font-size: 19px;
     font-weight: 700;
     background: var(--primary);
     color: white;
@@ -1908,12 +1900,12 @@ function showComments(postId) {
             </div>
         </div>
 
-        <div id="commentsList"></div>
-
         <div class="comments-input-bar">
             <input id="commentText" class="comment-input-facebook" placeholder="Write a comment...">
             <button class="comment-send-btn" onclick="addComment(${post.id})">Add</button>
         </div>
+
+        <div id="commentsList"></div>
     `;
 
     const commentsList = document.getElementById("commentsList");
