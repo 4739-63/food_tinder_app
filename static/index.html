@@ -549,7 +549,7 @@ body {
 
 .feed-img {
     width: 100%;
-    height: 140px;
+    height: 1500px;
     object-fit: cover;
     display: block;
 }
@@ -911,6 +911,8 @@ document.body.classList.add("splash-active");
 let token = localStorage.getItem("token") || null;
 
 let selectedPostImage = "";
+
+let selectedProfileImage = "";
 
 // 🧠 préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
@@ -1909,6 +1911,8 @@ function showProfile() {
 function showEditProfile() {
     hideAllScreens();
 
+    selectedProfileImage = userProfile.avatar || "";
+
     const container = document.getElementById("editProfileScreen");
     container.style.display = "block";
 
@@ -1917,8 +1921,11 @@ function showEditProfile() {
             <div class="screen-box profile-box">
                 <h2>Edit Profile</h2>
 
+                <img id="profilePreview" class="profile-avatar" src="${userProfile.avatar}" alt="profile preview">
+
+                <button class="buy-btn" onclick="pickProfileImage()">Choose Profile Photo</button>
+
                 <input id="profileNameInput" class="auth-input" placeholder="Name" value="${userProfile.name}">
-                <input id="profileAvatarInput" class="auth-input" placeholder="Profile image URL" value="${userProfile.avatar}">
                 <textarea id="profileBioInput" class="post-textarea" placeholder="Write a short bio...">${userProfile.bio}</textarea>
 
                 <button class="buy-btn" onclick="saveProfileChanges()">Save</button>
@@ -1930,10 +1937,9 @@ function showEditProfile() {
 
 function saveProfileChanges() {
     const name = document.getElementById("profileNameInput").value.trim();
-    const avatar = document.getElementById("profileAvatarInput").value.trim();
     const bio = document.getElementById("profileBioInput").value.trim();
 
-    if (!name || !avatar || !bio) {
+    if (!name || !bio) {
         alert("Please complete all fields");
         return;
     }
@@ -1942,7 +1948,7 @@ function saveProfileChanges() {
 
     userProfile = {
         name,
-        avatar,
+        avatar: selectedProfileImage || userProfile.avatar,
         bio
     };
 
@@ -2193,6 +2199,44 @@ let userProfile = JSON.parse(localStorage.getItem("userProfile")) || defaultProf
 
 function saveUserProfile() {
     localStorage.setItem("userProfile", JSON.stringify(userProfile));
+}
+
+async function pickProfileImage() {
+    try {
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
+            quality: 90,
+            resultType: "uri",
+            source: "PHOTOS"
+        });
+
+        selectedProfileImage = image.webPath || image.path || "";
+
+        if (!selectedProfileImage) {
+            alert("No image path returned");
+            return;
+        }
+
+        const preview = document.getElementById("profilePreview");
+        if (preview) {
+            preview.src = selectedProfileImage;
+        }
+
+    } catch (error) {
+        console.log("Profile image pick error:", error);
+        alert("Unable to select profile image");
+    }
 }
 
 </script>
