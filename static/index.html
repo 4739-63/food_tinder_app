@@ -879,6 +879,26 @@ body {
     padding: 0 12px 12px;
 }
 
+.profile-post-card {
+    position: relative;
+}
+
+.delete-post-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+
+    border: none;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 15px;
+    font-weight: 700;
+
+    background: rgba(255, 59, 48, 0.9);
+    color: white;
+}
+
 </style>
 </head>
 
@@ -1973,7 +1993,9 @@ function showProfile() {
                 : post.caption;
 
         postsList.innerHTML += `
-            <div class="feed-post">
+            <div class="feed-post profile-post-card">
+                <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+
                 <div class="feed-header">
                     <strong>${post.author}</strong>
                 </div>
@@ -2346,6 +2368,16 @@ function toggleCaption(postId) {
         button.textContent = "See less";
         button.dataset.expanded = "true";
     }
+}
+
+function deletePost(postId) {
+    const confirmed = confirm("Do you want to delete this post?");
+    if (!confirmed) return;
+
+    demoPosts = demoPosts.filter(post => post.id !== postId);
+
+    saveFeedPosts();
+    showProfile();
 }
 
 </script>
