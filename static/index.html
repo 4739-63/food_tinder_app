@@ -526,39 +526,36 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 
-    padding: 20px;
+    padding: 0px;
     box-sizing: border-box;
 }
 
 .feed-post {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 20px;
+
+    border-radius: 0;
     overflow: hidden;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
     color: white;
 
-    width: calc(100% - 8px);
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
 }
 
 .feed-header {
-    padding: 20px 22px 12px;
-    font-size: 22px;
+    padding: 16px;
+    font-size: 20px;
 }
 
 .feed-img {
     width: 100%;
-    height: 340px;
+    height: 460px;
     object-fit: cover;
     display: block;
 }
 
 .feed-body {
-    padding: 20px 22px 24px;
+    padding: 16px;
 }
 
 .feed-caption {
@@ -581,6 +578,10 @@ body {
     color: white;
     font-size: 19px;
     font-weight: 600;
+}
+
+.feed-post {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 #createPostScreen {
@@ -637,6 +638,15 @@ body {
     box-sizing: border-box;
 }
 
+.post-preview {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    border-radius: 18px;
+    margin-top: 14px;
+    display: block;
+}
+
 </style>
 </head>
 
@@ -686,9 +696,15 @@ body {
 const API_BASE = "https://food-tinder-app.onrender.com";
 const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
 
+const { Camera, CameraResultType, CameraSource } = window.Capacitor.Plugins;
+
+
+
 document.body.classList.add("splash-active");
 
 let token = localStorage.getItem("token") || null;
+
+let selectedPostImage = "";
 
 // 🧠 préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
@@ -1715,21 +1731,24 @@ function showCreatePost() {
             <h2>Create Post</h2>
 
             <input id="postAuthor" class="auth-input" placeholder="Your name">
-            <input id="postImage" class="auth-input" placeholder="Image URL">
+            
+            <button class="buy-btn" onclick="pickPostImage()">Choose Photo</button>
+
+            <img id="postPreview" class="post-preview" src="" style="display:none;">
+
             <textarea id="postCaption" class="post-textarea" placeholder="Write a caption..."></textarea>
 
             <button class="buy-btn" onclick="publishPost()">Publish</button>
-            <button class="buy-btn" onclick="showFeed()">Back</button>
+            <button class="big-back-btn" onclick="showFeed()">Back</button>
         </div>
     `;
 }
 
 function publishPost() {
     const author = document.getElementById("postAuthor").value.trim();
-    const image = document.getElementById("postImage").value.trim();
     const caption = document.getElementById("postCaption").value.trim();
 
-    if (!author || !image || !caption) {
+    if (!author || !selectedPostImage || !caption) {
         alert("Please complete all fields");
         return;
     }
@@ -1737,7 +1756,7 @@ function publishPost() {
     const newPost = {
         id: Date.now(),
         author,
-        image,
+        image: selectedPostImage,
         caption,
         likes: 0,
         comments: []
@@ -1745,6 +1764,8 @@ function publishPost() {
 
     demoPosts.unshift(newPost);
     saveFeedPosts();
+
+    selectedPostImage = "";
     showFeed();
 }
 
@@ -1810,6 +1831,27 @@ function addComment(postId) {
 
 function saveFeedPosts() {
     localStorage.setItem("feedPosts", JSON.stringify(demoPosts));
+}
+
+async function pickPostImage() {
+    try {
+        const image = await Camera.getPhoto({
+            quality: 90,
+            resultType: CameraResultType.Uri,
+            source: CameraSource.Prompt
+        });
+
+        selectedPostImage = image.webPath || "";
+
+        const preview = document.getElementById("postPreview");
+        if (preview && selectedPostImage) {
+            preview.src = selectedPostImage;
+            preview.style.display = "block";
+        }
+    } catch (error) {
+        console.log("Image pick error:", error);
+        alert("Unable to select image");
+    }
 }
 
 </script>

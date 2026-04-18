@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+    <key>NSCameraUsageDescription</key>
+    <string>MealSwipe uses the camera so you can create food posts.</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>MealSwipe accesses your photos so you can choose images for your posts.</string>
+
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>MealSwipe saves and uploads food images for your posts.</string>
 </dict>
 </plist>
