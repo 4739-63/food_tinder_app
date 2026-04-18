@@ -620,6 +620,18 @@ body {
     color: white;
 }
 
+#commentsScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
 </style>
 </head>
 
@@ -653,6 +665,8 @@ body {
 <div id="feedScreen" style="display:none;"></div>
 
 <div id="createPostScreen" style="display:none;"></div>
+
+<div id="commentsScreen" style="display:none;"></div>
 
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
@@ -1529,6 +1543,7 @@ function hideAllScreens() {
     document.getElementById("favorisScreen").style.display = "none";
     document.getElementById("feedScreen").style.display = "none";
     document.getElementById("createPostScreen").style.display = "none";
+    document.getElementById("commentsScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -1626,7 +1641,7 @@ function showFeed() {
 
                     <div class="feed-actions">
                         <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
-                        <button class="feed-action-btn" onclick="commentPost(${post.id})">💬 ${post.comments}</button>
+                        <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.comments.length}</button>
                     </div>
                 </div>
             </div>
@@ -1642,10 +1657,6 @@ function likePost(postId) {
     showFeed();
 }
 
-function commentPost(postId) {
-    alert("Comments system coming soon 💬");
-}
-
 let demoPosts = [
     {
         id: 1,
@@ -1653,7 +1664,10 @@ let demoPosts = [
         image: "https://www.themealdb.com/images/media/meals/1525873040.jpg",
         caption: "Homemade pasta tonight 🍝",
         likes: 12,
-        comments: 3
+        comments: [
+            { author: "Emma", text: "Looks amazing!" },
+            { author: "Lucas", text: "I want this recipe 😍" }
+        ]
     },
     {
         id: 2,
@@ -1661,7 +1675,9 @@ let demoPosts = [
         image: "https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg",
         caption: "Healthy salmon bowl 🥗",
         likes: 21,
-        comments: 5
+        comments: [
+            { author: "Chris", text: "Super clean plate 👏" }
+        ]
     },
     {
         id: 3,
@@ -1669,7 +1685,7 @@ let demoPosts = [
         image: "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
         caption: "Burger night 🍔",
         likes: 34,
-        comments: 8
+        comments: []
     }
 ];
 
@@ -1714,6 +1730,65 @@ function publishPost() {
 
     demoPosts.unshift(newPost);
     showFeed();
+}
+
+function showComments(postId) {
+    hideAllScreens();
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const container = document.getElementById("commentsScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Comments</h2>
+            <p>${post.caption}</p>
+        </div>
+
+        <div class="screen-box">
+            <input id="commentAuthor" class="auth-input" placeholder="Your name">
+            <textarea id="commentText" class="post-textarea" placeholder="Write a comment..."></textarea>
+            <button class="buy-btn" onclick="addComment(${post.id})">Add Comment</button>
+            <button class="big-back-btn" onclick="showFeed()">Back</button>
+        </div>
+    `;
+
+    if (post.comments.length === 0) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>No comments yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    post.comments.forEach(comment => {
+        container.innerHTML += `
+            <div class="screen-box">
+                <h3>${comment.author}</h3>
+                <p>${comment.text}</p>
+            </div>
+        `;
+    });
+}
+
+function addComment(postId) {
+    const author = document.getElementById("commentAuthor").value.trim();
+    const text = document.getElementById("commentText").value.trim();
+
+    if (!author || !text) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    post.comments.push({ author, text });
+
+    showComments(postId);
 }
 
 </script>
