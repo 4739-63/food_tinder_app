@@ -696,7 +696,7 @@ body {
 const API_BASE = "https://food-tinder-app.onrender.com";
 const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
 
-const { Camera, CameraResultType, CameraSource } = window.Capacitor.Plugins;
+const CameraPlugin = window.Capacitor.Plugins.Camera;
 
 
 
@@ -1835,22 +1835,40 @@ function saveFeedPosts() {
 
 async function pickPostImage() {
     try {
-        const image = await Camera.getPhoto({
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
             quality: 90,
-            resultType: CameraResultType.Uri,
-            source: CameraSource.Prompt
+            resultType: "uri",
+            source: "PHOTOS"
         });
 
-        selectedPostImage = image.webPath || "";
+        selectedPostImage = image.webPath || image.path || "";
+
+        if (!selectedPostImage) {
+            alert("No image path returned");
+            return;
+        }
 
         const preview = document.getElementById("postPreview");
-        if (preview && selectedPostImage) {
+        if (preview) {
             preview.src = selectedPostImage;
             preview.style.display = "block";
         }
+
     } catch (error) {
         console.log("Image pick error:", error);
-        alert("Unable to select image");
+        alert("Image error: " + (error?.message || JSON.stringify(error) || error));
     }
 }
 
