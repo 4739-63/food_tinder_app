@@ -647,6 +647,118 @@ body {
     display: block;
 }
 
+#commentsScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 90px 0;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
+.comments-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 12px;
+    background: rgba(20, 20, 20, 0.55);
+    backdrop-filter: blur(10px);
+}
+
+.comments-back-btn {
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 12px;
+}
+
+.comments-post-card {
+    width: 100%;
+    background: rgba(20, 20, 20, 0.7);
+    color: white;
+    margin-bottom: 14px;
+}
+
+.comments-post-header {
+    padding: 14px 16px 10px;
+    font-size: 18px;
+}
+
+.comments-post-img {
+    width: 100%;
+    height: 360px;
+    object-fit: cover;
+    display: block;
+}
+
+.comments-post-caption {
+    padding: 14px 16px 16px;
+    font-size: 18px;
+    line-height: 1.5;
+}
+
+.comment-bubble {
+    background: rgba(20, 20, 20, 0.75);
+    color: white;
+    margin: 0 12px 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.comment-author {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.comment-text {
+    font-size: 17px;
+    line-height: 1.5;
+}
+
+.comments-input-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 10;
+}
+
+.comment-input-facebook {
+    flex: 1;
+    border: none;
+    border-radius: 20px;
+    padding: 14px 16px;
+    font-size: 17px;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    outline: none;
+}
+
+.comment-send-btn {
+    border: none;
+    border-radius: 16px;
+    padding: 14px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--primary);
+    color: white;
+}
+
 </style>
 </head>
 
@@ -1779,21 +1891,34 @@ function showComments(postId) {
     container.style.display = "block";
 
     container.innerHTML = `
-        <div class="screen-box">
-            <h2>Comments</h2>
-            <p>${post.caption}</p>
+        <div class="comments-topbar">
+            <button class="comments-back-btn" onclick="showFeed()">← Back</button>
         </div>
 
-        <div class="screen-box">
-            <input id="commentAuthor" class="auth-input" placeholder="Your name">
-            <textarea id="commentText" class="post-textarea" placeholder="Write a comment..."></textarea>
-            <button class="buy-btn" onclick="addComment(${post.id})">Add Comment</button>
-            <button class="big-back-btn" onclick="showFeed()">Back</button>
+        <div class="comments-post-card">
+            <div class="comments-post-header">
+                <strong>${post.author}</strong>
+            </div>
+
+            <img class="comments-post-img" src="${post.image}" alt="post image">
+
+            <div class="comments-post-caption">
+                ${post.caption}
+            </div>
+        </div>
+
+        <div id="commentsList"></div>
+
+        <div class="comments-input-bar">
+            <input id="commentText" class="comment-input-facebook" placeholder="Write a comment...">
+            <button class="comment-send-btn" onclick="addComment(${post.id})">Add</button>
         </div>
     `;
 
+    const commentsList = document.getElementById("commentsList");
+
     if (post.comments.length === 0) {
-        container.innerHTML += `
+        commentsList.innerHTML = `
             <div class="screen-box">
                 <p>No comments yet.</p>
             </div>
@@ -1802,28 +1927,30 @@ function showComments(postId) {
     }
 
     post.comments.forEach(comment => {
-        container.innerHTML += `
-            <div class="screen-box">
-                <h3>${comment.author}</h3>
-                <p>${comment.text}</p>
+        commentsList.innerHTML += `
+            <div class="comment-bubble">
+                <div class="comment-author">${comment.author}</div>
+                <div class="comment-text">${comment.text}</div>
             </div>
         `;
     });
 }
 
 function addComment(postId) {
-    const author = document.getElementById("commentAuthor").value.trim();
     const text = document.getElementById("commentText").value.trim();
 
-    if (!author || !text) {
-        alert("Please complete all fields");
+    if (!text) {
+        alert("Please write a comment");
         return;
     }
 
     const post = demoPosts.find(p => p.id === postId);
     if (!post) return;
 
-    post.comments.push({ author, text });
+    post.comments.push({
+        author: "You",
+        text
+    });
 
     saveFeedPosts();
     showComments(postId);
