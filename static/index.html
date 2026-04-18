@@ -549,7 +549,7 @@ body {
 
 .feed-img {
     width: 100%;
-    height: 940px;
+    height: 140px;
     object-fit: cover;
     display: block;
 }
@@ -634,7 +634,7 @@ body {
     bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 216px) 0 40px 0;
+    padding: 0 0 40px 0;
     box-sizing: border-box;
     background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
@@ -662,7 +662,7 @@ body {
 }
 
 .comments-topbar {
-    padding: 0 12px 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 216px) 12px 12px;
     background: transparent;
 }
 
@@ -708,6 +708,10 @@ body {
     padding: 14px 16px;
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.08);
+
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
 }
 
 .comment-author {
@@ -719,6 +723,9 @@ body {
 .comment-text {
     font-size: 17px;
     line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .comments-input-bar {
@@ -777,6 +784,72 @@ body {
     min-width: 150px;
 }
 
+#profileScreen,
+#editProfileScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
+.profile-wrapper {
+    width: 100%;
+}
+
+.profile-box {
+    text-align: center;
+}
+
+.profile-avatar {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto 20px;
+    border: 4px solid rgba(255,255,255,0.2);
+}
+
+.profile-name {
+    font-size: 34px;
+    margin-bottom: 10px;
+}
+
+.profile-bio {
+    font-size: 20px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.profile-stats {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.profile-stat {
+    background: rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 18px 24px;
+    min-width: 120px;
+}
+
+.profile-stat strong {
+    display: block;
+    font-size: 28px;
+    margin-bottom: 6px;
+}
+
+.profile-stat span {
+    font-size: 18px;
+}
+
 </style>
 </head>
 
@@ -813,12 +886,15 @@ body {
 
 <div id="commentsScreen" style="display:none;"></div>
 
+<div id="profileScreen" style="display:none;"></div>
+<div id="editProfileScreen" style="display:none;"></div>
+
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
     <button onclick="showFavoris()"> Favorites</button>
     <button onclick="showFeed()"> Feed</button>
     <button onclick="showAdvanced()"> Advanced</button>
-    <button onclick="showSubscription()"> Subscription</button>
+    <button onclick="showProfile()"> Profile</button>
 </div>
 
 <script>
@@ -1695,6 +1771,8 @@ function hideAllScreens() {
     document.getElementById("feedScreen").style.display = "none";
     document.getElementById("createPostScreen").style.display = "none";
     document.getElementById("commentsScreen").style.display = "none";
+    document.getElementById("profileScreen").style.display = "none";
+    document.getElementById("editProfileScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -1798,6 +1876,91 @@ function showFeed() {
     });
 }
 
+function showProfile() {
+    hideAllScreens();
+
+    const container = document.getElementById("profileScreen");
+    container.style.display = "block";
+
+    const userPostsCount = demoPosts.filter(post => post.author === userProfile.name).length;
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <img class="profile-avatar" src="${userProfile.avatar}" alt="profile avatar">
+
+                <h2 class="profile-name">${userProfile.name}</h2>
+                <p class="profile-bio">${userProfile.bio}</p>
+
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <strong>${userPostsCount}</strong>
+                        <span>Posts</span>
+                    </div>
+                </div>
+
+                <button class="buy-btn" onclick="showEditProfile()">Edit Profile</button>
+                <button class="big-back-btn" onclick="showSubscription()">Subscription</button>
+            </div>
+        </div>
+    `;
+}
+
+function showEditProfile() {
+    hideAllScreens();
+
+    const container = document.getElementById("editProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Edit Profile</h2>
+
+                <input id="profileNameInput" class="auth-input" placeholder="Name" value="${userProfile.name}">
+                <input id="profileAvatarInput" class="auth-input" placeholder="Profile image URL" value="${userProfile.avatar}">
+                <textarea id="profileBioInput" class="post-textarea" placeholder="Write a short bio...">${userProfile.bio}</textarea>
+
+                <button class="buy-btn" onclick="saveProfileChanges()">Save</button>
+                <button class="big-back-btn" onclick="showProfile()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+function saveProfileChanges() {
+    const name = document.getElementById("profileNameInput").value.trim();
+    const avatar = document.getElementById("profileAvatarInput").value.trim();
+    const bio = document.getElementById("profileBioInput").value.trim();
+
+    if (!name || !avatar || !bio) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    const oldName = userProfile.name;
+
+    userProfile = {
+        name,
+        avatar,
+        bio
+    };
+
+    demoPosts = demoPosts.map(post => {
+        if (post.author === oldName) {
+            return {
+                ...post,
+                author: name
+            };
+        }
+        return post;
+    });
+
+    saveUserProfile();
+    saveFeedPosts();
+    showProfile();
+}
+
 function resetFeedPosts() {
     demoPosts = JSON.parse(JSON.stringify(defaultPosts));
     saveFeedPosts();
@@ -1864,8 +2027,6 @@ function showCreatePost() {
     container.innerHTML = `
         <div class="screen-box">
             <h2>Create Post</h2>
-
-            <input id="postAuthor" class="auth-input" placeholder="Your name">
             
             <button class="buy-btn" onclick="pickPostImage()">Choose Photo</button>
 
@@ -1880,7 +2041,7 @@ function showCreatePost() {
 }
 
 function publishPost() {
-    const author = document.getElementById("postAuthor").value.trim();
+    const author = userProfile.name;
     const caption = document.getElementById("postCaption").value.trim();
 
     if (!author || !selectedPostImage || !caption) {
@@ -1971,7 +2132,7 @@ function addComment(postId) {
     if (!post) return;
 
     post.comments.push({
-        author: "You",
+        author: userProfile.name,
         text
     });
 
@@ -2020,6 +2181,18 @@ async function pickPostImage() {
         console.log("Image pick error:", error);
         alert("Image error: " + (error?.message || JSON.stringify(error) || error));
     }
+}
+
+const defaultProfile = {
+    name: "MealSwipe User",
+    bio: "Food lover 🍽️",
+    avatar: "https://via.placeholder.com/180x180.png?text=Profile"
+};
+
+let userProfile = JSON.parse(localStorage.getItem("userProfile")) || defaultProfile;
+
+function saveUserProfile() {
+    localStorage.setItem("userProfile", JSON.stringify(userProfile));
 }
 
 </script>
