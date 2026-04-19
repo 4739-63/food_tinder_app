@@ -1009,6 +1009,8 @@ html, body, #recipePanel {
 const API_BASE = "https://food-tinder-app.onrender.com";
 const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
 
+const FREE_RECIPE_LIMIT = 10;
+
 const CameraPlugin = window.Capacitor.Plugins.Camera;
 
 
@@ -1129,6 +1131,20 @@ let startY = 0;
 let currentY = 0;
 
 let storeReady = false;
+
+async function hasAdvancedAccess() {
+    const localPremium = localStorage.getItem("premium") === "true";
+
+    if (localPremium) return true;
+
+    if (!token) return false;
+
+    try {
+        return await isPremium();
+    } catch {
+        return false;
+    }
+}
 
 function setupAppleIAP() {
     console.log("setupAppleIAP called");
@@ -1355,13 +1371,20 @@ function hideRecipe() {
     bottomNav.classList.remove("hidden");
 }
 
-function saveRecipe(plat) {
+async function saveRecipe(plat) {
     if (!plat) return;
 
     favoris = JSON.parse(localStorage.getItem("favoris")) || [];
 
     if (favoris.some(f => f.nom === plat.nom)) {
-        alert("Already saved ");
+        alert("Recipe already saved ");
+        return;
+    }
+
+    const advanced = await hasAdvancedAccess();
+
+    if (!advanced && favoris.length >= FREE_RECIPE_LIMIT) {
+        alert("Free plan limit reached: 10 saved recipes. Upgrade to Advanced or delete one recipe.");
         return;
     }
 
@@ -1715,9 +1738,12 @@ function showFavoris() {
     container.style.display = "block";
     container.scrollTop = 0;
 
+    const advanced = localStorage.getItem("premium") === "true";
+
     container.innerHTML = `
         <div class="screen-box">
             <h2>My Recipes</h2>
+            <p>${favoris.length} / ${advanced ? "Unlimited" : FREE_RECIPE_LIMIT} saved recipes</p>
         </div>
     `;
 
