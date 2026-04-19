@@ -104,7 +104,9 @@ class User(Base):
 
     is_premium = Column(Boolean, default=False)
     filters = Column(String, default="{}")
-
+    name = Column(String, nullable=True)
+    bio = Column(String, default="Food lover ")
+    avatar = Column(String, nullable=True)
     # 🔥 AJOUTS STRIPE
     stripe_customer_id = Column(String, nullable=True)
     stripe_subscription_id = Column(String, nullable=True)
@@ -186,7 +188,10 @@ def register(data: dict):
 
         user = User(
             email=data["email"],
-            password=hashed
+            password=hashed,
+            name=data.get("name"),
+            bio=data.get("bio", "Food lover 🍽️"),
+            avatar=data.get("avatar")
         )
 
         db.add(user)
@@ -550,7 +555,7 @@ def create_post(data: dict):
 
         post = Post(
             user_id=user.id,
-            username=user.email.split("@")[0],
+            username=user.name or user.email.split("@")[0],
             image=data["image"],
             caption=data["caption"],
             created_at=int(time.time())
@@ -653,3 +658,44 @@ def get_comments(data: dict):
 
     finally:
         db.close()                                         
+
+@app.post("/get-profile")
+def get_profile(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
+
+        return {
+            "email": user.email,
+            "name": user.name or user.email.split("@")[0],
+            "bio": user.bio or "Food lover 🍽️",
+            "avatar": user.avatar or "https://via.placeholder.com/180x180.png?text=Profile"
+        }
+
+    finally:
+        db.close()
+
+@app.post("/save-profile")
+def save_profile(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
+
+        user.name = data.get("name", user.name)
+        user.bio = data.get("bio", user.bio)
+        user.avatar = data.get("avatar", user.avatar)
+
+        db.commit()
+
+        return {"message": "Profile saved"}
+
+    finally:
+        db.close()                

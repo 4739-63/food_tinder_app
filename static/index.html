@@ -1642,6 +1642,10 @@ async function swipe(like) {
         await setupPremiumUI();
     }
 
+    if (token) {
+        await loadUserProfileFromBackend();
+    }    
+
     // 🔥 1. charger local en premier
     advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
 
@@ -2346,7 +2350,7 @@ function showEditProfile() {
     `;
 }
 
-function saveProfileChanges() {
+async function saveProfileChanges() {
     const name = document.getElementById("profileNameInput").value.trim();
     const bio = document.getElementById("profileBioInput").value.trim();
 
@@ -2355,27 +2359,56 @@ function saveProfileChanges() {
         return;
     }
 
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
     const oldName = userProfile.name;
 
-    userProfile = {
+    const updatedProfile = {
         name,
-        avatar: selectedProfileImage || userProfile.avatar,
-        bio
+        bio,
+        avatar: selectedProfileImage || userProfile.avatar
     };
 
-    demoPosts = demoPosts.map(post => {
-        if (post.author === oldName) {
-            return {
-                ...post,
-                author: name
-            };
-        }
-        return post;
-    });
+    try {
+        const res = await fetch(`${API_BASE}/save-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                ...updatedProfile
+            })
+        });
 
-    saveUserProfile();
-    saveFeedPosts();
-    showProfile();
+        const data = await res.json();
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        userProfile = updatedProfile;
+
+        demoPosts = demoPosts.map(post => {
+            if (post.author === oldName) {
+                return {
+                    ...post,
+                    author: name
+                };
+            }
+            return post;
+        });
+
+        saveUserProfile();
+        saveFeedPosts();
+        showProfile();
+
+    } catch (error) {
+        console.error("Save profile error:", error);
+        alert("Unable to reach server");
+    }
 }
 
 function resetFeedPosts() {
@@ -2688,6 +2721,36 @@ function saveUserProfile() {
     localStorage.setItem("userProfile", JSON.stringify(userProfile));
 }
 
+async function loadUserProfileFromBackend() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch(`${API_BASE}/get-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+            return false;
+        }
+
+        userProfile = {
+            name: data.name || defaultProfile.name,
+            bio: data.bio || defaultProfile.bio,
+            avatar: data.avatar || defaultProfile.avatar
+        };
+
+        saveUserProfile();
+        return true;
+    } catch (error) {
+        console.error("Load profile error:", error);
+        return false;
+    }
+}
+
 async function pickProfileImage() {
     try {
         if (!window.Capacitor || !window.Capacitor.Plugins) {
@@ -2967,7 +3030,13 @@ async function createProfileAccount() {
         const registerRes = await fetch(`${API_BASE}/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({
+                email,
+                password,
+                name,
+                bio,
+                avatar: selectedProfileImage || defaultProfile.avatar
+            })
         });
 
         const registerData = await registerRes.json();
@@ -2993,13 +3062,7 @@ async function createProfileAccount() {
         token = loginData.token;
         localStorage.setItem("token", token);
 
-        userProfile = {
-            name,
-            bio,
-            avatar: selectedProfileImage || userProfile.avatar
-        };
-
-        saveUserProfile();
+        await loadUserProfileFromBackend();
         showProfile();
 
     } catch (error) {
@@ -3034,6 +3097,7 @@ async function loginProfileAccount() {
         token = data.token;
         localStorage.setItem("token", token);
 
+        await loadUserProfileFromBackend();
         showProfile();
 
     } catch (error) {
