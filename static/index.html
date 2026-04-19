@@ -1177,7 +1177,7 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button class="recipe-btn" onclick="event.stopPropagation(); saveRecipe(currentPlat)"> Save Recipe</button>
+        <button class="recipe-btn" type="button" onclick="saveRecipe(currentPlat, event)">Save Recipe</button>
     `;
 
     panel.classList.add("open");
@@ -1199,19 +1199,21 @@ function hideRecipe() {
     bottomNav.classList.remove("hidden");
 }
 
-function saveRecipe(plat) {
+function saveRecipe(plat, e) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
     if (!plat) return;
 
-    // relire ce qui est vraiment stocké
     favoris = JSON.parse(localStorage.getItem("favoris")) || [];
 
-    // éviter doublons
     if (favoris.some(f => f.nom === plat.nom)) {
-        alert("Already saved 😉");
+        alert("Already saved ");
         return;
     }
 
-    // faire une vraie copie
     const platToSave = {
         nom: plat.nom,
         image: plat.image,
@@ -1220,10 +1222,9 @@ function saveRecipe(plat) {
     };
 
     favoris.push(platToSave);
-
     localStorage.setItem("favoris", JSON.stringify(favoris));
 
-    alert("Recipe saved ❤️");
+    alert("Recipe saved ");
 }
 
 // 🍔 récupérer plat API
@@ -1683,12 +1684,6 @@ const inner = document.getElementById("recipeInner");
 
 if (panel) {
     panel.addEventListener("click", hideRecipe);
-}
-
-if (inner) {
-    inner.addEventListener("click", (e) => {
-        e.stopPropagation();
-    });
 }
 
 async function goPremium() {
@@ -2660,6 +2655,10 @@ if (registerBtn) {
     });
 }
 </script>
+
+html, body, #recipePanel {
+    -webkit-text-size-adjust: 100%;
+}
 
 </body>
 </html>
