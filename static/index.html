@@ -2164,12 +2164,14 @@ function restorePurchases() {
         });
 }
 
-function showFeed() {
+async function showFeed() {
     hideAllScreens();
 
     const container = document.getElementById("feedScreen");
     container.style.display = "block";
     container.scrollTop = 0;
+
+    await loadFeedFromBackend();
 
     container.innerHTML = `
         <div class="feed-topbar">
@@ -2205,7 +2207,7 @@ function showFeed() {
                 <div class="feed-body">
                     <div class="feed-actions">
                         <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
-                        <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.comments.length}</button>
+                        <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.commentsCount ?? post.comments.length}</button>
                     </div>
                 </div>
             </div>
@@ -2357,21 +2359,41 @@ function resetFeedPosts() {
     showFeed();
 }
 
-function likePost(postId) {
+async function likePost(postId) {
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
     const container = document.getElementById("feedScreen");
     const currentScroll = container.scrollTop;
 
-    const post = demoPosts.find(p => p.id === postId);
-    if (!post) return;
+    try {
+        const res = await fetch(`${API_BASE}/like`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                post_id: postId
+            })
+        });
 
-    post.likes += 1;
-    saveFeedPosts();
+        const data = await res.json();
 
-    showFeed();
+        if (data.message) {
+            await loadFeedFromBackend();
+            showFeed();
 
-    requestAnimationFrame(() => {
-        container.scrollTop = currentScroll;
-    });
+            requestAnimationFrame(() => {
+                container.scrollTop = currentScroll;
+            });
+        } else {
+            alert(data.error || "Unable to like post");
+        }
+    } catch (error) {
+        console.error("Like error:", error);
+        alert("Unable to reach server");
+    }
 }
 
 const defaultPosts = [
@@ -2430,36 +2452,51 @@ function showCreatePost() {
     `;
 }
 
-function publishPost() {
-    const author = userProfile.name;
+async function publishPost() {
     const caption = document.getElementById("postCaption").value.trim();
 
-    if (!author || !selectedPostImage || !caption) {
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    if (!selectedPostImage || !caption) {
         alert("Please complete all fields");
         return;
     }
 
-    const newPost = {
-        id: Date.now(),
-        author,
-        image: selectedPostImage,
-        caption,
-        likes: 0,
-        comments: []
-    };
+    try {
+        const res = await fetch(`${API_BASE}/create-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                image: selectedPostImage,
+                caption
+            })
+        });
 
-    demoPosts.unshift(newPost);
-    saveFeedPosts();
+        const data = await res.json();
 
-    selectedPostImage = "";
-    showFeed();
+        if (data.message) {
+            selectedPostImage = "";
+            await showFeed();
+        } else {
+            alert(data.error || "Unable to create post");
+        }
+    } catch (error) {
+        console.error("Create post error:", error);
+        alert("Unable to reach server");
+    }
 }
 
-function showComments(postId) {
+async function showComments(postId) {
     hideAllScreens();
 
     const post = demoPosts.find(p => p.id === postId);
     if (!post) return;
+
+    const comments = await loadCommentsFromBackend(postId);
 
     const container = document.getElementById("commentsScreen");
     container.style.display = "block";
@@ -2491,7 +2528,7 @@ function showComments(postId) {
 
     const commentsList = document.getElementById("commentsList");
 
-    if (post.comments.length === 0) {
+    if (comments.length === 0) {
         commentsList.innerHTML = `
             <div class="screen-box">
                 <p>No comments yet.</p>
@@ -2500,7 +2537,7 @@ function showComments(postId) {
         return;
     }
 
-    post.comments.forEach(comment => {
+    comments.forEach(comment => {
         commentsList.innerHTML += `
             <div class="comment-bubble">
                 <div class="comment-author">${comment.author}</div>
@@ -2510,28 +2547,69 @@ function showComments(postId) {
     });
 }
 
-function addComment(postId) {
+async function addComment(postId) {
     const text = document.getElementById("commentText").value.trim();
+
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
 
     if (!text) {
         alert("Please write a comment");
         return;
     }
 
-    const post = demoPosts.find(p => p.id === postId);
-    if (!post) return;
+    try {
+        const res = await fetch(`${API_BASE}/comment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                post_id: postId,
+                text
+            })
+        });
 
-    post.comments.push({
-        author: userProfile.name,
-        text
-    });
+        const data = await res.json();
 
-    saveFeedPosts();
-    showComments(postId);
+        if (data.message) {
+            await loadFeedFromBackend();
+            await showComments(postId);
+        } else {
+            alert(data.error || "Unable to add comment");
+        }
+    } catch (error) {
+        console.error("Comment error:", error);
+        alert("Unable to reach server");
+    }
 }
 
 function saveFeedPosts() {
     localStorage.setItem("feedPosts", JSON.stringify(demoPosts));
+}
+
+async function loadFeedFromBackend() {
+    try {
+        const res = await fetch(`${API_BASE}/feed`);
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+            demoPosts = data.map(post => ({
+                id: post.id,
+                author: post.author,
+                image: post.image,
+                caption: post.caption,
+                likes: post.likes || 0,
+                comments: Array(post.comments || 0).fill({ author: "", text: "" }),
+                commentsCount: post.comments || 0
+            }));
+
+            saveFeedPosts();
+        }
+    } catch (error) {
+        console.error("Feed load error:", error);
+    }
 }
 
 async function pickPostImage() {
@@ -2737,6 +2815,30 @@ async function changePostImage() {
     } catch (error) {
         console.log("Edit post image error:", error);
         alert("Unable to change photo");
+    }
+}
+
+async function loadCommentsFromBackend(postId) {
+    try {
+        const res = await fetch(`${API_BASE}/comments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ post_id: postId })
+        });
+
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+            return data.map(comment => ({
+                author: comment.author || "User",
+                text: comment.text
+            }));
+        }
+
+        return [];
+    } catch (error) {
+        console.error("Comments load error:", error);
+        return [];
     }
 }
 

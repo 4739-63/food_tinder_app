@@ -90,6 +90,8 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
+
 # ========================
 # MODEL
 # ========================
@@ -112,6 +114,32 @@ class User(Base):
     # 🔥 OPTIONNEL (propre pour ton app)
     plan_type = Column(String, default="free")
 
+class Post(Base):
+    __tablename__ = "posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer)
+    username = Column(String)
+
+    image = Column(String)
+    caption = Column(String)
+
+    created_at = Column(Integer)
+
+class Like(Base):
+    __tablename__ = "likes"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    post_id = Column(Integer)
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    post_id = Column(Integer)
+    text = Column(String)        
 # ========================
 # APP
 # ========================
@@ -506,4 +534,122 @@ def verify_subscription(data: dict):
         return {"status": "invalid"}
 
     finally:
-        db.close()   
+        db.close()  
+
+import time
+
+@app.post("/create-post")
+def create_post(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return {"error": "Unauthorized"}
+
+        post = Post(
+            user_id=user.id,
+            username=user.email.split("@")[0],
+            image=data["image"],
+            caption=data["caption"],
+            created_at=int(time.time())
+        )
+
+        db.add(post)
+        db.commit()
+
+        return {"message": "Post created"}
+
+    finally:
+        db.close()
+
+@app.get("/feed")
+def get_feed():
+    db = SessionLocal()
+    try:
+        posts = db.query(Post).order_by(Post.created_at.desc()).limit(50).all()
+
+        result = []
+
+        for p in posts:
+            likes = db.query(Like).filter(Like.post_id == p.id).count()
+            comments = db.query(Comment).filter(Comment.post_id == p.id).count()
+
+            result.append({
+                "id": p.id,
+                "author": p.username,
+                "image": p.image,
+                "caption": p.caption,
+                "likes": likes,
+                "comments": comments
+            })
+
+        return result
+
+    finally:
+        db.close()
+
+@app.post("/like")
+def like_post(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+        post_id = data["post_id"]
+
+        existing = db.query(Like).filter(
+            Like.user_id == user_id,
+            Like.post_id == post_id
+        ).first()
+
+        if existing:
+            db.delete(existing)
+        else:
+            db.add(Like(user_id=user_id, post_id=post_id))
+
+        db.commit()
+
+        return {"message": "ok"}
+
+    finally:
+        db.close()
+
+@app.post("/comment")
+def comment_post(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+
+        comment = Comment(
+            user_id=user_id,
+            post_id=data["post_id"],
+            text=data["text"]
+        )
+
+        db.add(comment)
+        db.commit()
+
+        return {"message": "comment added"}
+
+    finally:
+        db.close()
+
+@app.post("/comments")
+def get_comments(data: dict):
+    db = SessionLocal()
+    try:
+        post_id = data["post_id"]
+
+        comments = db.query(Comment).filter(
+            Comment.post_id == post_id
+        ).all()
+
+        return [
+            {
+                "text": c.text
+            }
+            for c in comments
+        ]
+
+    finally:
+        db.close()                                         
