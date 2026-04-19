@@ -1591,7 +1591,7 @@ function showSwipe() {
     const card = document.getElementById("card");
     const image = document.getElementById("image");
 
-    card.style.display = "block";
+    card.style.display = "flex";
 
     card.classList.remove("dragging");
     card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
@@ -1602,6 +1602,7 @@ function showSwipe() {
         image.style.objectFit = "cover";
         image.style.objectPosition = "center";
         image.style.transform = "none";
+        image.style.display = "block";
     }
 
     document.getElementById("recipePanel").classList.remove("open");
