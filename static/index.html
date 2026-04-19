@@ -426,6 +426,11 @@ body {
     margin-bottom: 6px;
 }
 
+#recipePanel,
+#recipePanel * {
+    -webkit-text-size-adjust: 100%;
+}
+
 .auth-btn {
     width: 100%;
 
@@ -942,6 +947,10 @@ body {
     background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
 
+html, body, #recipePanel {
+    -webkit-text-size-adjust: 100%;
+}
+
 </style>
 </head>
 
@@ -1177,8 +1186,17 @@ function showRecipe(plat) {
         <h4>Instructions:</h4>
         <p>${plat.recette || "No recipe available"}</p>
 
-        <button class="recipe-btn" type="button" onclick="saveRecipe(currentPlat, event)">Save Recipe</button>
+        <button id="saveRecipeBtn" class="recipe-btn" type="button">Save Recipe</button>
     `;
+
+    const saveBtn = document.getElementById("saveRecipeBtn");
+    if (saveBtn) {
+        saveBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            saveRecipe(currentPlat);
+        });
+    }
 
     panel.classList.add("open");
     panel.style.bottom = "0";
@@ -1199,12 +1217,7 @@ function hideRecipe() {
     bottomNav.classList.remove("hidden");
 }
 
-function saveRecipe(plat, e) {
-    if (e) {
-        e.stopPropagation();
-        e.preventDefault();
-    }
-
+function saveRecipe(plat) {
     if (!plat) return;
 
     favoris = JSON.parse(localStorage.getItem("favoris")) || [];
@@ -2655,10 +2668,6 @@ if (registerBtn) {
     });
 }
 </script>
-
-html, body, #recipePanel {
-    -webkit-text-size-adjust: 100%;
-}
 
 </body>
 </html>
