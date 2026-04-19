@@ -1013,6 +1013,8 @@ html, body, #recipePanel {
 <div id="registerProfileScreen" style="display:none;"></div>
 <div id="loginProfileScreen" style="display:none;"></div>
 
+
+
 <div id="editPostScreen" style="display:none;"></div>
 
 <div id="bottomNav">
@@ -2262,6 +2264,7 @@ function showProfile() {
 
                 <button class="buy-btn" onclick="showEditProfile()">Edit Profile</button>
                 <button class="big-back-btn" onclick="showSubscription()">Subscription</button>
+                <button class="big-back-btn" onclick="logoutUser()">Logout</button>
             </div>
 
             <div class="profile-posts-section">
@@ -2870,6 +2873,13 @@ function openProfileEntry() {
     } else {
         showProfileGate();
     }
+}
+
+function logoutUser() {
+    token = null;
+    localStorage.removeItem("token");
+
+    showProfileGate();
 }
 
 function showProfileGate() {
