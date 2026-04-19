@@ -905,7 +905,7 @@ body {
     right: 14px;
     z-index: 2;
     display: flex;
-    gap: 8px;
+    gap: 10px;
 }
 
 .edit-post-btn {
@@ -919,6 +919,7 @@ body {
 }
 
 .delete-post-btn {
+    position: static; /* IMPORTANT: enlève absolute */
     border: none;
     border-radius: 14px;
     padding: 10px 14px;
@@ -2434,6 +2435,8 @@ function showEditPost(postId) {
     const post = demoPosts.find(p => p.id === postId);
     if (!post) return;
 
+    selectedPostImage = post.image || "";
+
     const container = document.getElementById("editPostScreen");
     container.style.display = "block";
 
@@ -2442,7 +2445,9 @@ function showEditPost(postId) {
             <div class="screen-box profile-box">
                 <h2>Edit Post</h2>
 
-                <img class="post-preview" src="${post.image}" alt="post preview">
+                <img id="editPostPreview" class="post-preview" src="${post.image}" alt="post preview">
+
+                <button class="buy-btn" onclick="changePostImage()">Change Photo</button>
 
                 <textarea id="editPostCaption" class="post-textarea" placeholder="Edit your caption...">${post.caption}</textarea>
 
@@ -2465,9 +2470,48 @@ function savePostChanges(postId) {
     if (!post) return;
 
     post.caption = newCaption;
+    post.image = selectedPostImage || post.image;
 
     saveFeedPosts();
     showProfile();
+}
+
+async function changePostImage() {
+    try {
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
+            quality: 90,
+            resultType: "uri",
+            source: "PHOTOS"
+        });
+
+        selectedPostImage = image.webPath || image.path || "";
+
+        if (!selectedPostImage) {
+            alert("No image path returned");
+            return;
+        }
+
+        const preview = document.getElementById("editPostPreview");
+        if (preview) {
+            preview.src = selectedPostImage;
+        }
+
+    } catch (error) {
+        console.log("Edit post image error:", error);
+        alert("Unable to change photo");
+    }
 }
 
 </script>
