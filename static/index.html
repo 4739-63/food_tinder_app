@@ -955,6 +955,21 @@ html, body, #recipePanel {
     -webkit-text-size-adjust: 100%;
 }
 
+#profileGateScreen,
+#registerProfileScreen,
+#loginProfileScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
 </style>
 </head>
 
@@ -994,6 +1009,10 @@ html, body, #recipePanel {
 <div id="profileScreen" style="display:none;"></div>
 <div id="editProfileScreen" style="display:none;"></div>
 
+<div id="profileGateScreen" style="display:none;"></div>
+<div id="registerProfileScreen" style="display:none;"></div>
+<div id="loginProfileScreen" style="display:none;"></div>
+
 <div id="editPostScreen" style="display:none;"></div>
 
 <div id="bottomNav">
@@ -1001,7 +1020,7 @@ html, body, #recipePanel {
     <button onclick="showFavoris()"> Favorites</button>
     <button onclick="showFeed()"> Feed</button>
     <button onclick="showAdvanced()"> Advanced</button>
-    <button onclick="showProfile()"> Profile</button>
+    <button onclick="openProfileEntry()"> Profile</button>
 </div>
 
 <script>
@@ -2096,6 +2115,9 @@ function hideAllScreens() {
     document.getElementById("profileScreen").style.display = "none";
     document.getElementById("editProfileScreen").style.display = "none";
     document.getElementById("editPostScreen").style.display = "none";
+    document.getElementById("profileGateScreen").style.display = "none";
+    document.getElementById("registerProfileScreen").style.display = "none";
+    document.getElementById("loginProfileScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -2839,6 +2861,174 @@ async function loadCommentsFromBackend(postId) {
     } catch (error) {
         console.error("Comments load error:", error);
         return [];
+    }
+}
+
+function openProfileEntry() {
+    if (token) {
+        showProfile();
+    } else {
+        showProfileGate();
+    }
+}
+
+function showProfileGate() {
+    hideAllScreens();
+
+    const container = document.getElementById("profileGateScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Profile</h2>
+                <p>Create your profile or login to access your account.</p>
+
+                <button class="buy-btn" onclick="showRegisterProfile()">Create your profile</button>
+                <button class="big-back-btn" onclick="showLoginProfile()">Login</button>
+            </div>
+        </div>
+    `;
+}
+
+function showRegisterProfile() {
+    hideAllScreens();
+
+    selectedProfileImage = userProfile.avatar || "";
+
+    const container = document.getElementById("registerProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Create Your Profile</h2>
+
+                <input id="registerEmailInput" class="auth-input" placeholder="Email">
+                <input id="registerPasswordInput" class="auth-input" type="password" placeholder="Password">
+
+                <img id="profilePreview" class="profile-avatar" src="${userProfile.avatar}" alt="profile preview">
+
+                <button class="buy-btn" onclick="pickProfileImage()">Choose Profile Photo</button>
+
+                <input id="registerNameInput" class="auth-input" placeholder="Name" value="${userProfile.name}">
+                <textarea id="registerBioInput" class="post-textarea" placeholder="Write a short bio...">${userProfile.bio}</textarea>
+
+                <button class="buy-btn" onclick="createProfileAccount()">Create</button>
+                <button class="big-back-btn" onclick="showProfileGate()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+function showLoginProfile() {
+    hideAllScreens();
+
+    const container = document.getElementById("loginProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Login</h2>
+
+                <input id="loginEmailInput" class="auth-input" placeholder="Email">
+                <input id="loginPasswordInput" class="auth-input" type="password" placeholder="Password">
+
+                <button class="buy-btn" onclick="loginProfileAccount()">Login</button>
+                <button class="big-back-btn" onclick="showProfileGate()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+async function createProfileAccount() {
+    const email = document.getElementById("registerEmailInput").value.trim();
+    const password = document.getElementById("registerPasswordInput").value.trim();
+    const name = document.getElementById("registerNameInput").value.trim();
+    const bio = document.getElementById("registerBioInput").value.trim();
+
+    if (!email || !password || !name || !bio) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    try {
+        const registerRes = await fetch(`${API_BASE}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const registerData = await registerRes.json();
+
+        if (registerData.error) {
+            alert(registerData.error);
+            return;
+        }
+
+        const loginRes = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const loginData = await loginRes.json();
+
+        if (!loginData.token) {
+            alert("Account created, but login failed");
+            return;
+        }
+
+        token = loginData.token;
+        localStorage.setItem("token", token);
+
+        userProfile = {
+            name,
+            bio,
+            avatar: selectedProfileImage || userProfile.avatar
+        };
+
+        saveUserProfile();
+        showProfile();
+
+    } catch (error) {
+        console.error("Create profile error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+async function loginProfileAccount() {
+    const email = document.getElementById("loginEmailInput").value.trim();
+    const password = document.getElementById("loginPasswordInput").value.trim();
+
+    if (!email || !password) {
+        alert("Please enter your email and password");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!data.token) {
+            alert(data.error || "Login failed");
+            return;
+        }
+
+        token = data.token;
+        localStorage.setItem("token", token);
+
+        showProfile();
+
+    } catch (error) {
+        console.error("Login profile error:", error);
+        alert("Unable to reach server");
     }
 }
 
