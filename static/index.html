@@ -558,7 +558,7 @@ body {
 
 .feed-img {
     width: 100%;
-    height: 1300px;
+    height: 1240px;
     object-fit: cover;
     display: block;
 }
@@ -671,7 +671,7 @@ body {
 }
 
 .comments-topbar {
-    padding: calc(env(safe-area-inset-top, 0px) + 216px) 12px 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 180px) 12px 12px;
     background: transparent;
 }
 
@@ -778,7 +778,7 @@ body {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding: calc(env(safe-area-inset-top, 0px) + 216px) 12px 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 180px) 12px 12px;
 }
 
 .feed-create-btn {
@@ -1023,12 +1023,46 @@ let selectedProfileImage = "";
 
 // 🧠 préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
+    // anciens axes
     sucre: 0,
     sale: 0,
     rapide: 0,
     sante: 0,
     viande: 0,
-    chaud: 0
+    chaud: 0,
+
+    // catégories de repas
+    dessert: 0,
+    breakfast: 0,
+
+    // protéines
+    protein_fish: 0,
+    protein_chicken: 0,
+    protein_beef: 0,
+    protein_seafood: 0,
+    protein_pork: 0,
+    protein_lamb: 0,
+
+    // bases
+    base_pasta: 0,
+    base_rice: 0,
+    base_potato: 0,
+    base_bread_wrap: 0,
+    base_salad: 0,
+
+    // styles
+    style_spicy: 0,
+    style_creamy: 0,
+    style_light: 0,
+    style_comfort: 0,
+
+    // cuisines
+    cuisine_italian: 0,
+    cuisine_mexican: 0,
+    cuisine_asian: 0,
+    cuisine_indian: 0,
+    cuisine_american: 0,
+    cuisine_mediterranean: 0
 };
 
 let currentPlat = null;
@@ -1036,6 +1070,44 @@ let nextPlat = null;
 let favoris = JSON.parse(localStorage.getItem("favoris")) || [];
 let advancedFilters = {};
 
+let seenMealIds = new Set(JSON.parse(sessionStorage.getItem("seenMealIds")) || []);
+let recentCategories = JSON.parse(sessionStorage.getItem("recentCategories")) || [];
+let recentAreas = JSON.parse(sessionStorage.getItem("recentAreas")) || [];
+let recentProteins = JSON.parse(sessionStorage.getItem("recentProteins")) || [];
+
+function saveAlgoSession() {
+    sessionStorage.setItem("preferences", JSON.stringify(preferences));
+    sessionStorage.setItem("seenMealIds", JSON.stringify([...seenMealIds]));
+    sessionStorage.setItem("recentCategories", JSON.stringify(recentCategories));
+    sessionStorage.setItem("recentAreas", JSON.stringify(recentAreas));
+    sessionStorage.setItem("recentProteins", JSON.stringify(recentProteins));
+}
+
+function pushRecent(list, value, max = 3) {
+    if (!value) return;
+    list.push(value);
+    while (list.length > max) list.shift();
+}
+
+function rememberShownMeal(plat) {
+    if (!plat) return;
+
+    if (plat.idMeal) {
+        seenMealIds.add(String(plat.idMeal));
+    }
+
+    pushRecent(recentCategories, plat.categoryName || "");
+    pushRecent(recentAreas, plat.areaName || "");
+
+    if (plat.protein_fish) pushRecent(recentProteins, "fish");
+    else if (plat.protein_chicken) pushRecent(recentProteins, "chicken");
+    else if (plat.protein_beef) pushRecent(recentProteins, "beef");
+    else if (plat.protein_seafood) pushRecent(recentProteins, "seafood");
+    else if (plat.protein_pork) pushRecent(recentProteins, "pork");
+    else if (plat.protein_lamb) pushRecent(recentProteins, "lamb");
+
+    saveAlgoSession();
+}
 
 let isSwiping = false;
 
@@ -1116,62 +1188,124 @@ function setupAppleIAP() {
         });
 }
 
+
+
 // 🔥 analyser un plat API
 function analyserPlat(meal) {
     const instructions = (meal.strInstructions || "").toLowerCase();
-    const category = meal.strCategory?.toLowerCase() || "";
-    const tags = meal.strTags?.toLowerCase() || "";
+    const category = (meal.strCategory || "").toLowerCase();
+    const area = (meal.strArea || "").toLowerCase();
+    const tags = (meal.strTags || "").toLowerCase();
 
     const ingredients = [];
     for (let i = 1; i <= 20; i++) {
         const ing = meal["strIngredient" + i];
-        if (ing) ingredients.push(ing.toLowerCase());
+        if (ing && ing.trim()) {
+            ingredients.push(ing.toLowerCase());
+        }
     }
 
+    const textBlob = [
+        category,
+        area,
+        tags,
+        instructions,
+        ...ingredients
+    ].join(" ");
+
+    const hasAny = (words) => words.some(w => textBlob.includes(w));
+
+    const proteinFish = hasAny(["fish", "salmon", "tuna", "cod", "haddock"]);
+    const proteinChicken = hasAny(["chicken"]);
+    const proteinBeef = hasAny(["beef"]);
+    const proteinSeafood = hasAny(["prawn", "shrimp", "mussel", "crab", "squid", "clam", "seafood"]);
+    const proteinPork = hasAny(["pork", "bacon", "ham"]);
+    const proteinLamb = hasAny(["lamb"]);
+
+    const basePasta = hasAny(["pasta", "spaghetti", "penne", "macaroni", "tagliatelle", "noodle"]);
+    const baseRice = hasAny(["rice"]);
+    const basePotato = hasAny(["potato"]);
+    const baseBreadWrap = hasAny(["bread", "bun", "toast", "tortilla", "wrap", "pita"]);
+    const baseSalad = hasAny(["salad", "lettuce", "spinach", "cucumber"]);
+
+    const styleSpicy = hasAny(["chili", "chilli", "spicy", "curry", "pepper", "jalapeno"]);
+    const styleCreamy = hasAny(["cream", "cheese", "milk", "butter", "yogurt"]);
+    const styleLight = hasAny(["salad", "lemon", "lime", "fresh", "mint", "cucumber"]);
+    const styleComfort = hasAny(["cheese", "potato", "beef", "pasta", "bread", "butter"]);
+
+    const cuisineItalian = area.includes("italian") || hasAny(["mozzarella", "parmesan", "pasta", "risotto"]);
+    const cuisineMexican = area.includes("mexican") || hasAny(["tortilla", "jalapeno", "beans", "avocado"]);
+    const cuisineAsian = hasAny(["soy", "ginger", "sesame", "noodle", "rice"]) ||
+        ["japanese", "chinese", "thai", "vietnamese"].some(a => area.includes(a));
+    const cuisineIndian = area.includes("indian") || hasAny(["garam masala", "curry", "turmeric", "cardamom"]);
+    const cuisineAmerican = area.includes("american") || hasAny(["burger", "bbq", "bacon"]);
+    const cuisineMediterranean =
+        ["greek", "spanish", "moroccan", "turkish", "french"].some(a => area.includes(a)) ||
+        hasAny(["olive", "feta", "lemon", "chickpea"]);
+
+    const dessert = category.includes("dessert");
+    const breakfast = category.includes("breakfast");
+
     return {
+        idMeal: String(meal.idMeal || ""),
         nom: meal.strMeal,
         image: meal.strMealThumb,
-
-        // 🔥 AJOUT RECETTE
         recette: meal.strInstructions,
-        ingredients: Array.from({length: 20}, (_, i) => {
-            const ing = meal["strIngredient" + (i+1)];
-            const meas = meal["strMeasure" + (i+1)];
-            return ing ? `${meas} ${ing}` : null;
-        }).filter(i => i),
+        ingredients: Array.from({ length: 20 }, (_, i) => {
+            const ing = meal["strIngredient" + (i + 1)];
+            const meas = meal["strMeasure" + (i + 1)];
+            return ing ? `${meas || ""} ${ing}`.trim() : null;
+        }).filter(Boolean),
 
-        sucre: category.includes("dessert"),
+        categoryName: meal.strCategory || "",
+        areaName: meal.strArea || "",
 
-        sale: !category.includes("dessert"),
+        // anciens axes
+        sucre: dessert,
+        dessert,
+        breakfast,
+        sale: !dessert,
+        rapide: instructions.length < 450,
+        sante: baseSalad || styleLight || hasAny(["vegetable", "broccoli", "spinach", "cucumber"]),
+        viande: proteinChicken || proteinBeef || proteinPork || proteinLamb || proteinFish || proteinSeafood,
+        chaud: !dessert,
 
-        rapide: instructions.length < 300,
+        vegan: !hasAny([
+            "chicken", "beef", "pork", "fish", "salmon", "tuna", "prawn", "shrimp",
+            "egg", "milk", "cheese", "butter", "cream", "yogurt", "lamb", "bacon", "ham"
+        ]),
+        gluten: hasAny(["flour", "bread", "pasta", "wheat", "bun", "tortilla"]),
+        arachide: hasAny(["peanut", "groundnut"]),
 
-        sante:
-            category.includes("salad") ||
-            ingredients.includes("vegetable") ||
-            ingredients.includes("chicken"),
+        // nouvelles protéines
+        protein_fish: proteinFish,
+        protein_chicken: proteinChicken,
+        protein_beef: proteinBeef,
+        protein_seafood: proteinSeafood,
+        protein_pork: proteinPork,
+        protein_lamb: proteinLamb,
 
-        viande:
-            ingredients.some(i =>
-                ["chicken", "beef", "pork", "fish"].some(m => i.includes(m))
-            ),
-        vegan: !ingredients.some(i =>
-            [
-                "chicken", "beef", "pork", "fish", "salmon", "tuna",
-                "egg", "milk", "cheese", "butter", "cream", "yogurt"
-            ].some(m => i.includes(m))
-        ),    
-        
-        gluten: ingredients.some(i =>
-            ["flour", "bread", "pasta", "wheat"].some(g => i.includes(g))
-        ),
+        // nouvelles bases
+        base_pasta: basePasta,
+        base_rice: baseRice,
+        base_potato: basePotato,
+        base_bread_wrap: baseBreadWrap,
+        base_salad: baseSalad,
 
-        arachide: ingredients.some(i =>
-            ["peanut", "groundnut"].some(a => i.includes(a))
-        ),
-        chaud: !category.includes("dessert")
+        // nouveaux styles
+        style_spicy: styleSpicy,
+        style_creamy: styleCreamy,
+        style_light: styleLight,
+        style_comfort: styleComfort,
+
+        // nouvelles cuisines
+        cuisine_italian: cuisineItalian,
+        cuisine_mexican: cuisineMexican,
+        cuisine_asian: cuisineAsian,
+        cuisine_indian: cuisineIndian,
+        cuisine_american: cuisineAmerican,
+        cuisine_mediterranean: cuisineMediterranean
     };
-
 }
 
 function showRecipe(plat) {
@@ -1245,34 +1379,38 @@ function saveRecipe(plat) {
 }
 
 // 🍔 récupérer plat API
-async function getPlatFromAPI() {
+async function getPlatFromAPI(maxRetries = 12) {
     try {
-        const res = await fetch("https://www.themealdb.com/api/json/v1/1/random.php");
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const res = await fetch("https://www.themealdb.com/api/json/v1/1/random.php");
 
-        // 🛑 vérifier réponse HTTP
-        if (!res.ok) {
-            console.error("Erreur HTTP :", res.status);
-            return null;
+            if (!res.ok) {
+                console.error("Erreur HTTP :", res.status);
+                continue;
+            }
+
+            const data = await res.json();
+
+            if (!data || !data.meals || !data.meals[0]) {
+                console.error("Réponse API invalide");
+                continue;
+            }
+
+            const meal = data.meals[0];
+
+            if (!meal.strMeal || !meal.strMealThumb) {
+                console.error("Plat incomplet");
+                continue;
+            }
+
+            if (meal.idMeal && seenMealIds.has(String(meal.idMeal))) {
+                continue;
+            }
+
+            return analyserPlat(meal);
         }
 
-        const data = await res.json();
-
-        // 🛑 vérifier structure API
-        if (!data || !data.meals || !data.meals[0]) {
-            console.error("Réponse API invalide");
-            return null;
-        }
-
-        const meal = data.meals[0];
-
-        // 🛑 sécurité supplémentaire
-        if (!meal.strMeal || !meal.strMealThumb) {
-            console.error("Plat incomplet");
-            return null;
-        }
-
-        return analyserPlat(meal);
-
+        return null;
     } catch (error) {
         console.error("Erreur API", error);
         return null;
@@ -1281,29 +1419,53 @@ async function getPlatFromAPI() {
 
 // 🧠 update préférences
 function updatePreferences(plat, like) {
+    const delta = like ? 2 : -2;
+
     for (let key in preferences) {
-        if (plat[key]) {
-            if (like) {
-                preferences[key] += 1;
-            } else {
-                preferences[key] -= 1;
-            }
+        if (plat[key] === true && key in preferences) {
+            preferences[key] += delta;
         }
     }
-    // 💾 sauvegarde dans la session
-    sessionStorage.setItem("preferences", JSON.stringify(preferences));    
+
+    // bonus plus fort pour quelques axes importants
+    if (plat.protein_chicken) preferences.protein_chicken += like ? 1 : -1;
+    if (plat.protein_beef) preferences.protein_beef += like ? 1 : -1;
+    if (plat.protein_fish) preferences.protein_fish += like ? 1 : -1;
+    if (plat.protein_seafood) preferences.protein_seafood += like ? 1 : -1;
+    if (plat.protein_pork) preferences.protein_pork += like ? 1 : -1;
+    if (plat.protein_lamb) preferences.protein_lamb += like ? 1 : -1;
+
+    if (plat.base_pasta) preferences.base_pasta += like ? 1 : -1;
+    if (plat.base_rice) preferences.base_rice += like ? 1 : -1;
+    if (plat.base_potato) preferences.base_potato += like ? 1 : -1;
+    if (plat.base_bread_wrap) preferences.base_bread_wrap += like ? 1 : -1;
+    if (plat.base_salad) preferences.base_salad += like ? 1 : -1;
+
+    if (plat.style_spicy) preferences.style_spicy += like ? 1 : -1;
+    if (plat.style_creamy) preferences.style_creamy += like ? 1 : -1;
+    if (plat.style_light) preferences.style_light += like ? 1 : -1;
+    if (plat.style_comfort) preferences.style_comfort += like ? 1 : -1;
+
+    if (plat.cuisine_italian) preferences.cuisine_italian += like ? 1 : -1;
+    if (plat.cuisine_mexican) preferences.cuisine_mexican += like ? 1 : -1;
+    if (plat.cuisine_asian) preferences.cuisine_asian += like ? 1 : -1;
+    if (plat.cuisine_indian) preferences.cuisine_indian += like ? 1 : -1;
+    if (plat.cuisine_american) preferences.cuisine_american += like ? 1 : -1;
+    if (plat.cuisine_mediterranean) preferences.cuisine_mediterranean += like ? 1 : -1;
+
+    saveAlgoSession();
 }
 
 async function generateBestPlat() {
     try {
-        const promises = [];
+        const candidatePromises = [];
 
-        for (let i = 0; i < 5; i++) {
-            promises.push(getPlatFromAPI());
+        for (let i = 0; i < 12; i++) {
+            candidatePromises.push(getPlatFromAPI());
         }
 
-        const results = await Promise.all(promises);
-        const plats = results.filter(p => p !== null);
+        const results = await Promise.all(candidatePromises);
+        const plats = results.filter(Boolean);
 
         if (plats.length === 0) return null;
 
@@ -1313,35 +1475,51 @@ async function generateBestPlat() {
         for (let plat of plats) {
             let score = 0;
 
-        // 🔥 BLOCAGE VEGAN STRICT
-        if (advancedFilters.vegan && !plat.vegan) {
-            continue; // ⛔ skip ce plat
-        }
+            // blocage strict filtres premium
+            if (advancedFilters.vegan && !plat.vegan) continue;
+            if (advancedFilters.gluten && plat.gluten) continue;
+            if (advancedFilters.arachide && plat.arachide) continue;
 
-        // 🔥 BLOCAGE GLUTEN
-        if (advancedFilters.gluten && plat.gluten) {
-            continue;
-        }
+            // anti doublon session
+            if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) continue;
 
-        // 🔥 BLOCAGE ARACHIDE
-        if (advancedFilters.arachide && plat.arachide) {
-            continue;
-        }
-
+            // score par préférences apprises
             for (let key in preferences) {
-                if (plat[key]) {
+                if (plat[key] === true && preferences[key]) {
                     score += preferences[key];
                 }
             }
 
-// 🔥 AJOUT FILTRES PREMIUM
+            // boost filtres premium
             for (let key in advancedFilters) {
                 if (advancedFilters[key] && plat[key]) {
-                    score += 5; // boost fort
+                    score += 6;
                 }
             }
 
-            score += Math.random() * 5;
+            // anti répétition proche
+            const categoryLower = (plat.categoryName || "").toLowerCase();
+            const areaLower = (plat.areaName || "").toLowerCase();
+
+            if (recentCategories.includes(categoryLower)) score -= 4;
+            if (recentAreas.includes(areaLower)) score -= 3;
+
+            if (plat.protein_chicken && recentProteins.includes("chicken")) score -= 4;
+            if (plat.protein_beef && recentProteins.includes("beef")) score -= 4;
+            if (plat.protein_fish && recentProteins.includes("fish")) score -= 4;
+            if (plat.protein_seafood && recentProteins.includes("seafood")) score -= 4;
+            if (plat.protein_pork && recentProteins.includes("pork")) score -= 4;
+            if (plat.protein_lamb && recentProteins.includes("lamb")) score -= 4;
+
+            // exploration contrôlée
+            score += Math.random() * 3;
+
+            // bonus variété
+            if (!recentCategories.includes(categoryLower)) score += 2;
+            if (!recentAreas.includes(areaLower)) score += 2;
+
+            // bonus rapide si l'utilisateur like souvent "quick"
+            if (plat.rapide) score += preferences.rapide * 0.7;
 
             if (score > bestScore) {
                 bestScore = score;
@@ -1349,19 +1527,10 @@ async function generateBestPlat() {
             }
         }
 
-if (!bestPlat) {
-    console.log("No match with filters, fallback...");
-
-    // 🔥 essayer de trouver au moins un plat valide
-    const filtered = plats.filter(p => !advancedFilters.vegan || p.vegan);
-
-    if (filtered.length > 0) {
-        return filtered[Math.floor(Math.random() * filtered.length)];
-    }
-
-    // 🚨 dernier recours (aucun vegan trouvé)
-    return plats[Math.floor(Math.random() * plats.length)];
-}
+        if (!bestPlat) {
+            const fallback = plats.find(p => p && (!p.idMeal || !seenMealIds.has(String(p.idMeal))));
+            return fallback || plats[Math.floor(Math.random() * plats.length)];
+        }
 
         return bestPlat;
 
@@ -1375,20 +1544,21 @@ if (!bestPlat) {
 
 // 👍👎 action utilisateur
 async function choix(like) {
-    updatePreferences(currentPlat, like);
+    if (currentPlat) {
+        updatePreferences(currentPlat, like);
+        rememberShownMeal(currentPlat);
+    }
 
-    // 🔥 afficher instantanément le suivant
     currentPlat = nextPlat;
 
     if (!currentPlat) {
-        document.getElementById("nom").innerText = "Erreur 😢";
+        document.getElementById("nom").innerText = "Erreur ";
         return;
     }
 
     document.getElementById("nom").innerText = currentPlat.nom;
     document.getElementById("image").src = currentPlat.image;
 
-    // ⚡ charger le prochain en arrière-plan
     nextPlat = await generateBestPlat();
 }
 
@@ -1437,12 +1607,15 @@ async function swipe(like) {
     }
 
     currentPlat = await generateBestPlat();
-    nextPlat = await generateBestPlat();
 
     if (!currentPlat) {
-        document.getElementById("nom").innerText = "Erreur 😢";
+        document.getElementById("nom").innerText = "Erreur ";
         return;
     }
+
+    rememberShownMeal(currentPlat);
+
+    nextPlat = await generateBestPlat();
 
     document.getElementById("nom").innerText = currentPlat.nom;
     document.getElementById("image").src = currentPlat.image;
@@ -1701,7 +1874,7 @@ function deleteFavori(nom) {
 
     showFavoris();
 
-    alert("Removed ❌");
+    alert("Removed ");
 }
 
 // 🔥 SERVICE WORKER DÉSACTIVÉ (DEV MODE)
