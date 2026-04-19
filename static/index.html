@@ -899,6 +899,48 @@ body {
     color: white;
 }
 
+.profile-post-actions-top {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+}
+
+.edit-post-btn {
+    border: none;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 15px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.18);
+    color: white;
+}
+
+.delete-post-btn {
+    border: none;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 15px;
+    font-weight: 700;
+    background: rgba(255, 59, 48, 0.9);
+    color: white;
+}
+
+#editPostScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
 </style>
 </head>
 
@@ -937,6 +979,8 @@ body {
 
 <div id="profileScreen" style="display:none;"></div>
 <div id="editProfileScreen" style="display:none;"></div>
+
+<div id="editPostScreen" style="display:none;"></div>
 
 <div id="bottomNav">
     <button onclick="showSwipe()"> Discover</button>
@@ -1824,6 +1868,7 @@ function hideAllScreens() {
     document.getElementById("commentsScreen").style.display = "none";
     document.getElementById("profileScreen").style.display = "none";
     document.getElementById("editProfileScreen").style.display = "none";
+    document.getElementById("editPostScreen").style.display = "none";
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
@@ -1994,7 +2039,10 @@ function showProfile() {
 
         postsList.innerHTML += `
             <div class="feed-post profile-post-card">
-                <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+                <div class="profile-post-actions-top">
+                    <button class="edit-post-btn" onclick="showEditPost(${post.id})">Edit</button>
+                    <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+                </div>
 
                 <div class="feed-header">
                     <strong>${post.author}</strong>
@@ -2375,6 +2423,48 @@ function deletePost(postId) {
     if (!confirmed) return;
 
     demoPosts = demoPosts.filter(post => post.id !== postId);
+
+    saveFeedPosts();
+    showProfile();
+}
+
+function showEditPost(postId) {
+    hideAllScreens();
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const container = document.getElementById("editPostScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Edit Post</h2>
+
+                <img class="post-preview" src="${post.image}" alt="post preview">
+
+                <textarea id="editPostCaption" class="post-textarea" placeholder="Edit your caption...">${post.caption}</textarea>
+
+                <button class="buy-btn" onclick="savePostChanges(${post.id})">Save Changes</button>
+                <button class="big-back-btn" onclick="showProfile()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+function savePostChanges(postId) {
+    const newCaption = document.getElementById("editPostCaption").value.trim();
+
+    if (!newCaption) {
+        alert("Please write a caption");
+        return;
+    }
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    post.caption = newCaption;
 
     saveFeedPosts();
     showProfile();
