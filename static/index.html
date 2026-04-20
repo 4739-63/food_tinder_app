@@ -1976,6 +1976,11 @@ function showPremium() {
 }
 
 function buyPremium() {
+    if (!token) {
+        alert("Please login or create an account from the Profile page first.");
+        return;
+    }
+
     if (!window.CdvPurchase || !window.CdvPurchase.store) {
         alert("Store not available");
         return;
@@ -3188,13 +3193,6 @@ async function loginProfileAccount() {
         <br><br>
         <button onclick="showSwipe()"> Back</button>
 
-        <h3>Login / Create your account</h3>
-
-        <input class="auth-input" id="email" placeholder="Email">
-        <input class="auth-input" id="password" type="password" placeholder="Password">
-
-        <button id="loginBtn" class="auth-btn">Login</button>
-        <button id="registerBtn" class="auth-btn">Create your account</button>
     </div>
 
 </div>
@@ -3221,22 +3219,6 @@ async function loginProfileAccount() {
 </div>
 
 <script>
-const loginBtn = document.getElementById("loginBtn");
-const registerBtn = document.getElementById("registerBtn");
-
-if (loginBtn) {
-    loginBtn.addEventListener("click", () => {
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value;
-
-        if (!email || !password) {
-            alert("Please enter your email and password");
-            return;
-        }
-
-        loginUser(email, password);
-    });
-}
 
 if (registerBtn) {
     registerBtn.addEventListener("click", () => {

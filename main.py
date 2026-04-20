@@ -141,6 +141,7 @@ class Comment(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
     post_id = Column(Integer)
+    username = Column(String)
     text = Column(String)        
 # ========================
 # APP
@@ -624,10 +625,15 @@ def comment_post(data: dict):
     db = SessionLocal()
     try:
         user_id = get_current_user(data["token"])
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
 
         comment = Comment(
             user_id=user_id,
             post_id=data["post_id"],
+            username=user.name or user.email.split("@")[0],
             text=data["text"]
         )
 
@@ -651,6 +657,7 @@ def get_comments(data: dict):
 
         return [
             {
+                "author": c.username or "User",
                 "text": c.text
             }
             for c in comments
