@@ -16,7 +16,7 @@ import hmac
 import secrets
 from jose import jwt
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -80,7 +80,7 @@ def require_premium(user):
 # ========================
 # DATABASE
 # ========================
-DATABASE_URL = "sqlite:///./food.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL,
@@ -120,7 +120,7 @@ class Post(Base):
     __tablename__ = "posts"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     username = Column(String)
 
     image = Column(String)
@@ -132,17 +132,17 @@ class Like(Base):
     __tablename__ = "likes"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    post_id = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
 
 class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    post_id = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
     username = Column(String)
-    text = Column(String)        
+    text = Column(String)       
 # ========================
 # APP
 # ========================
@@ -220,7 +220,10 @@ def login(data: dict):
             return {"error": "invalid credentials"}
 
         token = jwt.encode(
-            {"user_id": user.id},
+            {
+                "user_id": user.id,
+                "exp": int(time.time()) + 60 * 60 * 24
+            },
             SECRET,
             algorithm="HS256"
         )
@@ -571,10 +574,18 @@ def create_post(data: dict):
         db.close()
 
 @app.get("/feed")
-def get_feed():
+def get_feed(skip: int = 0, limit: int = 10):
     db = SessionLocal()
     try:
-        posts = db.query(Post).order_by(Post.created_at.desc()).limit(50).all()
+        limit = min(limit, 20)
+
+        posts = (
+            db.query(Post)
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
         result = []
 
@@ -595,6 +606,8 @@ def get_feed():
 
     finally:
         db.close()
+
+
 
 @app.post("/like")
 def like_post(data: dict):

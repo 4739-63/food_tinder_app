@@ -1044,6 +1044,11 @@ let selectedPostImage = "";
 
 let selectedProfileImage = "";
 
+let feedSkip = 0;
+const FEED_PAGE_SIZE = 10;
+let isLoadingFeed = false;
+let hasMoreFeed = true;
+
 // 🧠 préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
     // anciens axes
@@ -2204,7 +2209,23 @@ async function showFeed() {
     container.style.display = "block";
     container.scrollTop = 0;
 
-    await loadFeedFromBackend();
+    await loadFeedFromBackend(true);
+
+    renderFeed();
+
+    container.onscroll = async () => {
+        const nearBottom =
+            container.scrollTop + container.clientHeight >= container.scrollHeight - 300;
+
+        if (nearBottom && !isLoadingFeed && hasMoreFeed) {
+            await loadFeedFromBackend(false);
+            renderFeed();
+        }
+    };
+}
+
+function renderFeed() {
+    const container = document.getElementById("feedScreen");
 
     container.innerHTML = `
         <div class="feed-topbar">
@@ -2246,7 +2267,16 @@ async function showFeed() {
             </div>
         `;
     });
+
+    if (isLoadingFeed) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>Loading more posts...</p>
+            </div>
+        `;
+    }
 }
+
 function showProfile() {
     hideAllScreens();
 
@@ -2652,13 +2682,25 @@ function saveFeedPosts() {
     localStorage.setItem("feedPosts", JSON.stringify(demoPosts));
 }
 
-async function loadFeedFromBackend() {
+async function loadFeedFromBackend(reset = false) {
+    if (isLoadingFeed) return;
+
+    if (reset) {
+        feedSkip = 0;
+        hasMoreFeed = true;
+        demoPosts = [];
+    }
+
+    if (!hasMoreFeed) return;
+
+    isLoadingFeed = true;
+
     try {
-        const res = await fetch(`${API_BASE}/feed`);
+        const res = await fetch(`${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}`);
         const data = await res.json();
 
         if (Array.isArray(data)) {
-            demoPosts = data.map(post => ({
+            const newPosts = data.map(post => ({
                 id: post.id,
                 author: post.author,
                 image: post.image,
@@ -2668,10 +2710,24 @@ async function loadFeedFromBackend() {
                 commentsCount: post.comments || 0
             }));
 
+            if (reset) {
+                demoPosts = newPosts;
+            } else {
+                demoPosts = [...demoPosts, ...newPosts];
+            }
+
+            feedSkip += newPosts.length;
+
+            if (newPosts.length < FEED_PAGE_SIZE) {
+                hasMoreFeed = false;
+            }
+
             saveFeedPosts();
         }
     } catch (error) {
         console.error("Feed load error:", error);
+    } finally {
+        isLoadingFeed = false;
     }
 }
 
