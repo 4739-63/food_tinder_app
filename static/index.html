@@ -2571,6 +2571,12 @@ async function publishPost() {
 
         const data = await res.json();
 
+        if (res.status === 401 || data.error === "Unauthorized") {
+            alert("Your session expired. Please login again.");
+            logoutUser();
+            return;
+        }
+
         if (data.message) {
             selectedPostImage = "";
             await showFeed();
@@ -3002,7 +3008,7 @@ function openProfileEntry() {
 function logoutUser() {
     token = null;
     localStorage.removeItem("token");
-
+    localStorage.removeItem("userProfile");
     showProfileGate();
 }
 
