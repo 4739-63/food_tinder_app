@@ -1025,10 +1025,17 @@ html, body, #recipePanel {
     <button onclick="openProfileEntry()"> Profile</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 
 const API_BASE = "https://food-tinder-app.onrender.com";
 const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
+
+const SUPABASE_URL = "https://cqqdiyfuuslmfpkllbne.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_LNbbz9hEziziarS3dfGqNA_jSsquxTq";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FREE_RECIPE_LIMIT = 10;
 
@@ -2757,18 +2764,27 @@ async function pickPostImage() {
             source: "PHOTOS"
         });
 
-        selectedPostImage = image.webPath || image.path || "";
+        const localImagePath = image.webPath || image.path || "";
 
-        if (!selectedPostImage) {
+        if (!localImagePath) {
             alert("No image path returned");
             return;
         }
 
         const preview = document.getElementById("postPreview");
         if (preview) {
-            preview.src = selectedPostImage;
+            preview.src = localImagePath;
             preview.style.display = "block";
         }
+
+        const publicUrl = await uploadImageToSupabase(localImagePath, "posts");
+
+        if (!publicUrl) {
+            alert("Image upload failed");
+            return;
+        }
+
+        selectedPostImage = publicUrl;
 
     } catch (error) {
         console.log("Image pick error:", error);
@@ -2838,17 +2854,26 @@ async function pickProfileImage() {
             source: "PHOTOS"
         });
 
-        selectedProfileImage = image.webPath || image.path || "";
+        const localImagePath = image.webPath || image.path || "";
 
-        if (!selectedProfileImage) {
+        if (!localImagePath) {
             alert("No image path returned");
             return;
         }
 
         const preview = document.getElementById("profilePreview");
         if (preview) {
-            preview.src = selectedProfileImage;
+            preview.src = localImagePath;
         }
+
+        const publicUrl = await uploadImageToSupabase(localImagePath, "avatars");
+
+        if (!publicUrl) {
+            alert("Avatar upload failed");
+            return;
+        }
+
+        selectedProfileImage = publicUrl;
 
     } catch (error) {
         console.log("Profile image pick error:", error);
@@ -3010,6 +3035,40 @@ function logoutUser() {
     localStorage.removeItem("token");
     localStorage.removeItem("userProfile");
     showProfileGate();
+}
+
+async function uploadImageToSupabase(imageUri, bucketName) {
+    try {
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+
+        const extension = blob.type.split("/")[1] || "jpg";
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const filePath = `uploads/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient
+            .storage
+            .from(bucketName)
+            .upload(filePath, blob, {
+                contentType: blob.type,
+                upsert: false
+            });
+
+        if (uploadError) {
+            console.error("Supabase upload error:", uploadError);
+            return null;
+        }
+
+        const { data } = supabaseClient
+            .storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+
+        return data?.publicUrl || null;
+    } catch (error) {
+        console.error("Upload image error:", error);
+        return null;
+    }
 }
 
 function showProfileGate() {
