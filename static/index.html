@@ -1647,6 +1647,10 @@ async function swipe(like) {
 
 // 🚀 démarrage
 (async () => {
+//debug
+await debugSupabaseConnection();
+await debugUploadToSupabase();
+
     document.getElementById("nom").innerText = "Chargement...";
 
     // 🔥 0. détecter premium + afficher UI
@@ -3059,6 +3063,12 @@ function dataURLToBlob(dataUrl) {
 
 async function uploadImageToSupabase(dataUrl, bucketName) {
     try {
+        
+        // debug
+        console.log("Uploading to bucket:", bucketName);
+        console.log("Uploading filePath:", filePath);
+        console.log("Blob type:", blob.type);
+        
         const blob = dataURLToBlob(dataUrl);
 
         const extension = blob.type.includes("png") ? "png" : "jpg";
@@ -3074,8 +3084,8 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
             });
 
         if (uploadError) {
-            console.error("Supabase upload error:", uploadError);
-            alert("Upload error: " + uploadError.message);
+            console.error("Supabase upload error full:", uploadError);
+            alert("Upload error: " + JSON.stringify(uploadError));
             return null;
         }
 
@@ -3091,6 +3101,45 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
         return null;
     }
 }
+// debug
+async function debugSupabaseConnection() {
+    try {
+        const { data, error } = await supabaseClient.storage.listBuckets();
+
+        if (error) {
+            alert("❌ Supabase error: " + error.message);
+            return;
+        }
+
+        const bucketNames = (data || []).map(b => b.name).join(", ");
+
+        alert("✅ Buckets found: " + bucketNames);
+
+    } catch (error) {
+        alert("❌ Exception: " + (error?.message || JSON.stringify(error)));
+    }
+}
+// debug
+
+// debug 2
+async function debugUploadToSupabase() {
+    try {
+        const testDataUrl =
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn6k1QAAAAASUVORK5CYII=";
+
+        const publicUrl = await uploadImageToSupabase(testDataUrl, "Articles");
+
+        if (publicUrl) {
+            alert("✅ Upload OK:\n" + publicUrl);
+        } else {
+            alert("❌ Upload failed (no URL returned)");
+        }
+
+    } catch (error) {
+        alert("❌ Upload exception:\n" + (error?.message || JSON.stringify(error)));
+    }
+}
+// debug 2
 
 function showProfileGate() {
     hideAllScreens();
