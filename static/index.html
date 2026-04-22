@@ -2870,7 +2870,7 @@ async function pickProfileImage() {
             preview.src = dataUrl;
         }
 
-        const publicUrl = await uploadImageToSupabase(dataUrl, "Avatars");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "avatars");
 
         if (!publicUrl) {
             alert("Avatar upload failed");
@@ -3063,19 +3063,13 @@ function dataURLToBlob(dataUrl) {
 
 async function uploadImageToSupabase(dataUrl, bucketName) {
     try {
-        
-        // debug
-        console.log("Uploading to bucket:", bucketName);
-        console.log("Uploading filePath:", filePath);
-        console.log("Blob type:", blob.type);
-        
         const blob = dataURLToBlob(dataUrl);
 
         const extension = blob.type.includes("png") ? "png" : "jpg";
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
         const filePath = `uploads/${fileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabaseClient
+        const { error: uploadError } = await supabaseClient
             .storage
             .from(bucketName)
             .upload(filePath, blob, {
@@ -3084,8 +3078,8 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
             });
 
         if (uploadError) {
-            console.error("Supabase upload error full:", uploadError);
-            alert("Upload error: " + JSON.stringify(uploadError));
+            console.error("Supabase upload error:", uploadError);
+            alert("Upload error: " + uploadError.message);
             return null;
         }
 
@@ -3095,8 +3089,9 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
             .getPublicUrl(filePath);
 
         return publicData?.publicUrl || null;
+
     } catch (error) {
-        console.error("Upload image error:", error);
+        console.error("Upload image exception:", error);
         alert("Upload exception: " + (error?.message || JSON.stringify(error)));
         return null;
     }
