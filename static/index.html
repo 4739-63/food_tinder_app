@@ -2760,24 +2760,24 @@ async function pickPostImage() {
 
         const image = await CameraPlugin.getPhoto({
             quality: 90,
-            resultType: "uri",
+            resultType: "dataUrl",
             source: "PHOTOS"
         });
 
-        const localImagePath = image.webPath || image.path || "";
+        const dataUrl = image.dataUrl || "";
 
-        if (!localImagePath) {
-            alert("No image path returned");
+        if (!dataUrl) {
+            alert("No image data returned");
             return;
         }
 
         const preview = document.getElementById("postPreview");
         if (preview) {
-            preview.src = localImagePath;
+            preview.src = dataUrl;
             preview.style.display = "block";
         }
 
-        const publicUrl = await uploadImageToSupabase(localImagePath, "articles");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "articles");
 
         if (!publicUrl) {
             alert("Image upload failed");
@@ -2850,23 +2850,23 @@ async function pickProfileImage() {
 
         const image = await CameraPlugin.getPhoto({
             quality: 90,
-            resultType: "uri",
+            resultType: "dataUrl",
             source: "PHOTOS"
         });
 
-        const localImagePath = image.webPath || image.path || "";
+        const dataUrl = image.dataUrl || "";
 
-        if (!localImagePath) {
-            alert("No image path returned");
+        if (!dataUrl) {
+            alert("No image data returned");
             return;
         }
 
         const preview = document.getElementById("profilePreview");
         if (preview) {
-            preview.src = localImagePath;
+            preview.src = dataUrl;
         }
 
-        const publicUrl = await uploadImageToSupabase(localImagePath, "avatars");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "avatars");
 
         if (!publicUrl) {
             alert("Avatar upload failed");
@@ -3037,10 +3037,23 @@ function logoutUser() {
     showProfileGate();
 }
 
-async function uploadImageToSupabase(imageUri, bucketName) {
+function dataURLToBlob(dataUrl) {
+    const arr = dataUrl.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+
+    return new Blob([u8arr], { type: mime });
+}
+
+async function uploadImageToSupabase(dataUrl, bucketName) {
     try {
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
+        const blob = dataURLToBlob(dataUrl);
 
         const extension = blob.type.split("/")[1] || "jpg";
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
@@ -3056,6 +3069,7 @@ async function uploadImageToSupabase(imageUri, bucketName) {
 
         if (uploadError) {
             console.error("Supabase upload error:", uploadError);
+            alert("Upload error: " + uploadError.message);
             return null;
         }
 
@@ -3067,6 +3081,7 @@ async function uploadImageToSupabase(imageUri, bucketName) {
         return data?.publicUrl || null;
     } catch (error) {
         console.error("Upload image error:", error);
+        alert("Upload exception: " + (error?.message || JSON.stringify(error)));
         return null;
     }
 }
