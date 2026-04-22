@@ -2777,7 +2777,7 @@ async function pickPostImage() {
             preview.style.display = "block";
         }
 
-        const publicUrl = await uploadImageToSupabase(dataUrl, "articles");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "Articles");
 
         if (!publicUrl) {
             alert("Image upload failed");
@@ -2866,7 +2866,7 @@ async function pickProfileImage() {
             preview.src = dataUrl;
         }
 
-        const publicUrl = await uploadImageToSupabase(dataUrl, "avatars");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "Avatars");
 
         if (!publicUrl) {
             alert("Avatar upload failed");
@@ -3039,7 +3039,13 @@ function logoutUser() {
 
 function dataURLToBlob(dataUrl) {
     const arr = dataUrl.split(",");
-    const mime = arr[0].match(/:(.*?);/)[1];
+    const mimeMatch = arr[0].match(/:(.*?);/);
+
+    if (!mimeMatch) {
+        throw new Error("Invalid data URL format");
+    }
+
+    const mime = mimeMatch[1];
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
@@ -3055,11 +3061,11 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
     try {
         const blob = dataURLToBlob(dataUrl);
 
-        const extension = blob.type.split("/")[1] || "jpg";
+        const extension = blob.type.includes("png") ? "png" : "jpg";
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
         const filePath = `uploads/${fileName}`;
 
-        const { error: uploadError } = await supabaseClient
+        const { data: uploadData, error: uploadError } = await supabaseClient
             .storage
             .from(bucketName)
             .upload(filePath, blob, {
@@ -3073,12 +3079,12 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
             return null;
         }
 
-        const { data } = supabaseClient
+        const { data: publicData } = supabaseClient
             .storage
             .from(bucketName)
             .getPublicUrl(filePath);
 
-        return data?.publicUrl || null;
+        return publicData?.publicUrl || null;
     } catch (error) {
         console.error("Upload image error:", error);
         alert("Upload exception: " + (error?.message || JSON.stringify(error)));
