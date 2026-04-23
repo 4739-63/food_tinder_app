@@ -2777,7 +2777,7 @@ async function pickPostImage() {
             preview.style.display = "block";
         }
 
-        const publicUrl = await uploadImageToSupabase(dataUrl, "Articles");
+        const publicUrl = await uploadImageToSupabase(dataUrl, "foodposts");
 
         if (!publicUrl) {
             alert("Image upload failed");
