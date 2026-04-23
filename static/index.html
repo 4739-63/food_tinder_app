@@ -1647,10 +1647,6 @@ async function swipe(like) {
 
 // 🚀 démarrage
 (async () => {
-//debug
-await debugSupabaseConnection();
-await debugUploadToSupabase();
-
     document.getElementById("nom").innerText = "Chargement...";
 
     // 🔥 0. détecter premium + afficher UI
@@ -3068,6 +3064,9 @@ async function uploadImageToSupabase(dataUrl, bucketName) {
         const extension = blob.type.includes("png") ? "png" : "jpg";
         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
         const filePath = `uploads/${fileName}`;
+
+        // 👇 AJOUTE LE DEBUG ICI
+        alert("Uploading to bucket: " + bucketName);
 
         const { error: uploadError } = await supabaseClient
             .storage
