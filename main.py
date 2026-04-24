@@ -127,6 +127,7 @@ class Post(Base):
 
     image = Column(String)
     caption = Column(String)
+    is_hidden = Column(Boolean, default=False)
 
     created_at = Column(Integer)
 
@@ -145,12 +146,40 @@ class Comment(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
     username = Column(String)
     text = Column(String)       
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    reason = Column(String)
+    created_at = Column(Integer)
 # ========================
 # APP
 # ========================
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
+
+from sqlalchemy import text
+
+with engine.connect() as conn:
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
+    """))
+
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS reports (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            post_id INTEGER NOT NULL REFERENCES posts(id),
+            reason VARCHAR,
+            created_at INTEGER
+        );
+    """))
+
+    conn.commit()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -583,6 +612,7 @@ def get_feed(skip: int = 0, limit: int = 10):
 
         posts = (
             db.query(Post)
+            .filter(Post.is_hidden == False)
             .order_by(Post.created_at.desc())
             .offset(skip)
             .limit(limit)
@@ -616,6 +646,10 @@ def like_post(data: dict):
     db = SessionLocal()
     try:
         user_id = get_current_user(data["token"])
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
         post_id = data["post_id"]
 
         existing = db.query(Like).filter(
@@ -721,3 +755,49 @@ def save_profile(data: dict):
 
     finally:
         db.close()                
+
+@app.post("/report-post")
+def report_post(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        post_id = data["post_id"]
+        reason = data.get("reason", "Inappropriate content")
+
+        post = db.query(Post).filter(Post.id == post_id).first()
+
+        if not post:
+            return JSONResponse(content={"error": "Post not found"}, status_code=404)
+
+        existing = db.query(Report).filter(
+            Report.user_id == user_id,
+            Report.post_id == post_id
+        ).first()
+
+        if existing:
+            return {"message": "Already reported"}
+
+        report = Report(
+            user_id=user_id,
+            post_id=post_id,
+            reason=reason,
+            created_at=int(time.time())
+        )
+
+        db.add(report)
+
+        report_count = db.query(Report).filter(Report.post_id == post_id).count()
+
+        if report_count >= 3:
+            post.is_hidden = True
+
+        db.commit()
+
+        return {"message": "Post reported"}
+
+    finally:
+        db.close()        
