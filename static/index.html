@@ -970,6 +970,57 @@ html, body, #recipePanel {
     background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
 
+.post-menu-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 5;
+
+    width: 46px;
+    height: 46px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: rgba(0,0,0,0.45);
+    color: white;
+
+    font-size: 28px;
+    font-weight: 700;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.post-menu {
+    display: none;
+
+    position: absolute;
+    top: 66px;
+    right: 14px;
+    z-index: 6;
+
+    background: rgba(20,20,20,0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+
+    padding: 8px;
+    min-width: 150px;
+}
+
+.post-menu button {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: white;
+
+    padding: 14px 18px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: left;
+}
+
 </style>
 </head>
 
@@ -2249,7 +2300,13 @@ function renderFeed() {
         const isLongCaption = post.caption.length > 120;
 
         container.innerHTML += `
-            <div class="feed-post">
+            <div class="feed-post" style="position:relative;">
+                <button class="post-menu-btn" onclick="togglePostMenu(${post.id}, event)">⋯</button>
+
+                <div id="post-menu-${post.id}" class="post-menu">
+                    <button onclick="reportPost(${post.id})">Report</button>
+                </div>
+
                 <div class="feed-header">
                     <strong>${post.author}</strong>
                 </div>
@@ -2269,7 +2326,6 @@ function renderFeed() {
                     <div class="feed-actions">
                         <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
                         <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.commentsCount ?? post.comments.length}</button>
-                        <button class="feed-action-btn" onclick="reportPost(${post.id})">🚩 Report</button>
                     </div>
                 </div>
             </div>
@@ -3293,6 +3349,9 @@ async function loginProfileAccount() {
 }
 
 async function reportPost(postId) {
+const menu = document.getElementById(`post-menu-${postId}`);
+if (menu) menu.style.display = "none"; 
+    
     if (!token) {
         alert("You must login first");
         return;
@@ -3330,6 +3389,24 @@ async function reportPost(postId) {
         console.error("Report error:", error);
         alert("Unable to reach server");
     }
+}
+
+function togglePostMenu(postId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    document.querySelectorAll(".post-menu").forEach(menu => {
+        if (menu.id !== `post-menu-${postId}`) {
+            menu.style.display = "none";
+        }
+    });
+
+    const menu = document.getElementById(`post-menu-${postId}`);
+
+    if (!menu) return;
+
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
 }
 
 </script>
