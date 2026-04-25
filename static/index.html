@@ -1241,7 +1241,6 @@ async function hasAdvancedAccess() {
     }
 }
 
-// debug
 function setupAppleIAP() {
     console.log("setupAppleIAP called");
 
@@ -1309,6 +1308,24 @@ function setupAppleIAP() {
             console.log("Store initialized");
 
             await store.update();
+
+// debug
+            alert("Store update done");
+
+            const debugProduct = store.get(
+                APPLE_SUBSCRIPTION_ID,
+                Platform.APPLE_APPSTORE
+            );
+
+            alert("Product debug: " + JSON.stringify({
+                productIdExpected: APPLE_SUBSCRIPTION_ID,
+                exists: !!debugProduct,
+                id: debugProduct?.id,
+                title: debugProduct?.title,
+                state: debugProduct?.state,
+                offers: debugProduct?.offers?.length || 0
+            }));
+// debug
 
             const product = store.get(
                 APPLE_SUBSCRIPTION_ID,
