@@ -229,7 +229,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 14;
 
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
 
@@ -328,8 +328,8 @@ body {
     background: rgba(20, 20, 20, 0.7);
     backdrop-filter: blur(12px);
 
-    width: calc(100% - 32px);  /* 🔥 clé → marge sécurisée */
-    max-width: 600px;          /* 🔥 limite propre */
+    width: calc(100% - 8px);  /* 🔥 clé → marge sécurisée */
+    max-width: none;          /* 🔥 limite propre */
 
     margin: 0 auto 20px;
 
@@ -802,7 +802,7 @@ body {
     bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+    padding: calc(env(safe-area-inset-top, 0px) + 90px) 10px 20px;
     box-sizing: border-box;
     background: linear-gradient(135deg, #ff7e00, #ffb347);
 }
@@ -1019,6 +1019,17 @@ html, body, #recipePanel {
     font-size: 17px;
     font-weight: 700;
     text-align: left;
+}
+
+#paywallScreen {
+    padding: 0;
+}
+
+#paywallScreen .screen-box {
+    width: 100%;
+    min-height: 100vh;
+    border-radius: 0;
+    padding: 40px 20px;
 }
 
 </style>
@@ -3469,7 +3480,7 @@ function togglePostMenu(postId, event) {
 
 </div>
 
-<div id="paywallScreen" style="display:none; padding:20px;">
+<div id="paywallScreen" style="display:none;">
 
     <div class="screen-box">
         <h2>Advanced Plan</h2>
