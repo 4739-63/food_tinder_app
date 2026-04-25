@@ -126,6 +126,7 @@ class Post(Base):
     username = Column(String)
 
     image = Column(String)
+    media_type = Column(String, default="image")
     caption = Column(String)
     is_hidden = Column(Boolean, default=False)
 
@@ -166,6 +167,14 @@ from sqlalchemy import text
 
 with engine.connect() as conn:
     conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';
+    """))
+    conn.commit()
+
+from sqlalchemy import text
+
+with engine.connect() as conn:
+    conn.execute(text("""
         ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
     """))
 
@@ -179,6 +188,12 @@ with engine.connect() as conn:
         );
     """))
 
+    conn.commit()
+
+with engine.connect() as conn:
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';
+    """))
     conn.commit()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -595,6 +610,7 @@ def create_post(data: dict):
             user_id=user.id,
             username=user.name or user.email.split("@")[0],
             image=data["image"],
+            media_type=data.get("media_type", "image"),
             caption=data["caption"],
             created_at=int(time.time())
         )
@@ -632,10 +648,11 @@ def get_feed(skip: int = 0, limit: int = 10):
                 "id": p.id,
                 "author": p.username,
                 "image": p.image,
+                "media_type": p.media_type or "image",
                 "caption": p.caption,
                 "likes": likes,
                 "comments": comments
-            })
+           })
 
         return result
 
