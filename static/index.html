@@ -1247,15 +1247,12 @@ function setupAppleIAP() {
 
     if (!window.CdvPurchase || !window.CdvPurchase.store) {
         console.log("IAP plugin not available");
-        alert("IAP plugin not available");
         return;
     }
 
     const store = window.CdvPurchase.store;
     const ProductType = window.CdvPurchase.ProductType;
     const Platform = window.CdvPurchase.Platform;
-
-    console.log("Registering product:", APPLE_SUBSCRIPTION_ID);
 
     store.register([{
         id: APPLE_SUBSCRIPTION_ID,
@@ -1264,17 +1261,36 @@ function setupAppleIAP() {
     }]);
 
     store.when()
-        .approved(transaction => {
+        .approved(async transaction => {
             console.log("Purchase approved:", transaction);
-            localStorage.setItem("premium", "true");
-            transaction.finish();
-            alert("Premium activated 🎉");
+
+            const receiptData =
+                transaction?.receipt ||
+                transaction?.transactionId ||
+                transaction?.id ||
+                "apple-purchase-approved";
+
+            const activated = await activatePremiumBackend(receiptData);
+
+            if (activated) {
+                await transaction.finish();
+                alert("Premium activated ");
+            } else {
+                alert("Purchase approved, but premium activation failed.");
+            }
         });
 
     store.when()
-        .verified(receipt => {
+        .verified(async receipt => {
             console.log("Receipt verified:", receipt);
-            localStorage.setItem("premium", "true");
+
+            const receiptData =
+                receipt?.raw ||
+                receipt?.sourceReceipt ||
+                receipt?.id ||
+                "apple-receipt-verified";
+
+            await activatePremiumBackend(receiptData);
         });
 
     store.when()
@@ -1292,7 +1308,6 @@ function setupAppleIAP() {
         .then(() => {
             storeReady = true;
             console.log("Store initialized");
-            alert("Store initialized");
         })
         .catch(err => {
             console.log("Store init failed:", err);
@@ -2257,6 +2272,11 @@ window.addEventListener("load", () => {
 });
 
 function restorePurchases() {
+    if (!token) {
+        alert("Please login or create an account from the Profile page first.");
+        return;
+    }
+
     if (!window.CdvPurchase || !window.CdvPurchase.store) {
         alert("Store not available");
         return;
@@ -2264,11 +2284,11 @@ function restorePurchases() {
 
     window.CdvPurchase.store.restorePurchases()
         .then(() => {
-            alert("Restore requested");
+            alert("Restore requested. If a valid subscription is found, Premium will reactivate.");
         })
         .catch(err => {
             console.log("Restore failed:", err);
-            alert("Restore failed ❌");
+            alert("Restore failed ");
         });
 }
 
@@ -3418,6 +3438,39 @@ function togglePostMenu(postId, event) {
     if (!menu) return;
 
     menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+async function activatePremiumBackend(receipt) {
+    if (!token) {
+        alert("Please login first.");
+        return false;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/verify-subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                receipt: receipt || "apple-purchase-approved"
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.status === "premium") {
+            localStorage.setItem("premium", "true");
+            await setupPremiumUI();
+            return true;
+        }
+
+        alert(data.error || "Unable to activate premium");
+        return false;
+    } catch (error) {
+        console.error("Premium backend activation error:", error);
+        alert("Unable to reach server");
+        return false;
+    }
 }
 
 </script>

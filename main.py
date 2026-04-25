@@ -557,24 +557,27 @@ def verify_subscription(data: dict):
         user_id = get_current_user(data["token"])
         user = db.query(User).filter(User.id == user_id).first()
 
-        # 🔥 ici tu recevras :
-        # receipt Apple OU purchaseToken Google
+        if not user:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
 
         receipt = data.get("receipt")
 
-        # ⚠️ pour l'instant fake validation
-        if receipt:
-            user.is_premium = True
-            user.plan_type = "premium"
+        if not receipt:
+            return JSONResponse(content={"error": "Missing receipt"}, status_code=400)
 
-            db.commit()
+        # Version temporaire pour test TestFlight/Sandbox.
+        # Prochaine amélioration : validation serveur réelle Apple.
+        user.is_premium = True
+        user.plan_type = "premium"
+        user.subscription_status = "active"
+        user.current_period_end = int(time.time()) + 60 * 60 * 24 * 31
 
-            return {"status": "premium"}
+        db.commit()
 
-        return {"status": "invalid"}
+        return {"status": "premium"}
 
     finally:
-        db.close()  
+        db.close()
 
 import time
 
