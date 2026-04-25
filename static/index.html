@@ -1305,9 +1305,19 @@ function setupAppleIAP() {
     });
 
     store.initialize([Platform.APPLE_APPSTORE])
-        .then(() => {
-            storeReady = true;
+        .then(async () => {
             console.log("Store initialized");
+
+            await store.update();
+
+            const product = store.get(
+                APPLE_SUBSCRIPTION_ID,
+                Platform.APPLE_APPSTORE
+            );
+
+            console.log("Loaded product:", product);
+
+            storeReady = true;
         })
         .catch(err => {
             console.log("Store init failed:", err);
@@ -2083,7 +2093,10 @@ function buyPremium() {
         return;
     }
 
-    const product = store.get(APPLE_SUBSCRIPTION_ID);
+    const product = store.get(
+        APPLE_SUBSCRIPTION_ID,
+        window.CdvPurchase.Platform.APPLE_APPSTORE
+    );
 
     if (!product) {
         alert("Subscription not available yet");
