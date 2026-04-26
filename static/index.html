@@ -1038,6 +1038,16 @@ html, body, #recipePanel {
     inset: 0;
     background: black;
     z-index: 20000;
+    overflow: hidden;
+    touch-action: none;
+}
+
+#videoFullscreenContent {
+    width: 100%;
+    height: 100%;
+    background: black;
+    transition: transform 0.18s ease, border-radius 0.18s ease;
+    transform-origin: center center;
 }
 
 #videoFullscreenOverlay video {
@@ -1049,20 +1059,76 @@ html, body, #recipePanel {
 
 .video-fullscreen-back {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 18px);
-    left: 18px;
-    z-index: 20001;
+    top: calc(env(safe-area-inset-top, 0px) + 80px);
+    left: 22px;
+    z-index: 20003;
 
     border: none;
     border-radius: 50%;
-    width: 54px;
-    height: 54px;
+    width: 74px;
+    height: 74px;
+
+    background: rgba(0,0,0,0.58);
+    color: white;
+
+    font-size: 42px;
+    font-weight: 900;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-side-actions {
+    position: absolute;
+    right: 18px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 150px);
+    z-index: 20003;
+
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    align-items: center;
+}
+
+.video-action-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
 
     background: rgba(0,0,0,0.55);
     color: white;
 
-    font-size: 30px;
-    font-weight: 800;
+    font-size: 34px;
+    font-weight: 900;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-action-label {
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: -14px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+
+.app-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.app-like-icon {
+    font-size: 24px;
+}
+
+.app-comment-icon {
+    font-size: 24px;
 }
 
 </style>
@@ -2434,15 +2500,22 @@ function renderFeed() {
                                 playsinline 
                                 loop 
                                 preload="metadata"
-                                onclick="openVideoFullscreen('${post.image}')">
+                                onclick="openVideoFullscreen('${post.image}', ${post.id})"
                             </video>`
                         : `<img class="feed-img" src="${post.image}" alt="post image">`
                 }
 
                 <div class="feed-body">
                     <div class="feed-actions">
-                        <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
-                        <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.commentsCount ?? post.comments.length}</button>
+                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
+    <span class="app-like-icon">👍</span>
+        <span>${post.likes}</span>
+    </button>
+
+    <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+        <span class="app-comment-icon">💬</span>
+        <span>${post.commentsCount ?? post.comments.length}</span>
+    </button>
                     </div>
                 </div>
             </div>
@@ -3665,14 +3738,21 @@ function setupVideoAutoplay() {
 
 let fullscreenTouchStartX = 0;
 let fullscreenTouchStartY = 0;
+let currentFullscreenPostId = null;
 
-function openVideoFullscreen(videoUrl) {
+function openVideoFullscreen(videoUrl, postId) {
     const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
     const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !video) return;
+    if (!overlay || !content || !video) return;
+
+    currentFullscreenPostId = postId;
 
     document.querySelectorAll(".feed-video").forEach(v => v.pause());
+
+    content.style.transform = "scale(1)";
+    content.style.borderRadius = "0px";
 
     video.src = videoUrl;
     video.currentTime = 0;
@@ -3681,31 +3761,78 @@ function openVideoFullscreen(videoUrl) {
 
     overlay.style.display = "block";
 
+    const likeBtn = document.getElementById("fullscreenLikeBtn");
+    const commentBtn = document.getElementById("fullscreenCommentBtn");
+    const menuBtn = document.getElementById("fullscreenMenuBtn");
+
+    if (likeBtn) {
+        likeBtn.onclick = async () => {
+            if (currentFullscreenPostId) {
+                await likePost(currentFullscreenPostId);
+            }
+        };
+    }
+
+    if (commentBtn) {
+        commentBtn.onclick = () => {
+            if (currentFullscreenPostId) {
+                closeVideoFullscreen();
+                showComments(currentFullscreenPostId);
+            }
+        };
+    }
+
+    if (menuBtn) {
+        menuBtn.onclick = () => {
+            if (currentFullscreenPostId) {
+                reportPost(currentFullscreenPostId);
+            }
+        };
+    }
+
     video.play().catch(() => {});
 }
 
 function closeVideoFullscreen() {
     const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
     const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !video) return;
+    if (!overlay || !content || !video) return;
 
     video.pause();
     video.src = "";
 
+    content.style.transform = "scale(1)";
+    content.style.borderRadius = "0px";
     overlay.style.display = "none";
+
+    currentFullscreenPostId = null;
 
     setupVideoAutoplay();
 }
 
 function setupVideoFullscreenSwipe() {
     const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
 
-    if (!overlay) return;
+    if (!overlay || !content) return;
 
     overlay.addEventListener("touchstart", (e) => {
         fullscreenTouchStartX = e.touches[0].clientX;
         fullscreenTouchStartY = e.touches[0].clientY;
+    });
+
+    overlay.addEventListener("touchmove", (e) => {
+        const currentX = e.touches[0].clientX;
+        const diffX = Math.max(0, currentX - fullscreenTouchStartX);
+
+        const progress = Math.min(diffX / 260, 1);
+        const scale = 1 - progress * 0.22;
+        const radius = progress * 34;
+
+        content.style.transform = `scale(${scale}) translateX(${diffX * 0.15}px)`;
+        content.style.borderRadius = `${radius}px`;
     });
 
     overlay.addEventListener("touchend", (e) => {
@@ -3715,8 +3842,11 @@ function setupVideoFullscreenSwipe() {
         const diffX = endX - fullscreenTouchStartX;
         const diffY = Math.abs(endY - fullscreenTouchStartY);
 
-        if (diffX > 80 && diffY < 80) {
+        if (diffX > 120 && diffY < 120) {
             closeVideoFullscreen();
+        } else {
+            content.style.transform = "scale(1)";
+            content.style.borderRadius = "0px";
         }
     });
 }
@@ -3846,8 +3976,22 @@ if (registerBtn) {
 </script>
 
 <div id="videoFullscreenOverlay">
-    <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">←</button>
-    <video id="fullscreenVideo" controls playsinline></video>
+    <div id="videoFullscreenContent">
+        <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">←</button>
+
+        <video id="fullscreenVideo" playsinline loop></video>
+
+        <div class="video-side-actions">
+            <button class="video-action-btn" id="fullscreenLikeBtn">👍</button>
+            <div class="video-action-label">Like</div>
+
+            <button class="video-action-btn" id="fullscreenCommentBtn">💬</button>
+            <div class="video-action-label">Comment</div>
+
+            <button class="video-action-btn" id="fullscreenMenuBtn">⋯</button>
+            <div class="video-action-label">More</div>
+        </div>
+    </div>
 </div>
 
 </body>
