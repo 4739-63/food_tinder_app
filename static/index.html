@@ -577,15 +577,15 @@ body {
 
 .feed-actions {
     display: flex;
-    gap: 24px;
+    justify-content: space-around;
     align-items: center;
+    gap: 20px;
 }
 
-
-.feed-action-btn {
-    min-height: 120px;
-    font-size: 28px;
-    gap: 14px;
+.feed-action-btn span {
+    font-size: 30px;
+    font-weight: 800;
+    color: white;
 }
 
 .feed-post {
@@ -1143,6 +1143,38 @@ html, body, #recipePanel {
 
 .video-action-label {
     font-size: 20px;
+}
+
+
+.feed-action-btn,
+.video-action-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.feed-action-btn.app-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 0;
+}
+
+.action-icon-img {
+    display: block;
+    width: 95px;
+    height: 95px;
+    object-fit: contain;
+    background: transparent !important;
+}
+
+.video-action-btn img {
+    display: block;
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    background: transparent !important;
 }
 
 </style>
