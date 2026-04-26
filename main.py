@@ -624,10 +624,14 @@ def create_post(data: dict):
         db.close()
 
 @app.get("/feed")
-def get_feed(skip: int = 0, limit: int = 10):
+def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
     db = SessionLocal()
     try:
         limit = min(limit, 20)
+
+        current_user_id = None
+        if token:
+            current_user_id = get_current_user(token)
 
         posts = (
             db.query(Post)
@@ -644,15 +648,26 @@ def get_feed(skip: int = 0, limit: int = 10):
             likes = db.query(Like).filter(Like.post_id == p.id).count()
             comments = db.query(Comment).filter(Comment.post_id == p.id).count()
 
+            user = db.query(User).filter(User.id == p.user_id).first()
+
+            liked = False
+            if current_user_id:
+                liked = db.query(Like).filter(
+                    Like.user_id == current_user_id,
+                    Like.post_id == p.id
+                ).first() is not None
+
             result.append({
                 "id": p.id,
                 "author": p.username,
+                "avatar": user.avatar if user and user.avatar else "",
                 "image": p.image,
                 "media_type": p.media_type or "image",
                 "caption": p.caption,
                 "likes": likes,
+                "liked": liked,
                 "comments": comments
-           })
+            })
 
         return result
 
