@@ -1032,6 +1032,39 @@ html, body, #recipePanel {
     padding: 40px 20px;
 }
 
+#videoFullscreenOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: black;
+    z-index: 20000;
+}
+
+#videoFullscreenOverlay video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: black;
+}
+
+.video-fullscreen-back {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 18px);
+    left: 18px;
+    z-index: 20001;
+
+    border: none;
+    border-radius: 50%;
+    width: 54px;
+    height: 54px;
+
+    background: rgba(0,0,0,0.55);
+    color: white;
+
+    font-size: 30px;
+    font-weight: 800;
+}
+
 </style>
 </head>
 
@@ -2303,6 +2336,8 @@ document.addEventListener("deviceready", () => {
 
 // 🔥 uniquement pour le splash (visuel)
 window.addEventListener("load", () => {
+    setupVideoFullscreenSwipe();
+    
     setTimeout(() => {
         document.getElementById("splash").style.display = "none";
         document.body.classList.remove("splash-active");
@@ -2398,7 +2433,8 @@ function renderFeed() {
                                 muted 
                                 playsinline 
                                 loop 
-                                preload="metadata">
+                                preload="metadata"
+                                onclick="openVideoFullscreen('${post.image}')">
                             </video>`
                         : `<img class="feed-img" src="${post.image}" alt="post image">`
                 }
@@ -3627,6 +3663,64 @@ function setupVideoAutoplay() {
     });
 }
 
+let fullscreenTouchStartX = 0;
+let fullscreenTouchStartY = 0;
+
+function openVideoFullscreen(videoUrl) {
+    const overlay = document.getElementById("videoFullscreenOverlay");
+    const video = document.getElementById("fullscreenVideo");
+
+    if (!overlay || !video) return;
+
+    document.querySelectorAll(".feed-video").forEach(v => v.pause());
+
+    video.src = videoUrl;
+    video.currentTime = 0;
+    video.loop = true;
+    video.muted = false;
+
+    overlay.style.display = "block";
+
+    video.play().catch(() => {});
+}
+
+function closeVideoFullscreen() {
+    const overlay = document.getElementById("videoFullscreenOverlay");
+    const video = document.getElementById("fullscreenVideo");
+
+    if (!overlay || !video) return;
+
+    video.pause();
+    video.src = "";
+
+    overlay.style.display = "none";
+
+    setupVideoAutoplay();
+}
+
+function setupVideoFullscreenSwipe() {
+    const overlay = document.getElementById("videoFullscreenOverlay");
+
+    if (!overlay) return;
+
+    overlay.addEventListener("touchstart", (e) => {
+        fullscreenTouchStartX = e.touches[0].clientX;
+        fullscreenTouchStartY = e.touches[0].clientY;
+    });
+
+    overlay.addEventListener("touchend", (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+
+        const diffX = endX - fullscreenTouchStartX;
+        const diffY = Math.abs(endY - fullscreenTouchStartY);
+
+        if (diffX > 80 && diffY < 80) {
+            closeVideoFullscreen();
+        }
+    });
+}
+
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
@@ -3750,6 +3844,11 @@ if (registerBtn) {
     });
 }
 </script>
+
+<div id="videoFullscreenOverlay">
+    <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">←</button>
+    <video id="fullscreenVideo" controls playsinline></video>
+</div>
 
 </body>
 </html>
