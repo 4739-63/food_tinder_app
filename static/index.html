@@ -1131,6 +1131,32 @@ html, body, #recipePanel {
     font-size: 24px;
 }
 
+.action-icon-img {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+}
+
+.feed-action-btn {
+    min-height: 82px;
+    font-size: 24px;
+}
+
+.video-action-btn {
+    width: 88px;
+    height: 88px;
+}
+
+.video-action-btn img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.video-action-label {
+    font-size: 18px;
+}
+
 </style>
 </head>
 
@@ -2508,17 +2534,16 @@ function renderFeed() {
                 <div class="feed-body">
                     <div class="feed-actions">
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-    <span class="app-like-icon">👍</span>
-        <span>${post.likes}</span>
-    </button>
+                            <img class="action-icon-img" src="like.png" alt="like">
+                            <span>${post.likes}</span>
+                        </button>
 
-    <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-        <span class="app-comment-icon">💬</span>
-        <span>${post.commentsCount ?? post.comments.length}</span>
-    </button>
+                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
+                            <span>${post.commentsCount ?? post.comments.length}</span>
+                        </button>
                     </div>
                 </div>
-            </div>
         `;
     });
 
@@ -2712,8 +2737,8 @@ async function likePost(postId) {
         return;
     }
 
-    const container = document.getElementById("feedScreen");
-    const currentScroll = container.scrollTop;
+    const feedContainer = document.getElementById("feedScreen");
+    const currentScroll = feedContainer ? feedContainer.scrollTop : 0;
 
     try {
         const res = await fetch(`${API_BASE}/like`, {
@@ -2727,13 +2752,22 @@ async function likePost(postId) {
 
         const data = await res.json();
 
-        if (data.message) {
-            await loadFeedFromBackend();
-            showFeed();
+        if (res.status === 401 || data.error === "Unauthorized") {
+            alert("Your session expired. Please login again.");
+            logoutUser();
+            return;
+        }
 
-            requestAnimationFrame(() => {
-                container.scrollTop = currentScroll;
-            });
+        if (data.message) {
+            await loadFeedFromBackend(true);
+            renderFeed();
+            setupVideoAutoplay();
+
+            if (feedContainer) {
+                requestAnimationFrame(() => {
+                    feedContainer.scrollTop = currentScroll;
+                });
+            }
         } else {
             alert(data.error || "Unable to like post");
         }
@@ -3776,8 +3810,12 @@ function openVideoFullscreen(videoUrl, postId) {
     if (commentBtn) {
         commentBtn.onclick = () => {
             if (currentFullscreenPostId) {
+                const postIdToOpen = currentFullscreenPostId;
                 closeVideoFullscreen();
-                showComments(currentFullscreenPostId);
+
+                setTimeout(() => {
+                    showComments(postIdToOpen);
+                }, 100);
             }
         };
     }
@@ -3982,10 +4020,14 @@ if (registerBtn) {
         <video id="fullscreenVideo" playsinline loop></video>
 
         <div class="video-side-actions">
-            <button class="video-action-btn" id="fullscreenLikeBtn">👍</button>
+            <button class="video-action-btn" id="fullscreenLikeBtn">
+                <img src="like.png" alt="like">
+            </button>
             <div class="video-action-label">Like</div>
 
-            <button class="video-action-btn" id="fullscreenCommentBtn">💬</button>
+            <button class="video-action-btn" id="fullscreenCommentBtn">
+                <img src="comments.png" alt="comments">
+            </button>
             <div class="video-action-label">Comment</div>
 
             <button class="video-action-btn" id="fullscreenMenuBtn">⋯</button>
