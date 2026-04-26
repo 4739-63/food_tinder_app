@@ -583,14 +583,9 @@ body {
 
 
 .feed-action-btn {
-    flex: 1;
-    padding: 16px 0;
-    border: none;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.08);
-    color: white;
-    font-size: 19px;
-    font-weight: 600;
+    min-height: 120px;
+    font-size: 28px;
+    gap: 14px;
 }
 
 .feed-post {
@@ -1096,20 +1091,10 @@ html, body, #recipePanel {
 }
 
 .video-action-btn {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    border: none;
-
-    background: rgba(0,0,0,0.55);
-    color: white;
-
-    font-size: 34px;
-    font-weight: 900;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: none;
+    width: auto;
+    height: auto;
+    padding: 0;
 }
 
 .video-action-label {
@@ -1136,24 +1121,29 @@ html, body, #recipePanel {
 }
 
 .action-icon-img {
-    width: 80px;
-    height: 80px;
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
 }
 
 .feed-action-btn {
-    min-height: 100px;
-    font-size: 28px;
-    gap: 12px;
+    min-height: 160px;
+    font-size: 32px;
+    gap: 18px;
 }
 
 .video-action-btn {
-    width: 110px;
-    height: 110px;
+    background: none !important;
+    border: none;
+    width: auto;
+    height: auto;
+    padding: 0;
 }
 
 .video-action-btn img {
-    width: 80px;
-    height: 80px;
+    width: 170px;
+    height: 170px;
+    object-fit: contain;
 }
 
 .video-action-label {
@@ -2537,7 +2527,10 @@ function renderFeed() {
                 <div class="feed-body">
                     <div class="feed-actions">
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-                            <img class="action-icon-img" src="like.png" alt="like">
+                            <img 
+                                class="action-icon-img ${post.liked ? 'liked' : ''}" 
+                                src="${post.liked ? 'like_t.png' : 'like.png'}"
+                            >
                             <span>${post.likes}</span>
                         </button>
 
@@ -2763,7 +2756,17 @@ async function likePost(postId) {
         }
 
         if (data.message) {
-            await loadFeedFromBackend(true);
+            const post = demoPosts.find(p => p.id === postId);
+
+            if (post) {
+                post.liked = !post.liked;
+                post.likes += post.liked ? 1 : -1;
+
+                if (post.likes < 0) {
+                    post.likes = 0;
+                }
+            }
+
             renderFeed();
             setupVideoAutoplay();
 
@@ -2999,7 +3002,11 @@ async function loadFeedFromBackend(reset = false) {
     isLoadingFeed = true;
 
     try {
-        const res = await fetch(`${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}`);
+        const feedUrl = token
+            ? `${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}&token=${encodeURIComponent(token)}`
+            : `${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}`;
+
+        const res = await fetch(feedUrl);
         const data = await res.json();
 
         if (Array.isArray(data)) {
@@ -3010,6 +3017,7 @@ async function loadFeedFromBackend(reset = false) {
                 media_type: post.media_type || "image",
                 caption: post.caption,
                 likes: post.likes || 0,
+                liked: post.liked || false,
                 comments: Array(post.comments || 0).fill({ author: "", text: "" }),
                 commentsCount: post.comments || 0
             }));
@@ -3803,13 +3811,26 @@ function openVideoFullscreen(videoUrl, postId) {
     const commentBtn = document.getElementById("fullscreenCommentBtn");
     const menuBtn = document.getElementById("fullscreenMenuBtn");
 
+    const currentPost = demoPosts.find(p => p.id === postId);
+
     if (likeBtn) {
+        const likeImg = likeBtn.querySelector("img");
+
+        if (likeImg && currentPost) {
+            likeImg.src = currentPost.liked ? "like_t.png" : "like.png";
+        }
+
         likeBtn.onclick = async () => {
             if (!currentFullscreenPostId) return;
 
-            console.log("Like fullscreen:", currentFullscreenPostId);
-
             await likePost(currentFullscreenPostId);
+
+            const updatedPost = demoPosts.find(p => p.id === currentFullscreenPostId);
+            const img = likeBtn.querySelector("img");
+
+            if (img && updatedPost) {
+                img.src = updatedPost.liked ? "like_t.png" : "like.png";
+            }
         };
     }
 
