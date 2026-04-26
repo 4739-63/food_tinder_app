@@ -2339,7 +2339,7 @@ async function showFeed() {
 
     await loadFeedFromBackend(true);
     renderFeed();
-
+    setupVideoAutoplay();
     container.onscroll = async () => {
         const nearBottom =
             container.scrollTop + container.clientHeight >= container.scrollHeight - 300;
@@ -2347,6 +2347,7 @@ async function showFeed() {
         if (nearBottom && !isLoadingFeed && hasMoreFeed) {
             await loadFeedFromBackend(false);
             renderFeed();
+            setupVideoAutoplay();
         }
     };
 }
@@ -2391,7 +2392,14 @@ function renderFeed() {
 
                 ${
                     post.media_type === "video"
-                        ? `<video class="feed-img" src="${post.image}" controls playsinline></video>`
+                        ? `<video 
+                                class="feed-img feed-video" 
+                                src="${post.image}" 
+                                muted 
+                                playsinline 
+                                loop 
+                                preload="metadata">
+                            </video>`
                         : `<img class="feed-img" src="${post.image}" alt="post image">`
                 }
 
@@ -3593,6 +3601,30 @@ function pickPostVideo() {
     };
 
     input.click();
+}
+
+function setupVideoAutoplay() {
+    const videos = document.querySelectorAll(".feed-video");
+
+    if (!videos.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        });
+    }, {
+        threshold: [0, 0.6, 1]
+    });
+
+    videos.forEach(video => {
+        observer.observe(video);
+    });
 }
 
 </script>
