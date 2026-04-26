@@ -564,7 +564,7 @@ body {
 }
 
 .feed-body {
-    padding: 16px;
+    padding: 18px 18px 26px 18px;
 }
 
 .feed-caption {
@@ -575,7 +575,9 @@ body {
 
 .feed-actions {
     display: flex;
-    gap: 12px;
+    gap: 24px;
+    margin-top: 14px;
+    align-items: center;
 }
 
 .feed-action-btn {
@@ -1132,29 +1134,28 @@ html, body, #recipePanel {
 }
 
 .action-icon-img {
-    width: 46px;
-    height: 46px;
-    object-fit: contain;
+    width: 80px;
+    height: 80px;
 }
 
 .feed-action-btn {
-    min-height: 82px;
-    font-size: 24px;
+    min-height: 100px;
+    font-size: 28px;
+    gap: 12px;
 }
 
 .video-action-btn {
-    width: 88px;
-    height: 88px;
+    width: 110px;
+    height: 110px;
 }
 
 .video-action-btn img {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
+    width: 80px;
+    height: 80px;
 }
 
 .video-action-label {
-    font-size: 18px;
+    font-size: 20px;
 }
 
 </style>
@@ -2533,15 +2534,17 @@ function renderFeed() {
 
                 <div class="feed-body">
                     <div class="feed-actions">
+
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-                            <img class="action-icon-img" src="like.png" alt="like">
+                            <img class="action-icon-img" src="like.png">
                             <span>${post.likes}</span>
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="comments.png" alt="comments">
+                            <img class="action-icon-img" src="comments.png">
                             <span>${post.commentsCount ?? post.comments.length}</span>
                         </button>
+
                     </div>
                 </div>
         `;
@@ -3801,9 +3804,11 @@ function openVideoFullscreen(videoUrl, postId) {
 
     if (likeBtn) {
         likeBtn.onclick = async () => {
-            if (currentFullscreenPostId) {
-                await likePost(currentFullscreenPostId);
-            }
+            if (!currentFullscreenPostId) return;
+
+            console.log("Like fullscreen:", currentFullscreenPostId);
+
+            await likePost(currentFullscreenPostId);
         };
     }
 
