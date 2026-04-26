@@ -564,7 +564,9 @@ body {
 }
 
 .feed-body {
-    padding: 18px 18px 26px 18px;
+    display: block;
+    padding: 18px 18px 28px;
+    background: rgba(20, 20, 20, 0.7);
 }
 
 .feed-caption {
@@ -576,9 +578,9 @@ body {
 .feed-actions {
     display: flex;
     gap: 24px;
-    margin-top: 14px;
     align-items: center;
 }
+
 
 .feed-action-btn {
     flex: 1;
@@ -2527,26 +2529,25 @@ function renderFeed() {
                                 playsinline 
                                 loop 
                                 preload="metadata"
-                                onclick="openVideoFullscreen('${post.image}', ${post.id})"
+                                onclick="openVideoFullscreen('${post.image}', ${post.id})">
                             </video>`
                         : `<img class="feed-img" src="${post.image}" alt="post image">`
                 }
 
                 <div class="feed-body">
                     <div class="feed-actions">
-
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-                            <img class="action-icon-img" src="like.png">
+                            <img class="action-icon-img" src="like.png" alt="like">
                             <span>${post.likes}</span>
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="comments.png">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
                             <span>${post.commentsCount ?? post.comments.length}</span>
                         </button>
-
                     </div>
                 </div>
+            </div>
         `;
     });
 
