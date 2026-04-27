@@ -1212,6 +1212,73 @@ html, body, #recipePanel {
     color: white;
 }
 
+.video-search-btn {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 80px);
+    right: 22px;
+    z-index: 20004;
+
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.video-search-btn img {
+    width: 82px;
+    height: 82px;
+    object-fit: contain;
+}
+
+#searchScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top, 0px) + 90px) 16px 30px;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
+.search-input {
+    width: 100%;
+    padding: 24px;
+    font-size: 24px;
+    border-radius: 18px;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+    background: rgba(255,255,255,0.16);
+    color: white;
+}
+
+.search-input::placeholder {
+    color: rgba(255,255,255,0.75);
+}
+
+.search-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.search-tag-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 14px 20px;
+    font-size: 19px;
+    font-weight: 700;
+    background: rgba(20,20,20,0.45);
+    color: white;
+}
+
+.search-results {
+    margin-top: 24px;
+}
+
 </style>
 </head>
 
@@ -2434,6 +2501,7 @@ function hideAllScreens() {
     document.getElementById("premiumScreen").style.display = "none";
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
+    document.getElementById("searchScreen").style.display = "none";
 }
 
 async function showSubscription() {
@@ -4081,6 +4149,144 @@ function setupVideoFullscreenSwipe() {
     });
 }
 
+function openSearchFromVideo() {
+    closeVideoFullscreen();
+    showSearchScreen();
+}
+
+function showSearchScreen(initialQuery = "") {
+    hideAllScreens();
+
+    const container = document.getElementById("searchScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Search</h2>
+            <input 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="Search #pasta, #burger, #healthy..."
+                value="${initialQuery}"
+                oninput="renderSearchResults()"
+            >
+
+            <div class="search-tag-list">
+                <button class="search-tag-btn" onclick="setSearchQuery('#pasta')">#pasta</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#burger')">#burger</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#healthy')">#healthy</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#dessert')">#dessert</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#breakfast')">#breakfast</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#vegan')">#vegan</button>
+            </div>
+
+            <button class="big-back-btn" onclick="showFeed()">Back</button>
+        </div>
+
+        <div id="searchResults" class="search-results"></div>
+    `;
+
+    renderSearchResults();
+}
+
+function setSearchQuery(query) {
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+
+    input.value = query;
+    renderSearchResults();
+}
+
+function renderSearchResults() {
+    const input = document.getElementById("searchInput");
+    const results = document.getElementById("searchResults");
+
+    if (!input || !results) return;
+
+    const query = input.value.trim().toLowerCase();
+
+    if (!query) {
+        results.innerHTML = `
+            <div class="screen-box">
+                <p>Search for food ideas, creators, hashtags or videos.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const cleanQuery = query.replace("#", "");
+
+    const filteredPosts = demoPosts.filter(post => {
+        const caption = (post.caption || "").toLowerCase();
+        const author = (post.author || "").toLowerCase();
+
+        return (
+            caption.includes(cleanQuery) ||
+            author.includes(cleanQuery)
+        );
+    });
+
+    if (filteredPosts.length === 0) {
+        results.innerHTML = `
+            <div class="screen-box">
+                <p>No results found.</p>
+            </div>
+        `;
+        return;
+    }
+
+    results.innerHTML = "";
+
+    filteredPosts.forEach(post => {
+        results.innerHTML += `
+            <div class="feed-post" style="position:relative;">
+                <div class="feed-header">
+                    <img class="feed-avatar" src="${post.avatar || 'https://via.placeholder.com/100x100.png?text=User'}" alt="avatar">
+
+                    <div class="feed-user-text">
+                        <strong class="feed-author-name">${post.author}</strong>
+                        <div class="feed-caption-top">${post.caption}</div>
+                    </div>
+                </div>
+
+                ${
+                    post.media_type === "video"
+                        ? `<video 
+                                class="feed-img feed-video" 
+                                src="${post.image}" 
+                                muted 
+                                playsinline 
+                                loop 
+                                preload="metadata"
+                                onclick="openVideoFullscreen('${post.image}', ${post.id})">
+                            </video>`
+                        : `<img class="feed-img" src="${post.image}" alt="post image">`
+                }
+
+                <div class="feed-body">
+                    <div class="feed-actions">
+                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
+                            <img 
+                                class="action-icon-img" 
+                                src="${post.liked ? 'like_t.png' : 'like.png'}"
+                                alt="like"
+                            >
+                            <span>${post.likes}</span>
+                        </button>
+
+                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
+                            <span>${post.commentsCount ?? post.comments.length}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    setupVideoAutoplay();
+}
+
 </script>
 
 <div id="premiumScreen" style="display:none; padding:25px;">
@@ -4209,6 +4415,10 @@ if (registerBtn) {
     <div id="videoFullscreenContent">
         <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">←</button>
 
+        <button class="video-search-btn" onclick="openSearchFromVideo()">
+            <img src="lope.png" alt="search">
+        </button>
+
         <video id="fullscreenVideo" playsinline loop></video>
 
         <div class="video-side-actions">
@@ -4227,6 +4437,8 @@ if (registerBtn) {
         </div>
     </div>
 </div>
+
+<div id="searchScreen" style="display:none;"></div>
 
 </body>
 </html>
