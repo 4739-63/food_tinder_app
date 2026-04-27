@@ -564,9 +564,8 @@ body {
 }
 
 .feed-body {
-    display: block;
-    padding: 18px 18px 28px;
-    background: rgba(20, 20, 20, 0.7);
+    background: transparent !important;
+    padding: 10px 18px 24px;
 }
 
 .feed-caption {
@@ -1081,7 +1080,7 @@ html, body, #recipePanel {
 .video-side-actions {
     position: absolute;
     right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 150px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 230px);
     z-index: 20003;
 
     display: flex;
@@ -1175,6 +1174,42 @@ html, body, #recipePanel {
     height: 120px;
     object-fit: contain;
     background: transparent !important;
+}
+
+.feed-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 22px 18px 16px;
+}
+
+.feed-avatar {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.25);
+}
+
+.feed-user-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.feed-author-name {
+    display: block;
+    font-size: 30px;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.feed-caption-top {
+    padding: 0;
+    font-size: 24px;
+    line-height: 1.45;
+    color: white;
 }
 
 </style>
@@ -2525,16 +2560,20 @@ function renderFeed() {
                 </div>
 
                 <div class="feed-header">
-                    <strong>${post.author}</strong>
-                </div>
+                    <img class="feed-avatar" src="${post.avatar}" alt="avatar">
 
-                <div class="feed-caption-top">
-                    <span id="caption-${post.id}">${shortCaption}</span>
-                    ${
-                        isLongCaption
-                            ? `<button class="see-more-btn" onclick="toggleCaption(${post.id})">See more</button>`
-                            : ""
-                    }
+                    <div class="feed-user-text">
+                        <strong class="feed-author-name">${post.author}</strong>
+
+                        <div class="feed-caption-top">
+                            <span id="caption-${post.id}">${shortCaption}</span>
+                            ${
+                                isLongCaption
+                                    ? `<button class="see-more-btn" onclick="toggleCaption(${post.id})">See more</button>`
+                                    : ""
+                            }
+                        </div>
+                    </div>
                 </div>
 
                 ${
@@ -3040,6 +3079,7 @@ async function loadFeedFromBackend(reset = false) {
             const newPosts = data.map(post => ({
                 id: post.id,
                 author: post.author,
+                avatar: post.avatar || "https://via.placeholder.com/100x100.png?text=User",
                 image: post.image,
                 media_type: post.media_type || "image",
                 caption: post.caption,
@@ -3813,47 +3853,69 @@ let fullscreenTouchStartX = 0;
 let fullscreenTouchStartY = 0;
 let currentFullscreenPostId = null;
 
+let fullscreenVideos = [];
+let currentFullscreenVideoIndex = 0;
+
+let fullscreenTouchMoveY = 0;
+
 function openVideoFullscreen(videoUrl, postId) {
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
-    const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !content || !video) return;
+    if (!overlay || !content) return;
 
-    currentFullscreenPostId = postId;
+    fullscreenVideos = demoPosts.filter(p => p.media_type === "video");
+    currentFullscreenVideoIndex = fullscreenVideos.findIndex(p => p.id === postId);
 
-    document.querySelectorAll(".feed-video").forEach(v => v.pause());
-
-    content.style.transform = "scale(1)";
-    content.style.borderRadius = "0px";
-
-    video.src = videoUrl;
-    video.currentTime = 0;
-    video.loop = true;
-    video.muted = false;
+    if (currentFullscreenVideoIndex < 0) {
+        currentFullscreenVideoIndex = 0;
+    }
 
     overlay.style.display = "block";
+    content.style.transform = "translateY(0px) scale(1)";
+    content.style.borderRadius = "0px";
 
+    loadFullscreenVideo(currentFullscreenVideoIndex);
+}
+
+function loadFullscreenVideo(index) {
+    const video = document.getElementById("fullscreenVideo");
     const likeBtn = document.getElementById("fullscreenLikeBtn");
     const commentBtn = document.getElementById("fullscreenCommentBtn");
     const menuBtn = document.getElementById("fullscreenMenuBtn");
 
-    const currentPost = demoPosts.find(p => p.id === postId);
+    if (!video || fullscreenVideos.length === 0) return;
+
+    const post = fullscreenVideos[index];
+    if (!post) return;
+
+    currentFullscreenPostId = post.id;
+
+    document.querySelectorAll(".feed-video").forEach(v => v.pause());
+
+    video.pause();
+    video.src = post.image;
+    video.currentTime = 0;
+    video.loop = true;
+    video.muted = false;
 
     if (likeBtn) {
         const likeImg = likeBtn.querySelector("img");
-
-        if (likeImg && currentPost) {
-            likeImg.src = currentPost.liked ? "like_t.png" : "like.png";
+        if (likeImg) {
+            likeImg.src = post.liked ? "like_t.png" : "like.png";
         }
 
         likeBtn.onclick = async () => {
-            if (!currentFullscreenPostId) return;
+            await likePost(post.id);
 
-            await likePost(currentFullscreenPostId);
-
-            const updatedPost = demoPosts.find(p => p.id === currentFullscreenPostId);
+            const updatedPost = demoPosts.find(p => p.id === post.id);
+            const updatedVideoPost = fullscreenVideos.find(p => p.id === post.id);
             const img = likeBtn.querySelector("img");
+
+            if (updatedPost && updatedVideoPost) {
+                updatedVideoPost.liked = updatedPost.liked;
+                updatedVideoPost.likes = updatedPost.likes;
+            }
 
             if (img && updatedPost) {
                 img.src = updatedPost.liked ? "like_t.png" : "like.png";
@@ -3863,26 +3925,70 @@ function openVideoFullscreen(videoUrl, postId) {
 
     if (commentBtn) {
         commentBtn.onclick = () => {
-            if (currentFullscreenPostId) {
-                const postIdToOpen = currentFullscreenPostId;
-                closeVideoFullscreen();
+            const postIdToOpen = post.id;
+            closeVideoFullscreen();
 
-                setTimeout(() => {
-                    showComments(postIdToOpen);
-                }, 100);
-            }
+            setTimeout(() => {
+                showComments(postIdToOpen);
+            }, 100);
         };
     }
 
     if (menuBtn) {
         menuBtn.onclick = () => {
-            if (currentFullscreenPostId) {
-                reportPost(currentFullscreenPostId);
-            }
+            reportPost(post.id);
         };
     }
 
     video.play().catch(() => {});
+}
+
+function showNextFullscreenVideo() {
+    if (fullscreenVideos.length <= 1) return;
+
+    currentFullscreenVideoIndex++;
+
+    if (currentFullscreenVideoIndex >= fullscreenVideos.length) {
+        currentFullscreenVideoIndex = 0;
+    }
+
+    animateAndLoadFullscreenVideo("next");
+}
+
+function showPreviousFullscreenVideo() {
+    if (fullscreenVideos.length <= 1) return;
+
+    currentFullscreenVideoIndex--;
+
+    if (currentFullscreenVideoIndex < 0) {
+        currentFullscreenVideoIndex = fullscreenVideos.length - 1;
+    }
+
+    animateAndLoadFullscreenVideo("previous");
+}
+
+function animateAndLoadFullscreenVideo(direction) {
+    const content = document.getElementById("videoFullscreenContent");
+    if (!content) return;
+
+    content.style.transition = "transform 0.18s ease";
+    content.style.transform = direction === "next"
+        ? "translateY(-100vh)"
+        : "translateY(100vh)";
+
+    setTimeout(() => {
+        content.style.transition = "none";
+        content.style.transform = direction === "next"
+            ? "translateY(100vh)"
+            : "translateY(-100vh)";
+
+        loadFullscreenVideo(currentFullscreenVideoIndex);
+
+        requestAnimationFrame(() => {
+            content.style.transition = "transform 0.22s ease";
+            content.style.transform = "translateY(0px)";
+        });
+    }, 180);
 }
 
 function closeVideoFullscreen() {
@@ -3913,11 +4019,24 @@ function setupVideoFullscreenSwipe() {
     overlay.addEventListener("touchstart", (e) => {
         fullscreenTouchStartX = e.touches[0].clientX;
         fullscreenTouchStartY = e.touches[0].clientY;
+        fullscreenTouchMoveY = fullscreenTouchStartY;
+
+        content.style.transition = "none";
     });
 
     overlay.addEventListener("touchmove", (e) => {
         const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+
         const diffX = Math.max(0, currentX - fullscreenTouchStartX);
+        const diffY = currentY - fullscreenTouchStartY;
+
+        fullscreenTouchMoveY = currentY;
+
+        if (Math.abs(diffY) > Math.abs(diffX)) {
+            content.style.transform = `translateY(${diffY * 0.45}px)`;
+            return;
+        }
 
         const progress = Math.min(diffX / 260, 1);
         const scale = 1 - progress * 0.22;
@@ -3932,14 +4051,33 @@ function setupVideoFullscreenSwipe() {
         const endY = e.changedTouches[0].clientY;
 
         const diffX = endX - fullscreenTouchStartX;
-        const diffY = Math.abs(endY - fullscreenTouchStartY);
+        const diffY = endY - fullscreenTouchStartY;
 
-        if (diffX > 120 && diffY < 120) {
+        const absX = Math.abs(diffX);
+        const absY = Math.abs(diffY);
+
+        content.style.transition = "transform 0.2s ease, border-radius 0.2s ease";
+
+        // Swipe gauche -> droite = quitter plein écran
+        if (diffX > 120 && absY < 120) {
             closeVideoFullscreen();
-        } else {
-            content.style.transform = "scale(1)";
-            content.style.borderRadius = "0px";
+            return;
         }
+
+        // Swipe vers le haut = vidéo suivante
+        if (diffY < -110 && absY > absX) {
+            showNextFullscreenVideo();
+            return;
+        }
+
+        // Swipe vers le bas = vidéo précédente
+        if (diffY > 110 && absY > absX) {
+            showPreviousFullscreenVideo();
+            return;
+        }
+
+        content.style.transform = "translateY(0px) scale(1)";
+        content.style.borderRadius = "0px";
     });
 }
 
