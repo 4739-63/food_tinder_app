@@ -276,24 +276,32 @@ body {
 }
 
 #premiumScreen {
-    padding: calc(env(safe-area-inset-top, 0px) + 70px) 8px 30px !important;
-    box-sizing: border-box;
+    padding: calc(env(safe-area-inset-top, 0px) + 70px) 0px 30px !important;
 }
 
 #premiumScreen .screen-box {
-    width: calc(100% - 6px);
+    width: 100%;
     max-width: none;
-    margin: 0 auto 20px;
-    padding: 42px 26px;
-    border-radius: 24px;
+    margin: 0 0 20px 0;
+    padding: 42px 26px; /* 🔥 garde ça */
+    border-radius: 0; /* optionnel */
 }
 
 .filter-group {
+    width: 100%;
     margin-bottom: 42px;
-    padding: 28px 24px;
+    padding: 28px 16px;
+
     border-radius: 24px;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.14);
+
+    box-sizing: border-box;
+}
+
+#premiumScreen {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 .filter-group h4 {
@@ -1252,7 +1260,9 @@ html, body, #recipePanel {
     width: 90px;
     height: 90px;
     object-fit: contain;
+
     background: transparent !important;
+    mix-blend-mode: multiply; /* 🔥 enlève visuellement le blanc */
 }
 
 #searchScreen {
