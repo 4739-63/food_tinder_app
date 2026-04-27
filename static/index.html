@@ -276,15 +276,22 @@ body {
 }
 
 #premiumScreen {
-    padding: calc(env(safe-area-inset-top, 0px) + 70px) 0px 30px !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 70px) 0 30px !important;
+    box-sizing: border-box;
 }
 
 #premiumScreen .screen-box {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 42px 16px;
+    border-radius: 0;
+    box-sizing: border-box;
+}
+
+#premiumScreen .filter-group {
     width: 100%;
-    max-width: none;
-    margin: 0 0 20px 0;
-    padding: 42px 26px; /* 🔥 garde ça */
-    border-radius: 0; /* optionnel */
+    box-sizing: border-box;
 }
 
 .filter-group {
@@ -297,11 +304,6 @@ body {
     border: 1px solid rgba(255,255,255,0.14);
 
     box-sizing: border-box;
-}
-
-#premiumScreen {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
 }
 
 .filter-group h4 {
@@ -1250,19 +1252,25 @@ html, body, #recipePanel {
     right: 22px;
     z-index: 20004;
 
+    width: 90px;
+    height: 90px;
+
     background: transparent !important;
     border: none !important;
-    padding: 0;
+    padding: 0 !important;
+    margin: 0 !important;
     box-shadow: none !important;
+    overflow: visible;
 }
 
 .video-search-btn img {
+    display: block;
     width: 90px;
     height: 90px;
     object-fit: contain;
-
     background: transparent !important;
-    mix-blend-mode: multiply; /* 🔥 enlève visuellement le blanc */
+    border: none !important;
+    box-shadow: none !important;
 }
 
 #searchScreen {
@@ -4325,7 +4333,7 @@ function renderSearchResults() {
 
 </script>
 
-<div id="premiumScreen" style="display:none; padding:25px;">
+<div id="premiumScreen" style="display:none;">
 
     <div class="screen-box">
         <h2 style="margin-bottom:20px;">⚙️ Filters</h2>
