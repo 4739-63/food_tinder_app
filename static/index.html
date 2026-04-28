@@ -2514,16 +2514,21 @@ async function isPremium() {
 }
 
 async function saveFilters() {
+    const getChecked = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+    };
+
     advancedFilters = {
-        sucre: document.getElementById("filter_sucre").checked,
-        sale: document.getElementById("filter_sale").checked,
-        rapide: document.getElementById("filter_rapide").checked,
-        sante: document.getElementById("filter_sante").checked,
-        viande: document.getElementById("filter_viande").checked,
-        vegan: document.getElementById("filter_vegan").checked,
-        chaud: document.getElementById("filter_chaud").checked,
-        gluten: document.getElementById("filter_gluten").checked,
-        arachide: document.getElementById("filter_arachide").checked
+        sucre: getChecked("filter_sucre"),
+        sale: getChecked("filter_sale"),
+        rapide: getChecked("filter_rapide"),
+        sante: getChecked("filter_sante"),
+        viande: getChecked("filter_viande"),
+        vegan: getChecked("filter_vegan"),
+        chaud: getChecked("filter_chaud"),
+        gluten: getChecked("filter_gluten"),
+        arachide: getChecked("filter_arachide")
     };
 
     localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
@@ -2552,7 +2557,6 @@ async function saveFilters() {
         }
     }
 
-    // 🔥 IMPORTANT : recharge les prochains plats avec les nouveaux filtres
     currentPlat = await generateBestPlat();
     nextPlat = await generateBestPlat();
 
@@ -2568,15 +2572,20 @@ async function saveFilters() {
 function loadFilters() {
     advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
 
-    document.getElementById("filter_sucre").checked = advancedFilters.sucre || false;
-    document.getElementById("filter_sale").checked = advancedFilters.sale || false;
-    document.getElementById("filter_rapide").checked = advancedFilters.rapide || false;
-    document.getElementById("filter_sante").checked = advancedFilters.sante || false;
-    document.getElementById("filter_viande").checked = advancedFilters.viande || false;
-    document.getElementById("filter_vegan").checked = advancedFilters.vegan || false;
-    document.getElementById("filter_chaud").checked = advancedFilters.chaud || false;
-    document.getElementById("filter_gluten").checked = advancedFilters.gluten || false;
-    document.getElementById("filter_arachide").checked = advancedFilters.arachide || false;
+    const setChecked = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = value || false;
+    };
+
+    setChecked("filter_sucre", advancedFilters.sucre);
+    setChecked("filter_sale", advancedFilters.sale);
+    setChecked("filter_rapide", advancedFilters.rapide);
+    setChecked("filter_sante", advancedFilters.sante);
+    setChecked("filter_viande", advancedFilters.viande);
+    setChecked("filter_vegan", advancedFilters.vegan);
+    setChecked("filter_chaud", advancedFilters.chaud);
+    setChecked("filter_gluten", advancedFilters.gluten);
+    setChecked("filter_arachide", advancedFilters.arachide);
 }
 
 function openFavori(nom) {
