@@ -2603,6 +2603,11 @@ async function saveFilters() {
     if (currentPlat) {
         document.getElementById("nom").innerText = currentPlat.nom;
         document.getElementById("image").src = currentPlat.image;
+    } else {
+        document.getElementById("nom").innerText = "No meal found";
+        document.getElementById("image").src = "";
+        alert("No meals found with these filters. Try removing one filter.");
+        return;
     }
 
     alert("Filters activated ✅");
@@ -3980,7 +3985,8 @@ function showProfileGate() {
 function showRegisterProfile() {
     hideAllScreens();
 
-    selectedProfileImage = userProfile.avatar || "";
+    // ✅ formulaire de création = toujours vide
+    selectedProfileImage = "";
 
     const container = document.getElementById("registerProfileScreen");
     container.style.display = "block";
@@ -3993,12 +3999,12 @@ function showRegisterProfile() {
                 <input id="registerEmailInput" class="auth-input" placeholder="Email">
                 <input id="registerPasswordInput" class="auth-input" type="password" placeholder="Password">
 
-                <img id="profilePreview" class="profile-avatar" src="${userProfile.avatar}" alt="profile preview">
+                <img id="profilePreview" class="profile-avatar" src="${defaultProfile.avatar}" alt="profile preview">
 
                 <button class="buy-btn" onclick="pickProfileImage()">Choose Profile Photo</button>
 
-                <input id="registerNameInput" class="auth-input" placeholder="Name" value="${userProfile.name}">
-                <textarea id="registerBioInput" class="post-textarea" placeholder="Write a short bio...">${userProfile.bio}</textarea>
+                <input id="registerNameInput" class="auth-input" placeholder="Name">
+                <textarea id="registerBioInput" class="post-textarea" placeholder="Write a short bio."></textarea>
 
                 <button class="buy-btn" onclick="createProfileAccount()">Create</button>
                 <button class="big-back-btn" onclick="showProfileGate()">Back</button>
@@ -4708,6 +4714,11 @@ function renderSearchResults() {
             <label class="toggle">
                 <input type="checkbox" id="filter_rapide">
                 <span> Quick</span>
+            </label>
+
+            <label class="toggle">
+                <input type="checkbox" id="filter_sante">
+                <span> Healthy</span>
             </label>
         </div>
 
