@@ -775,27 +775,48 @@ def cancel_subscription(data: dict):
 def verify_subscription(data: dict):
     db = SessionLocal()
     try:
-        user_id = get_current_user(data["token"])
+        # 🔐 Vérification du token
+        user_id = get_current_user(data.get("token"))
+
+        if not user_id:
+            return JSONResponse(
+                content={"error": "Session expired. Please login again."},
+                status_code=401
+            )
+
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
-            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+            return JSONResponse(
+                content={"error": "Unauthorized"},
+                status_code=401
+            )
 
+        # 📦 Vérification receipt
         receipt = data.get("receipt")
 
         if not receipt:
-            return JSONResponse(content={"error": "Missing receipt"}, status_code=400)
+            return JSONResponse(
+                content={"error": "Missing receipt"},
+                status_code=400
+            )
 
-        # Version temporaire pour test TestFlight/Sandbox.
-        # Prochaine amélioration : validation serveur réelle Apple.
+        # ⚠️ VERSION TEMPORAIRE (sandbox/test)
         user.is_premium = True
         user.plan_type = "premium"
         user.subscription_status = "active"
-        user.current_period_end = int(time.time()) + 60 * 60 * 24 * 31
+        user.current_period_end = int(time.time()) + 60 * 60 * 24 * 30
 
         db.commit()
 
         return {"status": "premium"}
+
+    except Exception as e:
+        print("VERIFY ERROR:", str(e))
+        return JSONResponse(
+            content={"error": "Server error"},
+            status_code=500
+        )
 
     finally:
         db.close()

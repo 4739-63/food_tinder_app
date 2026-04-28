@@ -2645,9 +2645,30 @@ function showPremium() {
     document.getElementById("premiumScreen").style.display = "none";  // ❌ cache filtres
 }
 
-function buyPremium() {
+async function buyPremium() {
     if (!token) {
         alert("Please login or create an account from the Profile page first.");
+        return;
+    }
+
+    try {
+        const checkRes = await fetch(`${API_BASE}/is-premium`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const checkData = await checkRes.json();
+
+        if (!checkRes.ok || checkData.error || checkData.detail) {
+            localStorage.removeItem("token");
+            token = null;
+            alert(checkData.error || checkData.detail || "Your session expired. Please login again before buying.");
+            return;
+        }
+    } catch (error) {
+        console.error("Premium check error:", error);
+        alert("Unable to verify your session. Please try again.");
         return;
     }
 
