@@ -2528,33 +2528,41 @@ async function saveFilters() {
 
     localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
 
-    if (!token) {
-        alert("Please login first");
-        return;
-    }
+    if (token) {
+        try {
+            const res = await fetch(`${API_BASE}/save-filters`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    token,
+                    filters: advancedFilters
+                })
+            });
 
-    try {
-        const res = await fetch(`${API_BASE}/save-filters`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                token,
-                filters: advancedFilters
-            })
-        });
+            const data = await res.json();
 
-        const data = await res.json();
-
-        if (!res.ok || data.error || data.detail) {
-            alert(data.error || data.detail || "Unable to save filters");
+            if (!res.ok || data.error || data.detail) {
+                alert(data.error || data.detail || "Unable to save filters");
+                return;
+            }
+        } catch (error) {
+            console.error("Save filters error:", error);
+            alert("Unable to reach server");
             return;
         }
-
-        alert("Filters activated ✅");
-    } catch (error) {
-        console.error("Save filters error:", error);
-        alert("Unable to reach server");
     }
+
+    // 🔥 IMPORTANT : recharge les prochains plats avec les nouveaux filtres
+    currentPlat = await generateBestPlat();
+    nextPlat = await generateBestPlat();
+
+    if (currentPlat) {
+        document.getElementById("nom").innerText = currentPlat.nom;
+        document.getElementById("image").src = currentPlat.image;
+    }
+
+    alert("Filters activated ✅");
+    showSwipe();
 }
 
 function loadFilters() {
@@ -2605,10 +2613,10 @@ if (panel) {
 }
 
 async function goPremium() {
-    console.log("🔥 CLICK BUY");
+    console.log(" CLICK BUY");
 
     if (!token) {
-        alert("You must login first 🔐");
+        alert("You must login first ");
         return;
     }
 
