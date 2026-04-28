@@ -2513,7 +2513,7 @@ async function isPremium() {
     }
 }
 
-function saveFilters() {
+async function saveFilters() {
     advancedFilters = {
         sucre: document.getElementById("filter_sucre").checked,
         sale: document.getElementById("filter_sale").checked,
@@ -2528,8 +2528,13 @@ function saveFilters() {
 
     localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
 
-    if (token) {
-        fetch(`${API_BASE}/save-filters`, {
+    if (!token) {
+        alert("Please login first");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/save-filters`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
@@ -2537,9 +2542,19 @@ function saveFilters() {
                 filters: advancedFilters
             })
         });
-    }
 
-    alert("Filters activated ✅");
+        const data = await res.json();
+
+        if (!res.ok || data.error || data.detail) {
+            alert(data.error || data.detail || "Unable to save filters");
+            return;
+        }
+
+        alert("Filters activated ✅");
+    } catch (error) {
+        console.error("Save filters error:", error);
+        alert("Unable to reach server");
+    }
 }
 
 function loadFilters() {
