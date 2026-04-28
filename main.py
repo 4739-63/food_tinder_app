@@ -233,6 +233,45 @@ def ml_light_score(post, likes, comments, taste):
 
     return score
 
+INTERNAL_MEALS = [
+    {
+        "idMeal": "internal_v1",
+        "nom": "Vegan Burger",
+        "image": "https://yourcdn.com/vegan-burger.jpg",
+        "recette": "Cook plant-based patty, assemble with bun and veggies.",
+        "ingredients": ["Vegan bun", "Plant patty", "Lettuce"],
+
+        "vegan": True,
+        "gluten": True,
+        "arachide": False,
+
+        "style_comfort": True,
+        "base_bread_wrap": True,
+        "rapide": True,
+
+        "categoryName": "Vegan",
+        "areaName": "Internal"
+    },
+    {
+        "idMeal": "internal_v2",
+        "nom": "Quinoa Salad",
+        "image": "https://yourcdn.com/quinoa.jpg",
+        "recette": "Mix quinoa, veggies, olive oil and lemon.",
+        "ingredients": ["Quinoa", "Tomato", "Cucumber"],
+
+        "vegan": True,
+        "gluten": False,
+        "arachide": False,
+
+        "style_comfort": False,
+        "base_bread_wrap": False,
+        "rapide": True,
+
+        "categoryName": "Healthy",
+        "areaName": "Internal"
+    }
+]
+
 # ========================
 # DATABASE
 # ========================
@@ -1321,4 +1360,22 @@ def seed_feed():
         return {"message": "Seed posts created"}
 
     finally:
-        db.close()        
+        db.close()  
+
+@app.post("/internal-meals")
+def get_internal_meals(filters: dict):
+    filters = filters or {}
+    results = []
+
+    for meal in INTERNAL_MEALS:
+        if filters.get("vegan") and not meal["vegan"]:
+            continue
+        if filters.get("gluten") and meal["gluten"]:
+            continue
+        if filters.get("arachide") and meal["arachide"]:
+            continue
+
+        results.append(meal)
+
+    random.shuffle(results)
+    return results[:10]    

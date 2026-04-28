@@ -2168,10 +2168,18 @@ async function generateBestPlat() {
     try {
         let validPlats = [];
 
-        for (let round = 0; round < 8; round++) {
+        // 🔥 1. PRIORITÉ : base interne
+        const internalMeals = await getInternalMeals();
+
+        if (internalMeals && internalMeals.length > 0) {
+            validPlats.push(...internalMeals);
+        }
+
+        // 🔥 2. Complément TheMealDB
+        for (let round = 0; round < 6; round++) {
             const candidatePromises = [];
 
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; i < 10; i++) {
                 candidatePromises.push(getPlatFromAPI());
             }
 
@@ -2183,11 +2191,11 @@ async function generateBestPlat() {
 
             validPlats.push(...plats);
 
-            if (validPlats.length >= 5) break;
+            if (validPlats.length >= 10) break;
         }
 
         if (validPlats.length === 0) {
-            alert("No meals found with these filters. Try removing one filter.");
+            alert("No meals found with these filters.");
             return null;
         }
 
@@ -2201,19 +2209,23 @@ async function generateBestPlat() {
                 continue;
             }
 
+            // 🔥 bonus filtres stricts
             if (advancedFilters.vegan && plat.vegan) score += 15;
             if (advancedFilters.gluten && !plat.gluten) score += 15;
             if (advancedFilters.arachide && !plat.arachide) score += 15;
 
+            // 🔥 bonus style (burger vegan etc)
             if (advancedFilters.vegan && plat.style_comfort) score += 6;
             if (advancedFilters.vegan && plat.base_bread_wrap) score += 5;
 
+            // 🔥 préférences utilisateur
             for (let key in preferences) {
                 if (plat[key] === true && preferences[key]) {
                     score += preferences[key];
                 }
             }
 
+            // 🔥 bonus filtres
             for (let key in advancedFilters) {
                 if (advancedFilters[key] && plat[key]) {
                     score += 6;
@@ -2258,6 +2270,21 @@ async function generateBestPlat() {
     }
 }
 
+
+async function getInternalMeals() {
+    try {
+        const res = await fetch(`${API_BASE}/internal-meals`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(advancedFilters)
+        });
+
+        return await res.json();
+    } catch (e) {
+        console.error("internal meals error", e);
+        return [];
+    }
+}
 
 
 // 👍👎 action utilisateur
