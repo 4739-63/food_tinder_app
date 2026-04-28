@@ -1953,11 +1953,19 @@ function analyserPlat(meal) {
         chaud: !dessert,
 
         vegan: !hasAny([
-            "chicken", "beef", "pork", "fish", "salmon", "tuna", "prawn", "shrimp",
-            "egg", "milk", "cheese", "butter", "cream", "yogurt", "lamb", "bacon", "ham"
+            "chicken", "beef", "pork", "fish", "salmon", "tuna", "cod", "haddock",
+            "prawn", "shrimp", "mussel", "crab", "squid", "clam", "seafood",
+            "egg", "eggs", "milk", "cheese", "butter", "cream", "yogurt",
+            "lamb", "bacon", "ham", "honey", "gelatin", "mayonnaise"
         ]),
-        gluten: hasAny(["flour", "bread", "pasta", "wheat", "bun", "tortilla"]),
-        arachide: hasAny(["peanut", "groundnut"]),
+        gluten: hasAny([
+            "flour", "bread", "pasta", "wheat", "bun", "tortilla", "wrap",
+            "noodle", "spaghetti", "macaroni", "penne", "breadcrumbs",
+            "soy sauce", "pastry", "dough"
+        ]),
+        arachide: hasAny([
+            "peanut", "peanuts", "groundnut", "peanut butter"
+        ]),
 
         // nouvelles protéines
         protein_fish: proteinFish,
@@ -2145,32 +2153,64 @@ function updatePreferences(plat, like) {
     saveAlgoSession();
 }
 
+function passesAdvancedFilters(plat) {
+    if (!plat) return false;
+
+    // 🔒 filtres STRICTS
+    if (advancedFilters.vegan && !plat.vegan) return false;
+    if (advancedFilters.gluten && plat.gluten) return false;
+    if (advancedFilters.arachide && plat.arachide) return false;
+
+    return true;
+}
+
 async function generateBestPlat() {
     try {
-        const candidatePromises = [];
+        let validPlats = [];
 
-        for (let i = 0; i < 12; i++) {
-            candidatePromises.push(getPlatFromAPI());
+        // 🔥 plusieurs rondes pour trouver assez de plats qui respectent les filtres
+        for (let round = 0; round < 8; round++) {
+            const candidatePromises = [];
+
+            for (let i = 0; i < 12; i++) {
+                candidatePromises.push(getPlatFromAPI());
+            }
+
+            const results = await Promise.all(candidatePromises);
+
+            const plats = results
+                .filter(Boolean)
+                .filter(passesAdvancedFilters);
+
+            validPlats.push(...plats);
+
+            if (validPlats.length >= 5) break;
         }
 
-        const results = await Promise.all(candidatePromises);
-        const plats = results.filter(Boolean);
-
-        if (plats.length === 0) return null;
+        // ❌ aucun plat compatible trouvé
+        if (validPlats.length === 0) {
+            alert("No meals found with these filters. Try removing one filter.");
+            return null;
+        }
 
         let bestPlat = null;
         let bestScore = -Infinity;
 
-        for (let plat of plats) {
+        for (let plat of validPlats) {
+            if (advancedFilters.vegan && plat.vegan) score += 15;
+            if (advancedFilters.gluten && !plat.gluten) score += 15;
+            if (advancedFilters.arachide && !plat.arachide) score += 15;
+
+//  si user aime burger/comfort et que le plat compatible ressemble à ça
+            if (advancedFilters.vegan && plat.style_comfort) score += 6;
+            if (advancedFilters.vegan && plat.base_bread_wrap) score += 5;   
+            
             let score = 0;
 
-            // blocage strict filtres premium
-            if (advancedFilters.vegan && !plat.vegan) continue;
-            if (advancedFilters.gluten && plat.gluten) continue;
-            if (advancedFilters.arachide && plat.arachide) continue;
-
             // anti doublon session
-            if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) continue;
+            if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) {
+                continue;
+            }
 
             // score par préférences apprises
             for (let key in preferences) {
@@ -2179,7 +2219,7 @@ async function generateBestPlat() {
                 }
             }
 
-            // boost filtres premium
+            // bonus filtres non stricts
             for (let key in advancedFilters) {
                 if (advancedFilters[key] && plat[key]) {
                     score += 6;
@@ -2207,7 +2247,7 @@ async function generateBestPlat() {
             if (!recentCategories.includes(categoryLower)) score += 2;
             if (!recentAreas.includes(areaLower)) score += 2;
 
-            // bonus rapide si l'utilisateur like souvent "quick"
+            // bonus rapide
             if (plat.rapide) score += preferences.rapide * 0.7;
 
             if (score > bestScore) {
@@ -2216,9 +2256,9 @@ async function generateBestPlat() {
             }
         }
 
+        // ✅ fallback sécurisé : seulement parmi les plats valides
         if (!bestPlat) {
-            const fallback = plats.find(p => p && (!p.idMeal || !seenMealIds.has(String(p.idMeal))));
-            return fallback || plats[Math.floor(Math.random() * plats.length)];
+            bestPlat = validPlats[0];
         }
 
         return bestPlat;
