@@ -2168,7 +2168,6 @@ async function generateBestPlat() {
     try {
         let validPlats = [];
 
-        // 🔥 plusieurs rondes pour trouver assez de plats qui respectent les filtres
         for (let round = 0; round < 8; round++) {
             const candidatePromises = [];
 
@@ -2187,7 +2186,6 @@ async function generateBestPlat() {
             if (validPlats.length >= 5) break;
         }
 
-        // ❌ aucun plat compatible trouvé
         if (validPlats.length === 0) {
             alert("No meals found with these filters. Try removing one filter.");
             return null;
@@ -2197,36 +2195,31 @@ async function generateBestPlat() {
         let bestScore = -Infinity;
 
         for (let plat of validPlats) {
-            if (advancedFilters.vegan && plat.vegan) score += 15;
-            if (advancedFilters.gluten && !plat.gluten) score += 15;
-            if (advancedFilters.arachide && !plat.arachide) score += 15;
-
-//  si user aime burger/comfort et que le plat compatible ressemble à ça
-            if (advancedFilters.vegan && plat.style_comfort) score += 6;
-            if (advancedFilters.vegan && plat.base_bread_wrap) score += 5;   
-            
             let score = 0;
 
-            // anti doublon session
             if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) {
                 continue;
             }
 
-            // score par préférences apprises
+            if (advancedFilters.vegan && plat.vegan) score += 15;
+            if (advancedFilters.gluten && !plat.gluten) score += 15;
+            if (advancedFilters.arachide && !plat.arachide) score += 15;
+
+            if (advancedFilters.vegan && plat.style_comfort) score += 6;
+            if (advancedFilters.vegan && plat.base_bread_wrap) score += 5;
+
             for (let key in preferences) {
                 if (plat[key] === true && preferences[key]) {
                     score += preferences[key];
                 }
             }
 
-            // bonus filtres non stricts
             for (let key in advancedFilters) {
                 if (advancedFilters[key] && plat[key]) {
                     score += 6;
                 }
             }
 
-            // anti répétition proche
             const categoryLower = (plat.categoryName || "").toLowerCase();
             const areaLower = (plat.areaName || "").toLowerCase();
 
@@ -2240,14 +2233,11 @@ async function generateBestPlat() {
             if (plat.protein_pork && recentProteins.includes("pork")) score -= 4;
             if (plat.protein_lamb && recentProteins.includes("lamb")) score -= 4;
 
-            // exploration contrôlée
             score += Math.random() * 3;
 
-            // bonus variété
             if (!recentCategories.includes(categoryLower)) score += 2;
             if (!recentAreas.includes(areaLower)) score += 2;
 
-            // bonus rapide
             if (plat.rapide) score += preferences.rapide * 0.7;
 
             if (score > bestScore) {
@@ -2256,7 +2246,6 @@ async function generateBestPlat() {
             }
         }
 
-        // ✅ fallback sécurisé : seulement parmi les plats valides
         if (!bestPlat) {
             bestPlat = validPlats[0];
         }
