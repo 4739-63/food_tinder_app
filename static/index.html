@@ -1443,7 +1443,210 @@ const FEED_PAGE_SIZE = 10;
 let isLoadingFeed = false;
 let hasMoreFeed = true;
 
-// 🧠 préférences (session uniquement)
+let feedTaste = JSON.parse(localStorage.getItem("feedTaste")) || {
+    lang_fr: 0,
+    lang_en: 0,
+
+    pasta: 0,
+    burger: 0,
+    healthy: 0,
+    dessert: 0,
+    breakfast: 0,
+    vegan: 0,
+    spicy: 0,
+    chicken: 0,
+    beef: 0,
+    seafood: 0,
+    asian: 0,
+    italian: 0,
+    mexican: 0,
+
+    video: 0,
+    image: 0
+};
+
+function saveFeedTaste() {
+    localStorage.setItem("feedTaste", JSON.stringify(feedTaste));
+}
+
+function applyDecay() {
+    const decayFactor = 0.97; // 🔥 3% de perte
+
+    Object.keys(feedTaste).forEach(key => {
+        feedTaste[key] *= decayFactor;
+
+        // évite les valeurs infinies
+        if (Math.abs(feedTaste[key]) < 0.1) {
+            feedTaste[key] = 0;
+        }
+    });
+
+    saveFeedTaste();
+}
+
+function detectPostFeatures(post) {
+    const text = `${post.caption || ""} ${post.author || ""}`.toLowerCase();
+
+    const hasAny = (words) => words.some(w => text.includes(w));
+
+    return {
+        lang_fr: hasAny(["recette", "poulet", "boeuf", "déjeuner", "santé", "fromage", "dessert"]),
+        lang_en: hasAny(["recipe", "chicken", "beef", "breakfast", "healthy", "cheese", "dessert"]),
+
+        pasta: hasAny(["pasta", "spaghetti", "macaroni", "penne", "lasagna"]),
+        burger: hasAny(["burger", "cheeseburger"]),
+        healthy: hasAny(["healthy", "santé", "protein", "protéine", "salad", "salade"]),
+        dessert: hasAny(["dessert", "cake", "gâteau", "cookie", "chocolate", "chocolat"]),
+        breakfast: hasAny(["breakfast", "déjeuner", "eggs", "oeufs", "pancake"]),
+        vegan: hasAny(["vegan", "végane", "vegetarian", "végétarien"]),
+        spicy: hasAny(["spicy", "épicé", "hot", "chili", "jalapeno"]),
+
+        chicken: hasAny(["chicken", "poulet"]),
+        beef: hasAny(["beef", "boeuf", "steak"]),
+        seafood: hasAny(["seafood", "shrimp", "fish", "poisson", "crevette"]),
+
+        asian: hasAny(["asian", "ramen", "sushi", "thai", "teriyaki", "soy"]),
+        italian: hasAny(["italian", "pizza", "pasta", "risotto", "parmesan"]),
+        mexican: hasAny(["mexican", "taco", "burrito", "quesadilla"]),
+
+        video: post.media_type === "video",
+        image: post.media_type !== "video"
+    };
+}
+
+function learnFromPost(post, weight = 1) {
+    const features = detectPostFeatures(post);
+
+    Object.keys(features).forEach(key => {
+        if (features[key] && key in feedTaste) {
+            feedTaste[key] += weight;
+        }
+    });
+
+    applyDecay(); 
+    saveFeedTaste();
+}
+
+function applyTimeDecay() {
+    const now = Date.now();
+    const last = parseInt(localStorage.getItem("lastDecay") || "0");
+
+    if (!last) {
+        localStorage.setItem("lastDecay", now);
+        return;
+    }
+
+    const hoursPassed = (now - last) / (1000 * 60 * 60);
+
+    if (hoursPassed < 1) return;
+
+    const decayFactor = Math.pow(0.95, hoursPassed);
+
+    Object.keys(feedTaste).forEach(key => {
+        feedTaste[key] *= decayFactor;
+
+        if (Math.abs(feedTaste[key]) < 0.1) {
+            feedTaste[key] = 0;
+        }
+    });
+
+    localStorage.setItem("lastDecay", now);
+    saveFeedTaste();
+}
+
+function scoreFeedPost(post) {
+    const features = detectPostFeatures(post);
+
+    let score = 0;
+
+    Object.keys(features).forEach(key => {
+        if (features[key] && feedTaste[key]) {
+            score += feedTaste[key] * 3;
+        }
+    });
+
+    score += Math.min(post.likes || 0, 100) * 0.15;
+    score += Math.min(post.commentsCount || 0, 50) * 0.35;
+
+    if (post.liked) score += 8;
+
+    score += Math.random() * 10;
+    return score;
+}
+
+function rankFeedPosts(posts) {
+    return posts
+        .map(post => ({
+            ...post,
+            _score: scoreFeedPost(post)
+        }))
+        .sort((a, b) => b._score - a._score);
+}
+
+function getFreshnessScore(post) {
+    const created = post.created_at ? new Date(post.created_at).getTime() : Date.now();
+    const hours = Math.max(1, (Date.now() - created) / (1000 * 60 * 60));
+    return Math.max(0, 30 - hours * 0.6);
+}
+
+function scorePersonalizedLayer(post) {
+    return scoreFeedPost(post) * 1.0;
+}
+
+function scoreTrendingLayer(post) {
+    const likes = post.likes || 0;
+    const comments = post.commentsCount || 0;
+    return likes * 0.8 + comments * 1.6 + getFreshnessScore(post);
+}
+
+function scoreFreshLayer(post) {
+    return getFreshnessScore(post) + Math.random() * 8;
+}
+
+function scoreExploreLayer(post) {
+    return Math.random() * 100;
+}
+
+function buildMultiLayerFeed(posts) {
+    const cleanPosts = [...posts];
+
+    const personalized = [...cleanPosts]
+        .sort((a, b) => scorePersonalizedLayer(b) - scorePersonalizedLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.55));
+
+    const trending = [...cleanPosts]
+        .sort((a, b) => scoreTrendingLayer(b) - scoreTrendingLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.20));
+
+    const fresh = [...cleanPosts]
+        .sort((a, b) => scoreFreshLayer(b) - scoreFreshLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.15));
+
+    const explore = [...cleanPosts]
+        .sort((a, b) => scoreExploreLayer(b) - scoreExploreLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.10));
+
+    const mixed = [];
+    const seen = new Set();
+
+    function addUnique(list) {
+        list.forEach(post => {
+            if (!seen.has(post.id)) {
+                seen.add(post.id);
+                mixed.push(post);
+            }
+        });
+    }
+
+    addUnique(personalized);
+    addUnique(trending);
+    addUnique(fresh);
+    addUnique(explore);
+
+    return mixed;
+}
+
+//  préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
     // anciens axes
     sucre: 0,
@@ -2335,6 +2538,8 @@ function saveFilters() {
             })
         });
     }
+
+    alert("Filters activated ✅");
 }
 
 function loadFilters() {
@@ -2659,11 +2864,14 @@ function restorePurchases() {
 async function showFeed() {
     hideAllScreens();
 
+    applyTimeDecay(); // 
+
     const container = document.getElementById("feedScreen");
     container.style.display = "block";
     container.scrollTop = 0;
 
     await loadFeedFromBackend(true);
+    demoPosts = buildMultiLayerFeed(demoPosts); 
     renderFeed();
     setupVideoAutoplay();
     container.onscroll = async () => {
@@ -2672,6 +2880,7 @@ async function showFeed() {
 
         if (nearBottom && !isLoadingFeed && hasMoreFeed) {
             await loadFeedFromBackend(false);
+            demoPosts = buildMultiLayerFeed(demoPosts); // ✅ ici aussi
             renderFeed();
             setupVideoAutoplay();
         }
@@ -2970,6 +3179,14 @@ async function likePost(postId) {
 
             if (post) {
                 post.liked = !post.liked;
+
+        // 🧠 ALGO (ICI EXACTEMENT)
+                if (post.liked) {
+                    learnFromPost(post, 3); // like
+                } else {
+                    learnFromPost(post, -2); // dislike implicite
+                }
+
                 post.likes += post.liked ? 1 : -1;
 
                 if (post.likes < 0) {
@@ -3102,6 +3319,11 @@ async function publishPost() {
 async function showComments(postId) {
     hideAllScreens();
 
+    const commentedPost = demoPosts.find(p => p.id === postId);
+        if (commentedPost) {
+            learnFromPost(commentedPost, 2);
+        }
+
     const post = demoPosts.find(p => p.id === postId);
     if (!post) return;
 
@@ -3233,7 +3455,8 @@ async function loadFeedFromBackend(reset = false) {
                 commentsCount: post.comments || 0
             }));
 
-            demoPosts = reset ? newPosts : [...demoPosts, ...newPosts];
+            const rankedPosts = rankFeedPosts(reset ? newPosts : [...demoPosts, ...newPosts]);
+            demoPosts = rankedPosts;
             feedSkip += newPosts.length;
 
             if (newPosts.length < FEED_PAGE_SIZE) {
@@ -4003,6 +4226,12 @@ let currentFullscreenVideoIndex = 0;
 let fullscreenTouchMoveY = 0;
 
 function openVideoFullscreen(videoUrl, postId) {
+
+    const watchedPost = demoPosts.find(p => p.id === postId);
+        if (watchedPost) {
+            learnFromPost(watchedPost, 1);
+        }
+
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
 
