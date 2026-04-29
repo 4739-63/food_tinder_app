@@ -1291,7 +1291,6 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
 
         paginated = final_posts[skip:skip + limit]
 
-        paginated = final_posts[skip:skip + limit]
 
         result = []
 
@@ -1309,6 +1308,13 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
                     Like.post_id == p.id
                 ).first() is not None
 
+            is_following = False
+
+            if current_user_id:
+                is_following = db.query(Follow).filter(
+                    Follow.follower_id == current_user_id,
+                    Follow.following_id == p.user_id
+                ).first() is not None
             result.append({
                 "id": p.id,
                 "user_id": p.user_id,
@@ -1323,7 +1329,8 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
                 "comments": comments,
                 "commentsCount": comments,
                 "created_at": p.created_at,
-                "score": round(item["score"], 2)
+                "score": round(item["score"], 2),
+                "is_following": is_following
             })
 
         #  enregistrer les posts vus AVANT le return

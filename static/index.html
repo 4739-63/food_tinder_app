@@ -1387,6 +1387,64 @@ html, body, #recipePanel {
     color: white;
 }
 
+.video-fullscreen-user-info {
+    position: absolute;
+    left: 22px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 95px);
+    z-index: 20005;
+    color: white;
+    max-width: 68%;
+}
+
+.video-user-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.video-user-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.35);
+}
+
+.video-user-name {
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+
+.video-follow-btn {
+    margin-left: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: none;
+    background: white;
+    color: black;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.video-see-more {
+    margin-top: 10px;
+    border: none;
+    background: transparent;
+    color: #ffcf99;
+    font-size: 17px;
+    font-weight: 800;
+    padding: 0;
+}
+
+.video-caption-box {
+    display: none;
+    margin-top: 8px;
+    font-size: 17px;
+    line-height: 1.45;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+
 </style>
 </head>
 
@@ -3661,7 +3719,8 @@ async function loadFeedFromBackend(reset = false) {
                 likes: post.likes || 0,
                 liked: post.liked || false,
                 comments: Array(post.comments || 0).fill({ author: "", text: "" }),
-                commentsCount: post.comments || 0
+                commentsCount: post.comments || 0,
+                is_following: post.is_following
             }));
 
             const rankedPosts = rankFeedPosts(reset ? newPosts : [...demoPosts, ...newPosts]);
@@ -4492,13 +4551,61 @@ function loadFullscreenVideo(index) {
     const likeBtn = document.getElementById("fullscreenLikeBtn");
     const commentBtn = document.getElementById("fullscreenCommentBtn");
     const menuBtn = document.getElementById("fullscreenMenuBtn");
-
+    const userAvatar = document.getElementById("fullscreenUserAvatar");
+    const userName = document.getElementById("fullscreenUserName");
+    const followBtn = document.getElementById("fullscreenFollowBtn");
+    const seeMoreBtn = document.getElementById("fullscreenSeeMoreBtn");
+    const captionBox = document.getElementById("fullscreenCaptionBox");
+   
     if (!video || fullscreenVideos.length === 0) return;
 
     const post = fullscreenVideos[index];
     if (!post) return;
 
     currentFullscreenPostId = post.id;
+
+    if (userAvatar) {
+        userAvatar.src = post.avatar || "https://via.placeholder.com/180x180.png?text=Profile";
+        userAvatar.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (userName) {
+        userName.textContent = post.author || "User";
+        userName.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (followBtn) {
+        followBtn.style.display = post.user_id ? "inline-block" : "none";
+        followBtn.textContent = post.is_following ? "Unfollow" : "Follow";
+        followBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await toggleFollow(post.user_id);
+            followBtn.textContent = followBtn.textContent === "Follow" ? "Unfollow" : "Follow";
+        };
+    }
+
+    if (captionBox) {
+        captionBox.style.display = "none";
+        captionBox.textContent = post.caption || "";
+    }
+
+    if (seeMoreBtn) {
+        seeMoreBtn.style.display = post.caption ? "block" : "none";
+        seeMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (!captionBox) return;
+
+            const isOpen = captionBox.style.display === "block";
+            captionBox.style.display = isOpen ? "none" : "block";
+            seeMoreBtn.textContent = isOpen ? "See more" : "See less";
+        };
+    }
 
     document.querySelectorAll(".feed-video").forEach(v => v.pause());
 
@@ -4954,47 +5061,40 @@ function filterPosts(type) {
 }
 
 async function toggleFollow(userId) {
-    if (!token) {
-        alert("Please login first");
-        return;
-    }
+    if (!token) return;
 
     try {
-        const res = await fetch(`${API_BASE}/follow`, {
+        const res = await fetch(`${API_BASE}/toggle-follow`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                token,
-                user_id: userId
-            })
+            body: JSON.stringify({ token, user_id: userId })
         });
 
         const data = await res.json();
 
-        if (!res.ok || data.error) {
-            alert(data.error || "Unable to follow user");
-            return;
-        }
+        const isFollowing = data.following;
 
-        const btn = document.getElementById("followBtn");
-        const count = document.getElementById("userFollowersCount");
+        // 🔥 update feed
+        demoPosts.forEach(p => {
+            if (p.user_id === userId) {
+                p.is_following = isFollowing;
+            }
+        });
 
+        // 🔥 update fullscreen bouton
+        const btn = document.getElementById("fullscreenFollowBtn");
         if (btn) {
-            btn.textContent = data.following ? "Unfollow" : "Follow";
+            btn.textContent = isFollowing ? "Unfollow" : "Follow";
         }
 
-        if (count) {
-            count.textContent = data.followers;
+        // 🔥 update profile bouton
+        const profileBtn = document.getElementById("followBtn");
+        if (profileBtn && currentUserProfile?.id === userId) {
+            profileBtn.textContent = isFollowing ? "Unfollow" : "Follow";
         }
 
-        if (currentUserProfile) {
-            currentUserProfile.is_following = data.following;
-            currentUserProfile.followers = data.followers;
-        }
-
-    } catch (error) {
-        console.error("Follow error:", error);
-        alert("Unable to reach server");
+    } catch (e) {
+        console.error("Follow error", e);
     }
 }
 
@@ -5157,6 +5257,17 @@ if (registerBtn) {
         </button>
 
         <video id="fullscreenVideo" playsinline loop></video>
+
+        <div class="video-fullscreen-user-info">
+            <div class="video-user-row">
+                <img id="fullscreenUserAvatar" class="video-user-avatar" src="">
+                <span id="fullscreenUserName" class="video-user-name"></span>
+                <button id="fullscreenFollowBtn" class="video-follow-btn">Follow</button>
+            </div>
+
+            <button id="fullscreenSeeMoreBtn" class="video-see-more">See more</button>
+            <div id="fullscreenCaptionBox" class="video-caption-box"></div>
+        </div>
 
         <div class="video-side-actions">
             <button class="video-action-btn" id="fullscreenLikeBtn">
