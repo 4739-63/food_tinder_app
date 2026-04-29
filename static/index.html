@@ -3127,6 +3127,7 @@ function renderFeed() {
                                 playsinline 
                                 loop 
                                 preload="metadata"
+                                onloadedmetadata="this.currentTime = 0.1"
                                 onclick="openVideoFullscreen('${post.image}', ${post.id})">
                             </video>`
                         : `<img class="feed-img" src="${post.image}" alt="post image">`
@@ -4906,6 +4907,11 @@ function renderUserProfile(user) {
 
     showScreen("userProfileScreen");
     renderUserPosts(user.posts || [], "all");
+    setTimeout(() => {
+        document.querySelectorAll("#userPosts video").forEach(video => {
+            video.play().catch(() => {});
+        });
+    }, 300);
 }
 
 function renderUserPosts(posts, filter = "all") {
