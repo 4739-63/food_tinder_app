@@ -1694,8 +1694,10 @@ let currentPlat = null;
 let nextPlat = null;
 let favoris = JSON.parse(localStorage.getItem("favoris")) || [];
 let advancedFilters = {};
-
+let seenInternalMeals = new Set();
 let seenMealIds = new Set(JSON.parse(sessionStorage.getItem("seenMealIds")) || []);
+
+
 let recentCategories = JSON.parse(sessionStorage.getItem("recentCategories")) || [];
 let recentAreas = JSON.parse(sessionStorage.getItem("recentAreas")) || [];
 let recentProteins = JSON.parse(sessionStorage.getItem("recentProteins")) || [];
@@ -2161,6 +2163,9 @@ function passesAdvancedFilters(plat) {
     if (advancedFilters.gluten && plat.gluten) return false;
     if (advancedFilters.arachide && plat.arachide) return false;
 
+    // 🔒 Sweet strict = seulement dessert / sucré
+    if (advancedFilters.sucre && !plat.sucre && !plat.dessert) return false;
+
     return true;
 }
 
@@ -2176,10 +2181,19 @@ async function generateBestPlat() {
         }
 
         // 🔥 2. Complément TheMealDB
-        for (let round = 0; round < 6; round++) {
+        const strictFilterActive =
+            advancedFilters.vegan ||
+            advancedFilters.gluten ||
+            advancedFilters.arachide ||
+            advancedFilters.sucre;
+
+        const maxRounds = strictFilterActive ? 20 : 6;
+        const mealsPerRound = strictFilterActive ? 20 : 10;
+
+        for (let round = 0; round < maxRounds; round++) {
             const candidatePromises = [];
 
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < mealsPerRound; i++) {
                 candidatePromises.push(getPlatFromAPI());
             }
 
@@ -2205,12 +2219,16 @@ async function generateBestPlat() {
         for (let plat of validPlats) {
             let score = 0;
 
+            if (plat.idMeal && seenInternalMeals.has(plat.idMeal)) {
+                continue;
+            }
+
             if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) {
                 continue;
             }
 
             // 🔥 bonus filtres stricts
-            if (advancedFilters.vegan && plat.vegan) score += 15;
+            if (advancedFilters.vegan && plat.vegan) score += 25;
             if (advancedFilters.gluten && !plat.gluten) score += 15;
             if (advancedFilters.arachide && !plat.arachide) score += 15;
 
@@ -2260,6 +2278,16 @@ async function generateBestPlat() {
 
         if (!bestPlat) {
             bestPlat = validPlats[0];
+        }
+
+//  mémorise le plat utilisé
+        if (bestPlat && bestPlat.idMeal) {
+            seenInternalMeals.add(bestPlat.idMeal);
+        }
+
+//  reset intelligent
+        if (seenInternalMeals.size > 30) {
+            seenInternalMeals.clear();
         }
 
         return bestPlat;
@@ -3063,8 +3091,9 @@ function renderFeed() {
                             <img 
                                 class="action-icon-img ${post.liked ? 'liked' : ''}" 
                                 src="${post.liked ? 'like_t.png' : 'like.png'}"
+                                data-like-icon="${post.id}"
                             >
-                            <span>${post.likes}</span>
+                            <span data-like-count="${post.id}">${post.likes}</span>
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
@@ -3158,8 +3187,19 @@ function showProfile() {
 
                 <div class="feed-body">
                     <div class="feed-actions">
-                        <button class="feed-action-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
-                        <button class="feed-action-btn" onclick="showComments(${post.id})">💬 ${post.comments.length}</button>
+                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
+                            <img 
+                                class="action-icon-img ${post.liked ? 'liked' : ''}" 
+                                src="${post.liked ? 'like_t.png' : 'like.png'}"
+                                data-like-icon="${post.id}"
+                            >
+                            <span data-like-count="${post.id}">${post.likes}</span>
+                        </button>
+
+                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
+                            <span>${post.commentsCount ?? post.comments.length}</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -3261,6 +3301,19 @@ function resetFeedPosts() {
     showFeed();
 }
 
+function updatePostButtons(postId) {
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    document.querySelectorAll(`[data-like-icon="${postId}"]`).forEach(img => {
+        img.src = post.liked ? "like_t.png" : "like.png";
+    });
+
+    document.querySelectorAll(`[data-like-count="${postId}"]`).forEach(span => {
+        span.textContent = post.likes;
+    });
+}
+
 async function likePost(postId) {
     if (!token) {
         alert("You must login first");
@@ -3308,14 +3361,7 @@ async function likePost(postId) {
                 }
             }
 
-            renderFeed();
-            setupVideoAutoplay();
-
-            if (feedContainer) {
-                requestAnimationFrame(() => {
-                    feedContainer.scrollTop = currentScroll;
-                });
-            }
+            updatePostButtons(postId);
         } else {
             alert(data.error || "Unable to like post");
         }

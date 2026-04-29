@@ -237,9 +237,9 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v1",
         "nom": "Vegan Burger",
-        "image": "https://yourcdn.com/vegan-burger.jpg",
-        "recette": "Cook plant-based patty, assemble with bun and veggies.",
-        "ingredients": ["Vegan bun", "Plant patty", "Lettuce"],
+        "image": "https://images.unsplash.com/photo-1550547660-d9450f859349",
+        "recette": "Cook plant-based patty, assemble with bun, lettuce and sauce.",
+        "ingredients": ["Vegan bun", "Plant-based patty", "Lettuce", "Tomato"],
 
         "vegan": True,
         "gluten": True,
@@ -249,15 +249,15 @@ INTERNAL_MEALS = [
         "base_bread_wrap": True,
         "rapide": True,
 
-        "categoryName": "Vegan",
-        "areaName": "Internal"
+        "categoryName": "Burger",
+        "areaName": "Global"
     },
     {
         "idMeal": "internal_v2",
         "nom": "Quinoa Salad",
-        "image": "https://yourcdn.com/quinoa.jpg",
-        "recette": "Mix quinoa, veggies, olive oil and lemon.",
-        "ingredients": ["Quinoa", "Tomato", "Cucumber"],
+        "image": "https://images.unsplash.com/photo-1505253210343-d5f897a4c1e3",
+        "recette": "Mix cooked quinoa with fresh vegetables, olive oil and lemon.",
+        "ingredients": ["Quinoa", "Tomato", "Cucumber", "Olive oil"],
 
         "vegan": True,
         "gluten": False,
@@ -268,8 +268,226 @@ INTERNAL_MEALS = [
         "rapide": True,
 
         "categoryName": "Healthy",
-        "areaName": "Internal"
+        "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v3",
+        "nom": "Vegan Pad Thai",
+        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "recette": "Cook rice noodles, add tofu, vegetables and sauce, then mix well.",
+        "ingredients": ["Rice noodles", "Tofu", "Carrot", "Bean sprouts", "Soy sauce"],
+
+        "vegan": True,
+        "gluten": False,
+        "arachide": True,
+
+        "style_comfort": True,
+        "base_bread_wrap": False,
+        "rapide": True,
+
+        "categoryName": "Asian",
+        "areaName": "Thailand"
+    },
+    {
+       "idMeal": "internal_v4",
+        "nom": "Vegan Tacos",
+        "image": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092",
+        "recette": "Fill tortillas with black beans, avocado, veggies and vegan sauce.",
+        "ingredients": ["Tortilla", "Black beans", "Avocado", "Tomato", "Lettuce"],
+
+        "vegan": True,
+        "gluten": True,
+        "arachide": False,
+
+        "style_comfort": True,
+        "base_bread_wrap": True,
+        "rapide": True,
+
+        "categoryName": "Mexican",
+        "areaName": "Mexico"
+    },
+    {
+        "idMeal": "internal_v5",
+        "nom": "Vegan Buddha Bowl",
+        "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd",
+        "recette": "Combine rice, roasted vegetables, chickpeas and tahini sauce.",
+        "ingredients": ["Rice", "Chickpeas", "Broccoli", "Carrot", "Tahini"],
+
+        "vegan": True,
+        "gluten": False,
+        "arachide": False,
+
+        "style_comfort": False,
+        "base_bread_wrap": False,
+        "rapide": True,
+
+        "categoryName": "Healthy",
+        "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v6",
+        "nom": "Vegan Chocolate Dessert",
+        "image": "https://images.unsplash.com/photo-1541783245831-57d6fb0926d3",
+        "recette": "Mix cocoa, plant milk and sugar, chill and serve.",
+        "ingredients": ["Cocoa", "Plant milk", "Sugar"],
+
+        "vegan": True,
+        "gluten": False,
+        "arachide": False,
+
+        "sucre": True,
+        "dessert": True,
+
+        "style_comfort": True,
+        "base_bread_wrap": False,
+        "rapide": True,
+
+        "categoryName": "Dessert",
+        "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v7",
+        "nom": "Vegan Pasta Primavera",
+        "image": "https://images.unsplash.com/photo-1525755662778-989d0524087e",
+        "recette": "Cook pasta and mix with sautéed vegetables and olive oil.",
+        "ingredients": ["Pasta", "Zucchini", "Tomato", "Olive oil"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True, "base_bread_wrap": False, "rapide": True,
+        "categoryName": "Italian", "areaName": "Italy"
+    },
+    {
+        "idMeal": "internal_v8",
+        "nom": "Vegan Smoothie Bowl",
+        "image": "https://images.unsplash.com/photo-1490645935967-10de6ba17061",
+        "recette": "Blend fruits and top with granola and seeds.",
+        "ingredients": ["Banana", "Berries", "Granola"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "sucre": True, "dessert": True,
+        "style_comfort": False, "rapide": True,
+        "categoryName": "Dessert", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v9",
+        "nom": "Vegan Curry",
+        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "recette": "Cook vegetables with coconut milk and curry spices.",
+        "ingredients": ["Coconut milk", "Carrot", "Potato"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "style_comfort": True, "rapide": True,
+        "categoryName": "Indian", "areaName": "India"
+    },
+    {
+        "idMeal": "internal_v10",
+        "nom": "Vegan Avocado Toast",
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+        "recette": "Spread avocado on toasted bread with seasoning.",
+        "ingredients": ["Bread", "Avocado", "Salt"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "rapide": True, "base_bread_wrap": True,
+        "categoryName": "Breakfast", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v11",
+        "nom": "Vegan Falafel Wrap",
+        "image": "https://images.unsplash.com/photo-1604908554007-0b1e6d7b1e3f",
+        "recette": "Wrap falafel with veggies and sauce.",
+        "ingredients": ["Falafel", "Wrap", "Salad"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True, "base_bread_wrap": True,
+        "categoryName": "Middle Eastern", "areaName": "Lebanon"
+    },
+    {
+        "idMeal": "internal_v12",
+        "nom": "Vegan Sushi",
+        "image": "https://images.unsplash.com/photo-1562158070-57c5c0d1caa3",
+        "recette": "Roll rice with vegetables in seaweed.",
+        "ingredients": ["Rice", "Nori", "Cucumber"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "categoryName": "Asian", "areaName": "Japan"
+    },
+    {
+        "idMeal": "internal_v13",
+        "nom": "Vegan Pancakes",
+        "image": "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0",
+        "recette": "Cook pancakes with plant milk and flour.",
+        "ingredients": ["Flour", "Plant milk", "Sugar"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "sucre": True, "dessert": True,
+        "style_comfort": True,
+        "categoryName": "Dessert", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v14",
+        "nom": "Vegan Chili",
+        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "recette": "Cook beans with tomato sauce and spices.",
+        "ingredients": ["Beans", "Tomato", "Spices"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "style_comfort": True,
+        "categoryName": "Mexican", "areaName": "Mexico"
+    },
+    {
+        "idMeal": "internal_v15",
+        "nom": "Vegan Caesar Salad",
+        "image": "https://images.unsplash.com/photo-1550304943-4f24f54ddde9",
+        "recette": "Mix lettuce with vegan dressing and croutons.",
+        "ingredients": ["Lettuce", "Croutons", "Dressing"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "categoryName": "Healthy", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v16",
+        "nom": "Vegan Burrito Bowl",
+        "image": "https://images.unsplash.com/photo-1543332164-6e82f355bad5",
+        "recette": "Combine rice, beans, avocado and salsa.",
+        "ingredients": ["Rice", "Beans", "Avocado"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "style_comfort": True,
+        "categoryName": "Mexican", "areaName": "Mexico"
+    },
+    {
+        "idMeal": "internal_v17",
+        "nom": "Vegan Ice Cream",
+        "image": "https://images.unsplash.com/photo-1501446690851-4f95f0fbc4c8",
+        "recette": "Blend frozen fruits into creamy texture.",
+        "ingredients": ["Frozen banana", "Cocoa"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "sucre": True, "dessert": True,
+        "categoryName": "Dessert", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v18",
+        "nom": "Vegan Ramen",
+        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "recette": "Cook noodles in vegetable broth.",
+        "ingredients": ["Noodles", "Broth", "Veggies"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True,
+        "categoryName": "Asian", "areaName": "Japan"
+    },
+    {
+        "idMeal": "internal_v19",
+        "nom": "Vegan Energy Balls",
+        "image": "https://images.unsplash.com/photo-1542444459-db63c9a3f6b7",
+        "recette": "Mix oats, dates and cocoa into balls.",
+        "ingredients": ["Oats", "Dates", "Cocoa"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "sucre": True, "dessert": True,
+        "rapide": True,
+        "categoryName": "Snack", "areaName": "Global"
+    },
+    {
+        "idMeal": "internal_v20",
+        "nom": "Vegan Pizza",
+        "image": "https://images.unsplash.com/photo-1548365328-9f547fb0953b",
+        "recette": "Top pizza with veggies and vegan cheese.",
+        "ingredients": ["Dough", "Tomato", "Vegan cheese"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True,
+        "categoryName": "Italian", "areaName": "Italy"
     }
+
+
 ]
 
 # ========================
@@ -1379,3 +1597,28 @@ def get_internal_meals(filters: dict):
 
     random.shuffle(results)
     return results[:10]    
+
+@app.post("/delete-post")
+def delete_post(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data.get("token"))
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        post = db.query(Post).filter(Post.id == data.get("post_id")).first()
+
+        if not post:
+            return JSONResponse(content={"error": "Post not found"}, status_code=404)
+
+        if post.user_id != user_id:
+            return JSONResponse(content={"error": "Forbidden"}, status_code=403)
+
+        db.delete(post)
+        db.commit()
+
+        return {"message": "Post deleted"}
+
+    finally:
+        db.close()
