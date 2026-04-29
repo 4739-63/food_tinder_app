@@ -1311,6 +1311,7 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
 
             result.append({
                 "id": p.id,
+                "user_id": p.user_id,
                 "author": p.username,
                 "avatar": user.avatar if user and user.avatar else "",
                 "image": p.image,

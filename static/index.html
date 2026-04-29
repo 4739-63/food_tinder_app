@@ -2175,14 +2175,19 @@ async function generateBestPlat() {
     try {
         let validPlats = [];
 
-        // 🔥 1. PRIORITÉ : base interne
+        // 🔥 1. PRIORITÉ : base interne (avec sécurité image + filtres)
         const internalMeals = await getInternalMeals();
 
         if (internalMeals && internalMeals.length > 0) {
-            validPlats.push(...internalMeals);
+            const cleanInternalMeals = internalMeals
+                .filter(Boolean)
+                .filter(passesAdvancedFilters)
+                .filter(meal => meal.image && meal.image.startsWith("http"));
+
+            validPlats.push(...cleanInternalMeals);
         }
 
-        // 🔥 2. Complément TheMealDB
+        // 🔥 2. Détection filtres stricts
         const strictFilterActive =
             advancedFilters.vegan ||
             advancedFilters.gluten ||
@@ -2191,7 +2196,6 @@ async function generateBestPlat() {
 
         const maxRounds = strictFilterActive ? 20 : 6;
         const mealsPerRound = strictFilterActive ? 20 : 10;
-
         for (let round = 0; round < maxRounds; round++) {
             const candidatePromises = [];
 
@@ -2931,6 +2935,7 @@ function hideAllScreens() {
     document.getElementById("subscriptionScreen").style.display = "none";
     document.getElementById("paywallScreen").style.display = "none";
     document.getElementById("searchScreen").style.display = "none";
+    document.getElementById("userProfileScreen").style.display = "none";
 }
 
 async function showSubscription() {
@@ -4867,6 +4872,11 @@ async function toggleFollow(userId) {
     const btn = document.getElementById("followBtn");
 
     btn.textContent = data.following ? "Unfollow" : "Follow";
+}
+
+function showScreen(screenId) {
+    hideAllScreens();
+    document.getElementById(screenId).style.display = "block";
 }
 
 </script>
