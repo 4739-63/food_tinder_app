@@ -570,6 +570,14 @@ class Report(Base):
     reason = Column(String)
     created_at = Column(Integer)
 
+class Follow(Base):
+    __tablename__ = "follows"
+
+    id = Column(Integer, primary_key=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(Integer, default=lambda: int(time.time()))
+
 #===========
 # mémoire algo
 #==========
@@ -1272,7 +1280,8 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
                 "post": p,
                 "likes": likes,
                 "comments": comments,
-                "score": score
+                "score": score,
+                "user_id": p.user_id
             })
 
         scored_posts.sort(key=lambda item: item["score"], reverse=True)
@@ -1622,3 +1631,63 @@ def delete_post(data: dict):
 
     finally:
         db.close()
+
+@app.get("/user-profile")
+def get_user_profile(user_id: int):
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return {"error": "User not found"}
+
+        posts = db.query(Post).filter(Post.user_id == user_id).all()
+
+        followers_count = db.query(Follow).filter(Follow.following_id == user_id).count()
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "avatar": user.avatar,
+            "followers": followers_count,
+            "posts": [
+                {
+                    "id": p.id,
+                    "image": p.image,
+                    "media_type": p.media_type
+                } for p in posts
+            ]
+        }
+
+    finally:
+        db.close()
+
+@app.post("/follow")
+def follow_user(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data["token"])
+        target_id = data["user_id"]
+
+        existing = db.query(Follow).filter(
+            Follow.follower_id == user_id,
+            Follow.following_id == target_id
+        ).first()
+
+        if existing:
+            db.delete(existing)
+            db.commit()
+            return {"following": False}
+
+        new_follow = Follow(
+            follower_id=user_id,
+            following_id=target_id
+        )
+
+        db.add(new_follow)
+        db.commit()
+
+        return {"following": True}
+
+    finally:
+        db.close()                
