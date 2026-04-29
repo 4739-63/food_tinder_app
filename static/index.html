@@ -1443,8 +1443,6 @@ const FEED_PAGE_SIZE = 10;
 let isLoadingFeed = false;
 let hasMoreFeed = true;
 
-let currentUserProfile = null;
-
 let feedTaste = JSON.parse(localStorage.getItem("feedTaste")) || {
     lang_fr: 0,
     lang_en: 0,
@@ -4796,18 +4794,29 @@ function renderSearchResults() {
 }
 
 async function openUserProfile(userId) {
+    if (!userId) {
+        console.error("Missing userId");
+        return;
+    }
+
     try {
-        const res = await fetch(`${API_BASE}/user-profile?user_id=${userId}`);
+        const res = await fetch(`${API_BASE}/user-profile?user_id=${userId}&token=${encodeURIComponent(token || "")}`);
         const data = await res.json();
 
-        if (!data) return;
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to open profile");
+            return;
+        }
 
         renderUserProfile(data);
 
     } catch (e) {
-        console.error("profile error", e);
+        console.error("Profile error:", e);
+        alert("Unable to open profile");
     }
 }
+
+let currentUserProfile = null;
 
 function renderUserProfile(user) {
     const container = document.getElementById("userProfileScreen");
@@ -4816,62 +4825,135 @@ function renderUserProfile(user) {
     currentUserProfile = user;
 
     container.innerHTML = `
-        <div class="profile-header">
-            <img src="${user.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" class="profile-avatar">
-            <h2>${user.username || 'User'}</h2>
-            <p>${user.followers || 0} followers</p>
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <img 
+                    src="${user.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
+                    class="profile-avatar"
+                >
 
-            <button id="followBtn" onclick="toggleFollow(${user.id})">
-                Follow
-            </button>
+                <h2 class="profile-name">${user.username || "User"}</h2>
+
+                <p class="profile-bio">${user.bio || "Food lover 🍽️"}</p>
+
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <strong id="userFollowersCount">${user.followers || 0}</strong>
+                        <span>Followers</span>
+                    </div>
+
+                    <div class="profile-stat">
+                        <strong>${user.posts?.length || 0}</strong>
+                        <span>Posts</span>
+                    </div>
+                </div>
+
+                ${
+                    user.is_me
+                        ? ""
+                        : `<button id="followBtn" class="buy-btn" onclick="toggleFollow(${user.id})">
+                            ${user.is_following ? "Unfollow" : "Follow"}
+                           </button>`
+                }
+            </div>
+
+            <div class="screen-box">
+                <div class="profile-tabs">
+                    <button class="big-back-btn" onclick="filterPosts('all')">All</button>
+                    <button class="big-back-btn" onclick="filterPosts('image')">Photo</button>
+                    <button class="big-back-btn" onclick="filterPosts('video')">Video</button>
+                </div>
+            </div>
+
+            <div id="userPosts"></div>
         </div>
-
-        <div class="profile-tabs">
-            <button onclick="filterPosts('all')">All</button>
-            <button onclick="filterPosts('image')">Photo</button>
-            <button onclick="filterPosts('video')">Video</button>
-        </div>
-
-        <div id="userPosts" class="grid"></div>
     `;
 
-    renderUserPosts(user.posts || []);
+    renderUserPosts(user.posts || [], "all");
     showScreen("userProfileScreen");
 }
 
 function renderUserPosts(posts, filter = "all") {
     const container = document.getElementById("userPosts");
+    if (!container) return;
 
-    const filtered = posts.filter(p => {
+    const filtered = posts.filter(post => {
         if (filter === "all") return true;
-        return p.media_type === filter;
+        return post.media_type === filter;
     });
 
-    container.innerHTML = filtered.map(p => `
-        <div class="post-card">
-            ${p.media_type === "video"
-                ? `<video src="${p.image}" muted></video>`
-                : `<img src="${p.image}">`}
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="screen-box">
+                <p>No posts found.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(post => `
+        <div class="feed-post profile-post-card">
+            ${
+                post.media_type === "video"
+                    ? `<video class="feed-img feed-video" src="${post.image}" muted playsinline loop preload="metadata"></video>`
+                    : `<img class="feed-img" src="${post.image}" alt="post image">`
+            }
+
+            <div class="feed-body">
+                <div class="feed-caption">${post.caption || ""}</div>
+            </div>
         </div>
     `).join("");
 }
 
 function filterPosts(type) {
-    renderUserPosts(currentUserProfile.posts, type);
+    if (!currentUserProfile) return;
+    renderUserPosts(currentUserProfile.posts || [], type);
 }
 
 async function toggleFollow(userId) {
-    const res = await fetch(`${API_BASE}/follow`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ token, user_id: userId })
-    });
+    if (!token) {
+        alert("Please login first");
+        return;
+    }
 
-    const data = await res.json();
+    try {
+        const res = await fetch(`${API_BASE}/follow`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                token,
+                user_id: userId
+            })
+        });
 
-    const btn = document.getElementById("followBtn");
+        const data = await res.json();
 
-    btn.textContent = data.following ? "Unfollow" : "Follow";
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to follow user");
+            return;
+        }
+
+        const btn = document.getElementById("followBtn");
+        const count = document.getElementById("userFollowersCount");
+
+        if (btn) {
+            btn.textContent = data.following ? "Unfollow" : "Follow";
+        }
+
+        if (count) {
+            count.textContent = data.followers;
+        }
+
+        if (currentUserProfile) {
+            currentUserProfile.is_following = data.following;
+            currentUserProfile.followers = data.followers;
+        }
+
+    } catch (error) {
+        console.error("Follow error:", error);
+        alert("Unable to reach server");
+    }
 }
 
 function showScreen(screenId) {

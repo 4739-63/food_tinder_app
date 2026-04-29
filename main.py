@@ -1634,29 +1634,48 @@ def delete_post(data: dict):
         db.close()
 
 @app.get("/user-profile")
-def get_user_profile(user_id: int):
+def get_user_profile(user_id: int, token: str = ""):
     db = SessionLocal()
     try:
+        current_user_id = get_current_user(token) if token else None
+
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
-            return {"error": "User not found"}
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
 
-        posts = db.query(Post).filter(Post.user_id == user_id).all()
+        posts = (
+            db.query(Post)
+            .filter(Post.user_id == user_id, Post.is_hidden == False)
+            .order_by(Post.created_at.desc())
+            .all()
+        )
 
         followers_count = db.query(Follow).filter(Follow.following_id == user_id).count()
 
+        is_following = False
+        if current_user_id:
+            is_following = db.query(Follow).filter(
+                Follow.follower_id == current_user_id,
+                Follow.following_id == user_id
+            ).first() is not None
+
         return {
             "id": user.id,
-            "username": user.username,
-            "avatar": user.avatar,
+            "username": user.name or user.email.split("@")[0],
+            "avatar": user.avatar or "https://via.placeholder.com/180x180.png?text=Profile",
+            "bio": user.bio or "Food lover 🍽️",
             "followers": followers_count,
+            "is_following": is_following,
+            "is_me": current_user_id == user_id,
             "posts": [
                 {
                     "id": p.id,
                     "image": p.image,
-                    "media_type": p.media_type
-                } for p in posts
+                    "media_type": p.media_type or "image",
+                    "caption": p.caption or ""
+                }
+                for p in posts
             ]
         }
 
@@ -1667,8 +1686,18 @@ def get_user_profile(user_id: int):
 def follow_user(data: dict):
     db = SessionLocal()
     try:
-        user_id = get_current_user(data["token"])
-        target_id = data["user_id"]
+        user_id = get_current_user(data.get("token"))
+        target_id = data.get("user_id")
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        if user_id == target_id:
+            return JSONResponse(content={"error": "You cannot follow yourself"}, status_code=400)
+
+        target = db.query(User).filter(User.id == target_id).first()
+        if not target:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
 
         existing = db.query(Follow).filter(
             Follow.follower_id == user_id,
@@ -1678,17 +1707,29 @@ def follow_user(data: dict):
         if existing:
             db.delete(existing)
             db.commit()
-            return {"following": False}
+
+            followers_count = db.query(Follow).filter(Follow.following_id == target_id).count()
+
+            return {
+                "following": False,
+                "followers": followers_count
+            }
 
         new_follow = Follow(
             follower_id=user_id,
-            following_id=target_id
+            following_id=target_id,
+            created_at=int(time.time())
         )
 
         db.add(new_follow)
         db.commit()
 
-        return {"following": True}
+        followers_count = db.query(Follow).filter(Follow.following_id == target_id).count()
+
+        return {
+            "following": True,
+            "followers": followers_count
+        }
 
     finally:
         db.close()                
