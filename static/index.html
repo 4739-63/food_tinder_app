@@ -4945,6 +4945,7 @@ function renderUserPosts(posts, filter = "all") {
             </div>
         </div>
     `).join("");
+    activateUserProfileVideos();
 }
 
 function filterPosts(type) {
@@ -5000,6 +5001,22 @@ async function toggleFollow(userId) {
 function showScreen(screenId) {
     hideAllScreens();
     document.getElementById(screenId).style.display = "block";
+}
+
+function activateUserProfileVideos() {
+    setTimeout(() => {
+        document.querySelectorAll("#userPosts video").forEach(video => {
+            video.load();
+
+            video.onloadedmetadata = () => {
+                try {
+                    video.currentTime = 0.1;
+                } catch (e) {}
+            };
+
+            video.play().catch(() => {});
+        });
+    }, 200);
 }
 
 </script>
