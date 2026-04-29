@@ -3068,7 +3068,8 @@ function renderFeed() {
                         class="feed-avatar" 
                         src="${post.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
                         alt="avatar"
-                        onclick="openUserProfile(${post.user_id})"
+                        style="cursor:pointer; position:relative; z-index:10;"
+                        onclick="event.stopPropagation(); openUserProfile(${post.user_id})"
                     >
 
                     <div class="feed-user-text">
