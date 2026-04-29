@@ -1355,6 +1355,38 @@ html, body, #recipePanel {
     margin-top: 24px;
 }
 
+#userProfileScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+
+    padding: calc(env(safe-area-inset-top, 0px) + 90px) 10px 20px;
+    box-sizing: border-box;
+
+    background: linear-gradient(135deg, #ff7e00, #ffb347);
+}
+
+.profile-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.profile-tabs button {
+    flex: 1;
+    padding: 18px;
+    border-radius: 16px;
+    border: none;
+    font-size: 20px;
+    font-weight: 800;
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
 </style>
 </head>
 
@@ -4829,13 +4861,14 @@ function renderUserProfile(user) {
     container.innerHTML = `
         <div class="profile-wrapper">
             <div class="screen-box profile-box">
+                <button class="big-back-btn" onclick="showFeed()">Back</button>
+
                 <img 
                     src="${user.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
                     class="profile-avatar"
                 >
 
                 <h2 class="profile-name">${user.username || "User"}</h2>
-
                 <p class="profile-bio">${user.bio || "Food lover 🍽️"}</p>
 
                 <div class="profile-stats">
@@ -4861,9 +4894,9 @@ function renderUserProfile(user) {
 
             <div class="screen-box">
                 <div class="profile-tabs">
-                    <button class="big-back-btn" onclick="filterPosts('all')">All</button>
-                    <button class="big-back-btn" onclick="filterPosts('image')">Photo</button>
-                    <button class="big-back-btn" onclick="filterPosts('video')">Video</button>
+                    <button onclick="filterPosts('all')">All</button>
+                    <button onclick="filterPosts('image')">Photo</button>
+                    <button onclick="filterPosts('video')">Video</button>
                 </div>
             </div>
 
@@ -4871,8 +4904,8 @@ function renderUserProfile(user) {
         </div>
     `;
 
-    renderUserPosts(user.posts || [], "all");
     showScreen("userProfileScreen");
+    renderUserPosts(user.posts || [], "all");
 }
 
 function renderUserPosts(posts, filter = "all") {
