@@ -3619,6 +3619,7 @@ async function loadFeedFromBackend(reset = false) {
         if (Array.isArray(data)) {
             const newPosts = data.map(post => ({
                 id: post.id,
+                user_id: post.user_id, // 🔥 IMPORTANT
                 author: post.author,
                 avatar: post.avatar || "https://via.placeholder.com/100x100.png?text=User",
                 image: post.image,
