@@ -1389,11 +1389,12 @@ html, body, #recipePanel {
 
 .video-fullscreen-user-info {
     position: absolute;
-    left: 22px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 95px);
+    left: 24px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 130px); /* 🔥 plus haut */
+
     z-index: 20005;
     color: white;
-    max-width: 68%;
+    max-width: 75%;
 }
 
 .video-user-row {
@@ -1403,38 +1404,37 @@ html, body, #recipePanel {
 }
 
 .video-user-avatar {
-    width: 58px;
-    height: 58px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.35);
+    border: 2px solid rgba(255,255,255,0.4);
 }
 
 .video-user-name {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 900;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-shadow: 0 3px 10px rgba(0,0,0,0.9);
 }
 
 .video-follow-btn {
-    margin-left: 8px;
-    padding: 8px 14px;
+    margin-left: 10px;
+    padding: 10px 18px;
     border-radius: 999px;
     border: none;
     background: white;
     color: black;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 900;
 }
 
 .video-see-more {
-    margin-top: 10px;
+    margin-top: 12px;
     border: none;
     background: transparent;
-    color: #ffcf99;
-    font-size: 17px;
-    font-weight: 800;
-    padding: 0;
+    color: #ffd199;
+    font-size: 19px;
+    font-weight: 900;
 }
 
 .video-caption-box {
