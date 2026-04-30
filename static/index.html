@@ -4743,7 +4743,7 @@ function pickPostVideo() {
             const uploadData = await uploadRes.json();
 
             if (!uploadRes.ok || uploadData.error) {
-                alert(uploadData.error || "Unable to create video upload");
+                alert(JSON.stringify(uploadData, null, 2));
                 return;
             }
 
