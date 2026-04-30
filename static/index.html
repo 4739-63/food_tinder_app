@@ -2374,6 +2374,7 @@ async function generateBestPlat() {
             if (plat.protein_seafood && recentProteins.includes("seafood")) score -= 4;
             if (plat.protein_pork && recentProteins.includes("pork")) score -= 4;
             if (plat.protein_lamb && recentProteins.includes("lamb")) score -= 4;
+            if (plat.protein_goat && recentProteins.includes("goat")) score -= 4;
 
             score += Math.random() * 3;
 

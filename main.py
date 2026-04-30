@@ -255,7 +255,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v2",
         "nom": "Quinoa Salad",
-        "image": "https://images.unsplash.com/photo-1505253210343-d5f897a4c1e3",
+        "image": "https://images.unsplash.com/photo-1505253210343-d5f897a4c1e3?auto=format&fit=crop&w=1200&q=80",
         "recette": "Mix cooked quinoa with fresh vegetables, olive oil and lemon.",
         "ingredients": ["Quinoa", "Tomato", "Cucumber", "Olive oil"],
 
@@ -273,7 +273,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v3",
         "nom": "Vegan Pad Thai",
-        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b?auto=format&fit=crop&w=1200&q=80",
         "recette": "Cook rice noodles, add tofu, vegetables and sauce, then mix well.",
         "ingredients": ["Rice noodles", "Tofu", "Carrot", "Bean sprouts", "Soy sauce"],
 
@@ -389,7 +389,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v11",
         "nom": "Vegan Falafel Wrap",
-        "image": "https://images.unsplash.com/photo-1604908554007-0b1e6d7b1e3f",
+        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80",
         "recette": "Wrap falafel with veggies and sauce.",
         "ingredients": ["Falafel", "Wrap", "Salad"],
         "vegan": True, "gluten": True, "arachide": False,
@@ -399,7 +399,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v12",
         "nom": "Vegan Sushi",
-        "image": "https://images.unsplash.com/photo-1562158070-57c5c0d1caa3",
+        "image": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1200&q=80",
         "recette": "Roll rice with vegetables in seaweed.",
         "ingredients": ["Rice", "Nori", "Cucumber"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -438,7 +438,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v16",
         "nom": "Vegan Burrito Bowl",
-        "image": "https://images.unsplash.com/photo-1543332164-6e82f355bad5",
+        "image": "https://images.unsplash.com/photo-1546069901-5ec6a79120b0?auto=format&fit=crop&w=1200&q=80",
         "recette": "Combine rice, beans, avocado and salsa.",
         "ingredients": ["Rice", "Beans", "Avocado"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -468,7 +468,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v19",
         "nom": "Vegan Energy Balls",
-        "image": "https://images.unsplash.com/photo-1542444459-db63c9a3f6b7",
+        "image": "https://images.unsplash.com/photo-1590080874088-eec64895b423?auto=format&fit=crop&w=1200&q=80",
         "recette": "Mix oats, dates and cocoa into balls.",
         "ingredients": ["Oats", "Dates", "Cocoa"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -479,7 +479,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v20",
         "nom": "Vegan Pizza",
-        "image": "https://images.unsplash.com/photo-1548365328-9f547fb0953b",
+        "image": "https://images.unsplash.com/photo-1601924582975-7e2d6c9f2c6f?auto=format&fit=crop&w=1200&q=80",
         "recette": "Top pizza with veggies and vegan cheese.",
         "ingredients": ["Dough", "Tomato", "Vegan cheese"],
         "vegan": True, "gluten": True, "arachide": False,
