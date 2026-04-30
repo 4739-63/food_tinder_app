@@ -1446,6 +1446,23 @@ html, body, #recipePanel {
     text-shadow: 0 3px 10px rgba(0,0,0,0.9);
 }
 
+.hashtag-suggestions {
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.hashtag-suggestion-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-size: 18px;
+    font-weight: 800;
+    background: rgba(20,20,20,0.45);
+    color: white;
+}
+
 </style>
 </head>
 
@@ -3529,12 +3546,224 @@ function showCreatePost() {
                 <img id="postPreview" class="post-preview" src="" style="display:none;">
             </div>
 
-            <textarea id="postCaption" class="post-textarea" placeholder="Write a caption..."></textarea>
+            <textarea 
+                id="postCaption" 
+                class="post-textarea" 
+                placeholder="Write a caption. Use #pasta, #burger, #vegan..."
+                oninput="handleHashtagInput()"
+            ></textarea>
+
+            <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
 
             <button class="buy-btn" onclick="publishPost()">Publish</button>
             <button class="big-back-btn" onclick="showFeed()">Back</button>
         </div>
     `;
+}
+
+const HASHTAG_SUGGESTIONS = [
+    // 🔥 Base existante clean
+    "pasta",
+    "burger",
+    "pizza",
+    "vegan",
+    "healthy",
+    "dessert",
+    "breakfast",
+    "chicken",
+    "beef",
+    "seafood",
+    "salad",
+    "sushi",
+    "ramen",
+    "tacos",
+    "spicy",
+    "homemade",
+    "quickmeal",
+    "comfortfood",
+    "foodlover",
+    "recipe",
+
+    // 💪 Fitness / nutrition
+    "gymfood",
+    "highprotein",
+    "lowcarb",
+    "bulking",
+    "cutting",
+    "keto",
+    "fitnessmeal",
+    "mealprep",
+    "cleanfood",
+    "postworkout",
+    "preworkout",
+    "veganprotein",
+    "macrofriendly",
+    "proteinpacked",
+    "leanmeals",
+    "healthyeating",
+    "fitfood",
+    "caloriecounting",
+
+    // 🌱 Lifestyle / diet
+    "glutenfree",
+    "dairyfree",
+    "plantbased",
+    "wholefoods",
+    "organicfood",
+    "cleaneating",
+    "lowfat",
+    "lowcalorie",
+    "sugarfree",
+
+    // 🍔 Food vibes
+    "streetfood",
+    "homestyle",
+    "comfortmeal",
+    "easyrecipes",
+    "quickrecipes",
+    "foodie",
+    "instafood",
+    "foodstagram",
+    "foodpics",
+    "foodphotography",
+    "yummyfood",
+    "deliciousfood",
+
+    // 🍳 Cooking style
+    "homecooking",
+    "chefmode",
+    "cookathome",
+    "simplecooking",
+    "easycooking",
+    "fastfoodideas",
+    "mealideas",
+    "familymeals",
+
+    // 🌍 Cuisine types
+    "italianfood",
+    "mexicanfood",
+    "asianfood",
+    "indianfood",
+    "thaifood",
+    "japanesefood",
+    "mediterraneanfood",
+    "frenchfood",
+
+    // 🍩 Dessert / sweets
+    "sweettooth",
+    "chocolate",
+    "cake",
+    "icecream",
+    "cookies",
+    "baking",
+    "pastry",
+    "sweetrecipes",
+    "dessertlover",
+
+    // 🍽️ Occasions
+    "dinnerideas",
+    "lunchideas",
+    "breakfastideas",
+    "brunch",
+    "snacks",
+    "latefood",
+    "weekendfood",
+
+    // ⚡ Trends / engagement
+    "viralfood",
+    "trendingfood",
+    "foodtrend",
+    "tiktokfood",
+    "instarecipe",
+    "musttry",
+    "foodinspo",
+    "foodinspiration",
+    "foodvideo",
+
+    // 🧠 Smart algo tags (important)
+    "quickdinner",
+    "easydinner",
+    "healthyrecipes",
+    "highproteinmeal",
+    "lowcarbmeal",
+    "veganrecipes",
+    "mealpreplife",
+    "fitnessrecipes"
+];
+
+function getCurrentHashtagQuery(text, cursorPosition) {
+    const beforeCursor = text.slice(0, cursorPosition);
+    const match = beforeCursor.match(/#([a-zA-Z0-9_]*)$/);
+    return match ? match[1].toLowerCase() : null;
+}
+
+function handleHashtagInput() {
+    const textarea = document.getElementById("postCaption");
+    const box = document.getElementById("hashtagSuggestions");
+
+    if (!textarea || !box) return;
+
+    const query = getCurrentHashtagQuery(textarea.value, textarea.selectionStart);
+
+    if (query === null) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    const matches = HASHTAG_SUGGESTIONS
+        .filter(tag =>
+            tag.includes(query) 
+        )
+        .sort((a, b) => {
+        // priorité aux débuts exacts
+            if (a.startsWith(query)) return -1;
+            if (b.startsWith(query)) return 1;
+            return 0;
+        })
+        .slice(0, 8);
+
+    if (matches.length === 0) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    box.innerHTML = matches.map(tag => `
+        <button 
+            type="button" 
+            class="hashtag-suggestion-btn" 
+            onclick="insertHashtag('${tag}')"
+        >
+            #${tag}
+        </button>
+    `).join("");
+
+    box.style.display = "flex";
+}
+
+function insertHashtag(tag) {
+    const textarea = document.getElementById("postCaption");
+    const box = document.getElementById("hashtagSuggestions");
+
+    if (!textarea) return;
+
+    const cursor = textarea.selectionStart;
+    const before = textarea.value.slice(0, cursor);
+    const after = textarea.value.slice(cursor);
+
+    const newBefore = before.replace(/#([a-zA-Z0-9_]*)$/, `#${tag} `);
+
+    textarea.value = newBefore + after;
+    textarea.focus();
+
+    const newCursor = newBefore.length;
+    textarea.setSelectionRange(newCursor, newCursor);
+
+    if (box) {
+        box.style.display = "none";
+        box.innerHTML = "";
+    }
 }
 
 async function publishPost() {
@@ -4827,6 +5056,10 @@ function showSearchScreen(initialQuery = "") {
                 <button class="search-tag-btn" onclick="setSearchQuery('#dessert')">#dessert</button>
                 <button class="search-tag-btn" onclick="setSearchQuery('#breakfast')">#breakfast</button>
                 <button class="search-tag-btn" onclick="setSearchQuery('#vegan')">#vegan</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#pizza')">#pizza</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#sushi')">#sushi</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#tacos')">#tacos</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#comfortfood')">#comfortfood</button>
             </div>
 
             <button class="big-back-btn" onclick="showFeed()">Back</button>
