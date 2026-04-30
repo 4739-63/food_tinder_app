@@ -1819,7 +1819,14 @@ def create_video_upload(data: dict):
         data = response.json()
 
         if not data.get("success"):
-            return JSONResponse(content={"error": "Cloudflare error", "details": data}, status_code=500)
+            print("CLOUDFLARE ERROR:", data)
+            return JSONResponse(
+                content={
+                    "error": "Cloudflare error",
+                    "details": data
+                },
+                status_code=500
+            )
 
         result = data["result"]
 
