@@ -4750,10 +4750,20 @@ function pickPostVideo() {
             const uploadUrl = uploadData.upload_url;
             const videoId = uploadData.video_id;
 
+            const formData = new FormData();
+            formData.append("file", file);
+
             const cloudflareRes = await fetch(uploadUrl, {
                 method: "POST",
-                body: file
+                body: formData
             });
+
+            if (!cloudflareRes.ok) {
+                const errorText = await cloudflareRes.text();
+                console.error("Cloudflare upload failed:", cloudflareRes.status, errorText);
+                alert("Video upload to Cloudflare failed: " + cloudflareRes.status);
+                return;
+            }
 
             if (!cloudflareRes.ok) {
                 alert("Video upload to Cloudflare failed");
