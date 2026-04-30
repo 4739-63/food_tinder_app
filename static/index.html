@@ -1544,6 +1544,10 @@ let selectedPostImage = "";
 
 let selectedPostMediaType = "image";
 
+let selectedPostVideoId = "";
+let selectedPostVideoPlaybackUrl = "";
+let selectedPostThumbnailUrl = "";
+
 let selectedProfileImage = "";
 
 let feedSkip = 0;
@@ -3207,7 +3211,12 @@ function renderFeed() {
                                 onloadedmetadata="this.currentTime = 0.1"
                                 onclick="openVideoFullscreen('${post.image}', ${post.id})">
                             </video>`
-                        : `<img class="feed-img" src="${post.image}" alt="post image">`
+                        : `<img 
+                                class="feed-img" 
+                                src="${post.image}" 
+                                alt="post image"
+                                onerror="this.src='default-food.png'"
+                            >`
                 }
 
                 <div class="feed-body">
@@ -3553,6 +3562,8 @@ function showCreatePost() {
                 placeholder="Write a caption. Use #pasta, #burger, #vegan..."
                 oninput="handleHashtagInput()"
             ></textarea>
+             
+            <input type="file" id="videoInput" accept="video/*">
 
             <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
 
@@ -3788,7 +3799,12 @@ async function publishPost() {
                 token,
                 image: selectedPostImage,
                 media_type: selectedPostMediaType || "image",
-                caption
+                caption,
+
+                video_provider: selectedPostMediaType === "video" ? "cloudflare_stream" : null,
+                video_id: selectedPostVideoId || null,
+                video_playback_url: selectedPostVideoPlaybackUrl || null,
+                thumbnail_url: selectedPostThumbnailUrl || null
             })
         });
 
@@ -3803,15 +3819,21 @@ async function publishPost() {
         if (data.message) {
             selectedPostImage = "";
             selectedPostMediaType = "image";
+            selectedPostVideoId = "";
+            selectedPostVideoPlaybackUrl = "";
+            selectedPostThumbnailUrl = "";
+
             await showFeed();
         } else {
             alert(data.error || "Unable to create post");
         }
+
     } catch (error) {
         console.error("Create post error:", error);
         alert("Unable to reach server");
     }
 }
+
 
 async function showComments(postId) {
     hideAllScreens();
@@ -4691,27 +4713,71 @@ function pickPostVideo() {
             return;
         }
 
-        const maxSizeMB = 50;
+        const maxSizeMB = 250;
         if (file.size > maxSizeMB * 1024 * 1024) {
             alert(`Video is too large. Please choose a video under ${maxSizeMB} MB.`);
             return;
         }
 
-        const publicUrl = await uploadVideoToSupabase(file, "videos");
-
-        if (!publicUrl) {
-            alert("Video upload failed");
+        if (!token) {
+            alert("You must login first");
             return;
         }
-
-        selectedPostImage = publicUrl;
-        selectedPostMediaType = "video";
 
         const preview = document.getElementById("postPreviewArea");
         if (preview) {
             preview.innerHTML = `
-                <video class="post-preview" src="${publicUrl}" controls playsinline></video>
+                <div class="screen-box">
+                    <p>Uploading video...</p>
+                </div>
             `;
+        }
+
+        try {
+            const uploadRes = await fetch(`${API_BASE}/create-video-upload`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token })
+            });
+
+            const uploadData = await uploadRes.json();
+
+            if (!uploadRes.ok || uploadData.error) {
+                alert(uploadData.error || "Unable to create video upload");
+                return;
+            }
+
+            const uploadUrl = uploadData.upload_url;
+            const videoId = uploadData.video_id;
+
+            const cloudflareRes = await fetch(uploadUrl, {
+                method: "POST",
+                body: file
+            });
+
+            if (!cloudflareRes.ok) {
+                alert("Video upload to Cloudflare failed");
+                return;
+            }
+
+            const playbackUrl = `https://videodelivery.net/${videoId}/manifest/video.m3u8`;
+            const thumbnailUrl = `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg`;
+
+            selectedPostImage = thumbnailUrl;
+            selectedPostMediaType = "video";
+            selectedPostVideoId = videoId;
+            selectedPostVideoPlaybackUrl = playbackUrl;
+            selectedPostThumbnailUrl = thumbnailUrl;
+
+            if (preview) {
+                preview.innerHTML = `
+                    <video class="post-preview" src="${playbackUrl}" poster="${thumbnailUrl}" controls playsinline></video>
+                `;
+            }
+
+        } catch (error) {
+            console.error("Cloudflare video upload error:", error);
+            alert("Video upload failed");
         }
     };
 
@@ -5136,14 +5202,20 @@ function renderSearchResults() {
                     post.media_type === "video"
                         ? `<video 
                                 class="feed-img feed-video" 
-                                src="${post.image}" 
+                                src="${post.video_playback_url || post.image}" 
+                                poster="${post.thumbnail_url || post.image || ''}"
                                 muted 
                                 playsinline 
                                 loop 
                                 preload="metadata"
-                                onclick="openVideoFullscreen('${post.image}', ${post.id})">
+                                onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
                             </video>`
-                        : `<img class="feed-img" src="${post.image}" alt="post image">`
+                        : `<img 
+                                class="feed-img" 
+                                src="${post.image}" 
+                                alt="post image"
+                                onerror="this.onerror=null; this.src='default-food.png';"
+                            >`
                 }
 
                 <div class="feed-body">
@@ -5279,7 +5351,12 @@ function renderUserPosts(posts, filter = "all") {
             ${
                 post.media_type === "video"
                     ? `<video class="feed-img feed-video" src="${post.image}" muted playsinline loop preload="metadata"></video>`
-                    : `<img class="feed-img" src="${post.image}" alt="post image">`
+                    : `<img 
+                            class="feed-img" 
+                            src="${post.image}" 
+                            alt="post image"
+                            onerror="this.src='default-food.png'"
+                        >`
             }
 
             <div class="feed-body">
@@ -5352,6 +5429,61 @@ function activateUserProfileVideos() {
             video.play().catch(() => {});
         });
     }, 200);
+}
+
+async function uploadVideo() {
+    const file = document.getElementById("videoInput").files[0];
+
+    if (!file) {
+        alert("Select a video");
+        return;
+    }
+
+    //  1. demander URL upload
+    const res = await fetch("/create-video-upload", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            token: localStorage.getItem("token")
+        })
+    });
+
+    const data = await res.json();
+
+    const uploadUrl = data.upload_url;
+    const videoId = data.video_id;
+
+    //  2. upload vers Cloudflare
+    await fetch(uploadUrl, {
+        method: "POST",
+        body: file
+    });
+
+    //  3. construire URLs
+    const playbackUrl = `https://videodelivery.net/${videoId}/manifest/video.m3u8`;
+    const thumbnailUrl = `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg`;
+
+    //  4. créer post
+    await fetch("/create-post", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            token: localStorage.getItem("token"),
+            media_type: "video",
+            video_provider: "cloudflare_stream",
+            video_id: videoId,
+            video_playback_url: playbackUrl,
+            thumbnail_url: thumbnailUrl,
+            caption: "My video ",
+
+        })
+    });
+
+    alert("Video uploaded ");
 }
 
 </script>
