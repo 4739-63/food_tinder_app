@@ -369,7 +369,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v9",
         "nom": "Vegan Curry",
-        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "image": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=1200&q=80",
         "recette": "Cook vegetables with coconut milk and curry spices.",
         "ingredients": ["Coconut milk", "Carrot", "Potato"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -419,7 +419,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v14",
         "nom": "Vegan Chili",
-        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "image": "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&w=1200&q=80",
         "recette": "Cook beans with tomato sauce and spices.",
         "ingredients": ["Beans", "Tomato", "Spices"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -448,7 +448,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v17",
         "nom": "Vegan Ice Cream",
-        "image": "https://images.unsplash.com/photo-1501446690851-4f95f0fbc4c8",
+        "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=1200&q=80",
         "recette": "Blend frozen fruits into creamy texture.",
         "ingredients": ["Frozen banana", "Cocoa"],
         "vegan": True, "gluten": False, "arachide": False,
@@ -458,7 +458,7 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v18",
         "nom": "Vegan Ramen",
-        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b",
+        "image": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=80",
         "recette": "Cook noodles in vegetable broth.",
         "ingredients": ["Noodles", "Broth", "Veggies"],
         "vegan": True, "gluten": True, "arachide": False,
