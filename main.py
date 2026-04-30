@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
 
 import os
+import requests
 import random
 import stripe
 
@@ -538,12 +539,21 @@ class Post(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     username = Column(String)
 
+    # image/photo ou ancienne URL vidéo
     image = Column(String)
+
+    # image ou video
     media_type = Column(String, default="image")
+
     caption = Column(String)
     is_hidden = Column(Boolean, default=False)
-
     created_at = Column(Integer)
+
+    # 🔥 nouvelles colonnes vidéo scalable
+    video_provider = Column(String, nullable=True)          # cloudflare_stream / mux
+    video_id = Column(String, nullable=True)                # id vidéo du provider
+    video_playback_url = Column(String, nullable=True)      # URL lecture vidéo
+    thumbnail_url = Column(String, nullable=True)           # miniature vidéo
 
 class Like(Base):
     __tablename__ = "likes"
@@ -638,6 +648,25 @@ with engine.connect() as conn:
     conn.execute(text("""
         ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';
     """))
+    conn.commit()
+
+with engine.connect() as conn:
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_provider VARCHAR;
+    """))
+
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_id VARCHAR;
+    """))
+
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_playback_url VARCHAR;
+    """))
+
+    conn.execute(text("""
+        ALTER TABLE posts ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR;
+    """))
+
     conn.commit()
 
 from sqlalchemy import text
@@ -1098,13 +1127,29 @@ def create_post(data: dict):
         if not user:
             return {"error": "Unauthorized"}
 
+        video_id = data.get("video_id")
+        media_type = data.get("media_type", "image")
+
+        video_playback_url = data.get("video_playback_url")
+        thumbnail_url = data.get("thumbnail_url")
+
+        if media_type == "video" and video_id:
+            video_playback_url = video_playback_url or f"https://videodelivery.net/{video_id}/manifest/video.m3u8"
+            thumbnail_url = thumbnail_url or f"https://videodelivery.net/{video_id}/thumbnails/thumbnail.jpg"
+
         post = Post(
             user_id=user.id,
             username=user.name or user.email.split("@")[0],
-            image=data["image"],
-            media_type=data.get("media_type", "image"),
+
+            image=data.get("image") or thumbnail_url,
+            media_type=media_type,
             caption=data["caption"],
-            created_at=int(time.time())
+            created_at=int(time.time()),
+
+            video_provider=data.get("video_provider"),
+            video_id=video_id,
+            video_playback_url=video_playback_url,
+            thumbnail_url=thumbnail_url
         )
 
         db.add(post)
@@ -1322,7 +1367,7 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
                 "avatar": user.avatar if user and user.avatar else "",
                 "image": p.image,
                 "media_type": p.media_type or "image",
-                "caption": p.caption,
+                "caption": p.caption or "",
                 "language": detect_language(p.caption),
                 "likes": likes,
                 "liked": liked,
@@ -1330,7 +1375,13 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
                 "commentsCount": comments,
                 "created_at": p.created_at,
                 "score": round(item["score"], 2),
-                "is_following": is_following
+                "is_following": is_following,
+
+    # vidéo scalable
+                "video_provider": p.video_provider,
+                "video_id": p.video_id,
+                "video_playback_url": p.video_playback_url,
+                "thumbnail_url": p.thumbnail_url
             })
 
         #  enregistrer les posts vus AVANT le return
@@ -1739,4 +1790,43 @@ def follow_user(data: dict):
         }
 
     finally:
-        db.close()                
+        db.close() 
+
+@app.post("/create-video-upload")
+def create_video_upload(data: dict):
+    try:
+        token = data.get("token")
+        user_id = get_current_user(token)
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        api_token = os.getenv("CLOUDFLARE_STREAM_TOKEN")
+
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/direct_upload"
+
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Content-Type": "application/json"
+        }
+
+        body = {
+            "maxDurationSeconds": 180  # 🔥 limite 3 minutes
+        }
+
+        response = requests.post(url, headers=headers, json=body)
+        data = response.json()
+
+        if not data.get("success"):
+            return JSONResponse(content={"error": "Cloudflare error", "details": data}, status_code=500)
+
+        result = data["result"]
+
+        return {
+            "upload_url": result["uploadURL"],
+            "video_id": result["uid"]
+        }
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)                       
