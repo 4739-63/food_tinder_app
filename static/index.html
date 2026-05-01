@@ -4708,10 +4708,11 @@ function pickPostVideo() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "video/*";
-    input.capture = "environment";
 
     input.onchange = async () => {
-        const file = input.files[0];
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const file = input.files && input.files[0];
 
         if (!file) {
             alert("No video selected");
