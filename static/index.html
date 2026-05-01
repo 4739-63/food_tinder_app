@@ -4936,10 +4936,15 @@ function loadFullscreenVideo(index) {
     document.querySelectorAll(".feed-video").forEach(v => v.pause());
 
     video.pause();
-    video.src = post.image;
+
+    const fullscreenSrc = post.video_playback_url || post.image;
+
+    video.src = fullscreenSrc;
+    video.poster = post.thumbnail_url || post.image || "";
     video.currentTime = 0;
     video.loop = true;
     video.muted = false;
+    video.load();
 
     if (likeBtn) {
         const likeImg = likeBtn.querySelector("img");
