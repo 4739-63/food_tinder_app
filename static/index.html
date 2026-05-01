@@ -3203,20 +3203,20 @@ function renderFeed() {
                     post.media_type === "video"
                         ? `<video 
                                 class="feed-img feed-video" 
-                                src="${post.image}" 
+                                src="${post.video_playback_url || post.image}" 
+                                poster="${post.thumbnail_url || post.image || ''}"
                                 muted 
                                 playsinline 
                                 loop 
                                 preload="metadata"
-                                onloadedmetadata="this.currentTime = 0.1"
-                                onclick="openVideoFullscreen('${post.image}', ${post.id})">
+                                onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
                             </video>`
                         : `<img 
                                 class="feed-img" 
                                 src="${post.image}" 
                                 alt="post image"
-                                onerror="this.src='default-food.png'"
-                            >`
+                                onerror="this.onerror=null; this.src='default-food.png';"
+                           >`
                 }
 
                 <div class="feed-body">
@@ -3973,7 +3973,11 @@ async function loadFeedFromBackend(reset = false) {
                 liked: post.liked || false,
                 comments: Array(post.comments || 0).fill({ author: "", text: "" }),
                 commentsCount: post.comments || 0,
-                is_following: post.is_following
+                is_following: post.is_following,
+                video_provider: post.video_provider || null,
+                video_id: post.video_id || null,
+                video_playback_url: post.video_playback_url || "",
+                thumbnail_url: post.thumbnail_url || ""
             }));
 
             const rankedPosts = rankFeedPosts(reset ? newPosts : [...demoPosts, ...newPosts]);
