@@ -1812,7 +1812,7 @@ def create_video_upload(data: dict):
         }
 
         body = {
-            "maxDurationSeconds": 180  # 🔥 limite 3 minutes
+            "maxDurationSeconds": 300  # 🔥 limite 3 minutes
         }
 
         response = requests.post(url, headers=headers, json=body)

@@ -55,5 +55,16 @@
 
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>MealSwipe saves and uploads food images for your posts.</string>
+	<key>NSCameraUsageDescription</key>
+    <string>MealSwipe needs camera access so you can record videos for your posts.</string>
+
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MealSwipe needs microphone access to record sound with your videos.</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>MealSwipe needs photo library access so you can choose videos for your posts.</string>
+
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>MealSwipe needs permission to save media if needed.</string>
 </dict>
 </plist>
