@@ -227,43 +227,43 @@ body {
 
 #bottomNav {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: 10px;
+    right: 10px;
     bottom: 0;
 
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-top: 12px;
 
     z-index: 9999;
 
     display: flex;
     justify-content: space-between;
     align-items: center;
-
-    padding-top: 12px;
-    padding-left: 12px;
-    padding-right: 12px;
+    gap: 8px;
 
     background: rgba(0,0,0,0.4);
     backdrop-filter: blur(12px);
 
     border-top: 1px solid rgba(255,255,255,0.1);
 
-    transform: translateZ(0);      /* 🔥 GPU fix */
-    will-change: transform;        /* 🔥 stabilité */
+    box-sizing: border-box;
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 #bottomNav button {
     flex: 1;
-    margin: 0 6px;
+    min-width: 0;
+    margin: 0;
 
-    padding: 60px 0; 
+    padding: 52px 0;
 
-    border-radius: 35px; 
+    border-radius: 28px;
 
-    font-size: 28px; 
+    font-size: 24px;
     font-weight: 600;
 
-    background: rgba(255,255,255,0.08); /* 🔥 semi transparent */
+    background: rgba(255,255,255,0.08);
     color: white;
 
     transition: transform 0.2s ease;
