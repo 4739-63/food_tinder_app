@@ -5240,7 +5240,7 @@ function showSearchScreen(initialQuery = "") {
         <div id="searchResults" class="search-results"></div>
     `;
 
-    renderSearchResults();
+    handleSearchInput();
 }
 
 function setSearchQuery(query) {
@@ -5269,7 +5269,7 @@ async function searchProfiles() {
 
     const query = input.value.trim();
 
-    if (query.length < 2) {
+    if (query.length < 2 || query.startsWith("#")) {
         lastProfileSuggestions = [];
         return;
     }
@@ -5278,11 +5278,10 @@ async function searchProfiles() {
         const res = await fetch(`${API_BASE}/search-users?q=${encodeURIComponent(query)}&token=${token || ""}`);
         const data = await res.json();
 
-        if (Array.isArray(data)) {
-            lastProfileSuggestions = data;
-        } else {
-            lastProfileSuggestions = [];
-        }
+        console.log("PROFILE SEARCH DATA:", data);
+
+        lastProfileSuggestions = Array.isArray(data) ? data : [];
+
     } catch (error) {
         console.error("Search users error:", error);
         lastProfileSuggestions = [];
