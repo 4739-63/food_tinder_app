@@ -1488,6 +1488,38 @@ html, body, #recipePanel {
     color: white;
 }
 
+.profile-suggestions {
+    margin-top: 18px;
+}
+
+.profile-suggestion-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 18px;
+    background: rgba(20,20,20,0.55);
+    color: white;
+}
+
+.profile-suggestion-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profile-suggestion-name {
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.profile-suggestion-meta {
+    font-size: 16px;
+    opacity: 0.75;
+}
+
 </style>
 </head>
 
@@ -5172,7 +5204,7 @@ function showSearchScreen(initialQuery = "") {
                 class="search-input" 
                 placeholder="Search #pasta, #burger, #healthy..."
                 value="${initialQuery}"
-                oninput="renderSearchResults()"
+                oninput="handleSearchInput()"
             >
 
             <div class="search-tag-list">
@@ -5203,6 +5235,44 @@ function setSearchQuery(query) {
 
     input.value = query;
     renderSearchResults();
+}
+
+let searchTimeout = null;
+let lastProfileSuggestions = [];
+
+function handleSearchInput() {
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(async () => {
+        await searchProfiles();
+        renderSearchResults();
+    }, 250);
+}
+
+async function searchProfiles() {
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+
+    const query = input.value.trim();
+
+    if (query.length < 2) {
+        lastProfileSuggestions = [];
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/search-users?q=${encodeURIComponent(query)}&token=${token || ""}`);
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+            lastProfileSuggestions = data;
+        } else {
+            lastProfileSuggestions = [];
+        }
+    } catch (error) {
+        console.error("Search users error:", error);
+        lastProfileSuggestions = [];
+    }
 }
 
 function renderSearchResults() {
@@ -5244,6 +5314,28 @@ function renderSearchResults() {
     }
 
     results.innerHTML = "";
+
+    if (lastProfileSuggestions.length > 0) {
+        results.innerHTML += `
+            <div class="screen-box">
+                <h3>Profiles</h3>
+                <div class="profile-suggestions">
+                    ${lastProfileSuggestions.map(user => `
+                        <div class="profile-suggestion-card" onclick="openUserProfile(${user.id})">
+                            <img 
+                                class="profile-suggestion-avatar" 
+                                src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
+                            >
+                            <div>
+                                <div class="profile-suggestion-name">${user.username}</div>
+                                <div class="profile-suggestion-meta">${user.followers || 0} followers</div>
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    }
 
     filteredPosts.forEach(post => {
         results.innerHTML += `

@@ -1837,3 +1837,38 @@ def create_video_upload(data: dict):
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)                       
+    
+@app.get("/search-users")
+def search_users(q: str = "", token: str = ""):
+    db = SessionLocal()
+    try:
+        query = q.strip().lower()
+
+        if len(query) < 2:
+            return []
+
+        users = (
+            db.query(User)
+            .filter(User.username.ilike(f"%{query}%"))
+            .limit(10)
+            .all()
+        )
+
+        result = []
+
+        for user in users:
+            followers_count = db.query(Follow).filter(
+                Follow.following_id == user.id
+            ).count()
+
+            result.append({
+                "id": user.id,
+                "username": user.username,
+                "avatar": user.avatar or "",
+                "followers": followers_count
+            })
+
+        return result
+
+    finally:
+        db.close()    
