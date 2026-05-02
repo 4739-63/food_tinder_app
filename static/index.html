@@ -227,40 +227,47 @@ body {
 
 #bottomNav {
     position: fixed;
-    left: 10px;
-    right: 10px;
+    left: 0;
+    right: 0;
     bottom: 0;
 
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    padding-top: 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-top: 10px;
+
+    /* 🔥 PLUS D’ESPACE SUR LES CÔTÉS */
+    padding-left: 16px;
+    padding-right: 16px;
 
     z-index: 9999;
 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
 
     background: rgba(0,0,0,0.4);
     backdrop-filter: blur(12px);
 
     border-top: 1px solid rgba(255,255,255,0.1);
 
-    box-sizing: border-box;
     transform: translateZ(0);
     will-change: transform;
 }
 
 #bottomNav button {
     flex: 1;
-    min-width: 0;
-    margin: 0;
 
-    padding: 52px 0;
+    /* 🔥 espace entre boutons légèrement réduit */
+    margin: 0 4px;
 
+    /* 🔥 BOUTONS PLUS PETITS */
+    padding: 48px 0;
+
+    /* 🔥 légèrement moins arrondi */
     border-radius: 28px;
 
+    /* 🔥 texte un peu plus petit */
     font-size: 24px;
+
     font-weight: 600;
 
     background: rgba(255,255,255,0.08);
