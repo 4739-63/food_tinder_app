@@ -229,7 +229,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 20px;
+    bottom: 25px;
 
     padding-bottom: calc(20px + env(safe-area-inset-bottom));
     padding-top: 20px;
@@ -260,8 +260,11 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    height: 25px;
 
+    /* 🔥 prend toute la zone sous la nav */
+    height: calc(25px + env(safe-area-inset-bottom));
+
+    /* 🔥 EXACT même fond */
     background: rgba(0,0,0,0.4);
     backdrop-filter: blur(12px);
 
