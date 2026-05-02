@@ -1488,13 +1488,10 @@ html, body, #recipePanel {
     color: white;
 }
 
-.profile-suggestions {
-    margin-top: 18px;
-}
-
 .profile-suggestion-card {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 14px;
     padding: 14px;
     margin-bottom: 12px;
@@ -1503,21 +1500,38 @@ html, body, #recipePanel {
     color: white;
 }
 
+.profile-suggestion-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
 .profile-suggestion-avatar {
     width: 64px;
     height: 64px;
     border-radius: 50%;
     object-fit: cover;
+    flex-shrink: 0;
 }
 
 .profile-suggestion-name {
     font-size: 22px;
     font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.profile-suggestion-meta {
+.profile-suggestion-follow-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    background: white;
+    color: black;
     font-size: 16px;
-    opacity: 0.75;
+    font-weight: 900;
+    flex-shrink: 0;
 }
 
 </style>
@@ -5292,8 +5306,43 @@ function renderSearchResults() {
         return;
     }
 
+    const isHashtagSearch = query.startsWith("#");
     const cleanQuery = query.replace("#", "");
 
+    results.innerHTML = "";
+
+    // 🔥 Recherche profil : seulement si ce n'est PAS un hashtag
+    if (!isHashtagSearch && lastProfileSuggestions.length > 0) {
+        results.innerHTML = `
+            <div class="screen-box">
+                <h3>Profiles</h3>
+
+                <div class="profile-suggestions">
+                    ${lastProfileSuggestions.map(user => `
+                        <div class="profile-suggestion-card">
+                            <div class="profile-suggestion-left" onclick="openUserProfile(${user.id})">
+                                <img 
+                                    class="profile-suggestion-avatar" 
+                                    src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
+                                >
+                                <div class="profile-suggestion-name">${user.username || "User"}</div>
+                            </div>
+
+                            <button 
+                                class="profile-suggestion-follow-btn"
+                                onclick="event.stopPropagation(); toggleFollow(${user.id}); this.textContent = this.textContent === 'Follow' ? 'Unfollow' : 'Follow';"
+                            >
+                                ${user.is_following ? "Unfollow" : "Follow"}
+                            </button>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 🔥 Recherche hashtag / posts : garde ton ancien système
     const filteredPosts = demoPosts.filter(post => {
         const caption = (post.caption || "").toLowerCase();
         const author = (post.author || "").toLowerCase();
@@ -5313,35 +5362,16 @@ function renderSearchResults() {
         return;
     }
 
-    results.innerHTML = "";
-
-    if (lastProfileSuggestions.length > 0) {
-        results.innerHTML += `
-            <div class="screen-box">
-                <h3>Profiles</h3>
-                <div class="profile-suggestions">
-                    ${lastProfileSuggestions.map(user => `
-                        <div class="profile-suggestion-card" onclick="openUserProfile(${user.id})">
-                            <img 
-                                class="profile-suggestion-avatar" 
-                                src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
-                            >
-                            <div>
-                                <div class="profile-suggestion-name">${user.username}</div>
-                                <div class="profile-suggestion-meta">${user.followers || 0} followers</div>
-                            </div>
-                        </div>
-                    `).join("")}
-                </div>
-            </div>
-        `;
-    }
-
     filteredPosts.forEach(post => {
         results.innerHTML += `
             <div class="feed-post" style="position:relative;">
                 <div class="feed-header">
-                    <img class="feed-avatar" src="${post.avatar || 'https://via.placeholder.com/100x100.png?text=User'}" alt="avatar">
+                    <img 
+                        class="feed-avatar" 
+                        src="${post.avatar || 'https://via.placeholder.com/100x100.png?text=User'}" 
+                        alt="avatar"
+                        onclick="openUserProfile(${post.user_id})"
+                    >
 
                     <div class="feed-user-text">
                         <strong class="feed-author-name">${post.author}</strong>
@@ -5366,7 +5396,7 @@ function renderSearchResults() {
                                 src="${post.image}" 
                                 alt="post image"
                                 onerror="this.onerror=null; this.src='default-food.png';"
-                            >`
+                           >`
                 }
 
                 <div class="feed-body">
@@ -5375,7 +5405,6 @@ function renderSearchResults() {
                             <img 
                                 class="action-icon-img" 
                                 src="${post.liked ? 'like_t.png' : 'like.png'}"
-                                alt="like"
                             >
                             <span>${post.likes}</span>
                         </button>
@@ -5390,7 +5419,7 @@ function renderSearchResults() {
         `;
     });
 
-    setupVideoAutoplay();
+    activateFeedVideos();
 }
 
 async function openUserProfile(userId) {
