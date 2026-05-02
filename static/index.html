@@ -5248,7 +5248,7 @@ function setSearchQuery(query) {
     if (!input) return;
 
     input.value = query;
-    renderSearchResults();
+    handleSearchInput();
 }
 
 let searchTimeout = null;
@@ -5307,16 +5307,23 @@ function renderSearchResults() {
     }
 
     const isHashtagSearch = query.startsWith("#");
-    const cleanQuery = query.replace("#", "");
 
     results.innerHTML = "";
 
-    // 🔥 Recherche profil : seulement si ce n'est PAS un hashtag
-    if (!isHashtagSearch && lastProfileSuggestions.length > 0) {
+    // PROFILS SEULEMENT quand ce n’est pas un hashtag
+    if (!isHashtagSearch) {
+        if (lastProfileSuggestions.length === 0) {
+            results.innerHTML = `
+                <div class="screen-box">
+                    <p>No profiles found.</p>
+                </div>
+            `;
+            return;
+        }
+
         results.innerHTML = `
             <div class="screen-box">
                 <h3>Profiles</h3>
-
                 <div class="profile-suggestions">
                     ${lastProfileSuggestions.map(user => `
                         <div class="profile-suggestion-card">
@@ -5342,21 +5349,18 @@ function renderSearchResults() {
         return;
     }
 
-    // 🔥 Recherche hashtag / posts : garde ton ancien système
+    // HASHTAGS seulement quand la recherche commence par #
+    const cleanQuery = query.replace("#", "");
+
     const filteredPosts = demoPosts.filter(post => {
         const caption = (post.caption || "").toLowerCase();
-        const author = (post.author || "").toLowerCase();
-
-        return (
-            caption.includes(cleanQuery) ||
-            author.includes(cleanQuery)
-        );
+        return caption.includes(cleanQuery);
     });
 
     if (filteredPosts.length === 0) {
         results.innerHTML = `
             <div class="screen-box">
-                <p>No results found.</p>
+                <p>No hashtag results found.</p>
             </div>
         `;
         return;
@@ -5398,23 +5402,6 @@ function renderSearchResults() {
                                 onerror="this.onerror=null; this.src='default-food.png';"
                            >`
                 }
-
-                <div class="feed-body">
-                    <div class="feed-actions">
-                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-                            <img 
-                                class="action-icon-img" 
-                                src="${post.liked ? 'like_t.png' : 'like.png'}"
-                            >
-                            <span>${post.likes}</span>
-                        </button>
-
-                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="comments.png" alt="comments">
-                            <span>${post.commentsCount ?? post.comments.length}</span>
-                        </button>
-                    </div>
-                </div>
             </div>
         `;
     });
