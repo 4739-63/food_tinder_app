@@ -229,12 +229,12 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 25px;
+    bottom: 0;
 
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    /* 🔥 on remonte visuellement les boutons */
+    padding-bottom: calc(45px + env(safe-area-inset-bottom));
     padding-top: 20px;
 
-    /* 🔥 PLUS D’ESPACE SUR LES CÔTÉS */
     padding-left: 16px;
     padding-right: 16px;
 
@@ -251,24 +251,30 @@ body {
 
     transform: translateZ(0);
     will-change: transform;
-    isolation: isolate;
 }
 
-#bottomNav::after {
-    content: "";
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+#bottomNav button {
+    flex: 1;
 
-    /* 🔥 prend toute la zone sous la nav */
-    height: calc(25px + env(safe-area-inset-bottom));
+    /* 🔥 espace entre boutons légèrement réduit */
+    margin: 0 4px;
 
-    /* 🔥 EXACT même fond */
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(12px);
+    /* 🔥 BOUTONS PLUS PETITS */
+    padding: 48px 0;
 
-    z-index: -1;
+    /* 🔥 légèrement moins arrondi */
+    border-radius: 28px;
+
+    /* 🔥 texte un peu plus petit */
+    font-size: 24px;
+
+    font-weight: 600;
+
+    background: rgba(255,255,255,0.08);
+    color: white;
+
+    transition: transform 0.2s ease;
+    touch-action: manipulation;
 }
 
 #bottomNav button {
