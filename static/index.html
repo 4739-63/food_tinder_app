@@ -5336,7 +5336,8 @@ function renderSearchResults() {
 
                             <button 
                                 class="profile-suggestion-follow-btn"
-                                onclick="event.stopPropagation(); toggleFollow(${user.id}); this.textContent = this.textContent === 'Follow' ? 'Unfollow' : 'Follow';"
+                                data-follow-user-id="${user.id}"
+                                onclick="event.stopPropagation(); toggleFollow(${user.id});"
                             >
                                 ${user.is_following ? "Unfollow" : "Follow"}
                             </button>
@@ -5539,40 +5540,78 @@ function filterPosts(type) {
 }
 
 async function toggleFollow(userId) {
-    if (!token) return;
+    if (!token) {
+        alert("Please login first");
+        return;
+    }
 
     try {
-        const res = await fetch(`${API_BASE}/toggle-follow`, {
+        const res = await fetch(`${API_BASE}/follow`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ token, user_id: userId })
+            body: JSON.stringify({
+                token,
+                user_id: userId
+            })
         });
 
         const data = await res.json();
 
-        const isFollowing = data.following;
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to follow user");
+            return;
+        }
 
-        // 🔥 update feed
+        const isFollowing = data.following;
+        const followers = data.followers;
+
+        // update feed posts
         demoPosts.forEach(p => {
             if (p.user_id === userId) {
                 p.is_following = isFollowing;
             }
         });
 
-        // 🔥 update fullscreen bouton
-        const btn = document.getElementById("fullscreenFollowBtn");
-        if (btn) {
-            btn.textContent = isFollowing ? "Unfollow" : "Follow";
+        // update search suggestions
+        lastProfileSuggestions.forEach(u => {
+            if (u.id === userId) {
+                u.is_following = isFollowing;
+                u.followers = followers;
+            }
+        });
+
+        // update profile page
+        if (currentUserProfile && currentUserProfile.id === userId) {
+            currentUserProfile.is_following = isFollowing;
+            currentUserProfile.followers = followers;
         }
 
-        // 🔥 update profile bouton
+        // update all buttons for this user
+        document.querySelectorAll(`[data-follow-user-id="${userId}"]`).forEach(btn => {
+            btn.textContent = isFollowing ? "Unfollow" : "Follow";
+        });
+
         const profileBtn = document.getElementById("followBtn");
         if (profileBtn && currentUserProfile?.id === userId) {
             profileBtn.textContent = isFollowing ? "Unfollow" : "Follow";
         }
 
+        const fullscreenBtn = document.getElementById("fullscreenFollowBtn");
+        if (fullscreenBtn) {
+            const activeVideo = fullscreenVideos[currentFullscreenVideoIndex];
+            if (activeVideo && activeVideo.user_id === userId) {
+                fullscreenBtn.textContent = isFollowing ? "Unfollow" : "Follow";
+            }
+        }
+
+        const count = document.getElementById("userFollowersCount");
+        if (count && currentUserProfile?.id === userId) {
+            count.textContent = followers;
+        }
+
     } catch (e) {
-        console.error("Follow error", e);
+        console.error("Follow error:", e);
+        alert("Unable to reach server");
     }
 }
 
