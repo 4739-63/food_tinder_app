@@ -1687,7 +1687,9 @@ def delete_post(data: dict):
         if not user_id:
             return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
 
-        post = db.query(Post).filter(Post.id == data.get("post_id")).first()
+        post_id = data.get("post_id")
+
+        post = db.query(Post).filter(Post.id == post_id).first()
 
         if not post:
             return JSONResponse(content={"error": "Post not found"}, status_code=404)
@@ -1695,10 +1697,20 @@ def delete_post(data: dict):
         if post.user_id != user_id:
             return JSONResponse(content={"error": "Forbidden"}, status_code=403)
 
+        db.query(Like).filter(Like.post_id == post_id).delete()
+        db.query(Comment).filter(Comment.post_id == post_id).delete()
+        db.query(Report).filter(Report.post_id == post_id).delete()
+        db.query(PostView).filter(PostView.post_id == post_id).delete()
+
         db.delete(post)
         db.commit()
 
         return {"message": "Post deleted"}
+
+    except Exception as e:
+        db.rollback()
+        print("DELETE POST ERROR:", str(e))
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
     finally:
         db.close()
