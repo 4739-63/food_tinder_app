@@ -1537,8 +1537,10 @@ html, body, #recipePanel {
 #fullscreenVideoStack {
     position: absolute;
     inset: 0;
+    height: 300vh;
     transform: translateY(-100vh);
     transition: transform 0.22s ease;
+    will-change: transform;
 }
 
 .fullscreen-stack-video {
@@ -1547,6 +1549,7 @@ html, body, #recipePanel {
     display: block;
     object-fit: cover;
     background: black;
+    transform: translateZ(0);
 }
 
 .feed-sound-btn {
@@ -1567,6 +1570,34 @@ html, body, #recipePanel {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.feed-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 8px 14px;
+    color: white;
+
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.feed-like-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feed-like-stat img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.feed-comments-stat {
+    text-align: right;
 }
 
 </style>
@@ -3427,6 +3458,18 @@ function renderFeed() {
                 }
 
                 <div class="feed-body">
+
+                    <div class="feed-stats-row">
+                        <div class="feed-like-stat">
+                            <img src="nb_like.png" alt="likes">
+                            <span data-like-count="${post.id}">${post.likes}</span>
+                        </div>
+
+                        <div class="feed-comments-stat">
+                            ${post.commentsCount ?? post.comments?.length ?? 0} comments
+                        </div>
+                    </div>
+
                     <div class="feed-actions">
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
                             <img 
@@ -3434,12 +3477,10 @@ function renderFeed() {
                                 src="${post.liked ? 'like_t.png' : 'like.png'}"
                                 data-like-icon="${post.id}"
                             >
-                            <span data-like-count="${post.id}">${post.likes}</span>
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
                             <img class="action-icon-img" src="comments.png" alt="comments">
-                            <span>${post.commentsCount ?? post.comments?.length ?? 0}</span>
                         </button>
                     </div>
                 </div>
@@ -3456,7 +3497,7 @@ function renderFeed() {
     }
 }
 
-function showProfile() {
+function showProfile() { 
     hideAllScreens();
 
     const container = document.getElementById("profileScreen");
@@ -3504,10 +3545,12 @@ function showProfile() {
     }
 
     userPosts.forEach(post => {
+        const commentsTotal = post.commentsCount ?? post.comments?.length ?? 0;
+
         const shortCaption =
-            post.caption.length > 120
+            (post.caption || "").length > 120
                 ? post.caption.slice(0, 120) + "..."
-                : post.caption;
+                : (post.caption || "");
 
         postsList.innerHTML += `
             <div class="feed-post profile-post-card">
@@ -3527,6 +3570,18 @@ function showProfile() {
                 <img class="feed-img" src="${post.image}" alt="post image">
 
                 <div class="feed-body">
+
+                    <div class="feed-stats-row">
+                        <div class="feed-like-stat">
+                            <img src="nb_like.png" alt="likes">
+                            <span data-like-count="${post.id}">${post.likes ?? 0}</span>
+                        </div>
+
+                        <div class="feed-comments-stat">
+                            ${commentsTotal} comments
+                        </div>
+                    </div>
+
                     <div class="feed-actions">
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
                             <img 
@@ -3534,12 +3589,10 @@ function showProfile() {
                                 src="${post.liked ? 'like_t.png' : 'like.png'}"
                                 data-like-icon="${post.id}"
                             >
-                            <span data-like-count="${post.id}">${post.likes}</span>
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
                             <img class="action-icon-img" src="comments.png" alt="comments">
-                            <span>${post.commentsCount ?? post.comments.length}</span>
                         </button>
                     </div>
                 </div>
@@ -5053,6 +5106,7 @@ function setupVideoAutoplay() {
     });
 }
 
+let isFullscreenVideoChanging = false;
 let fullscreenTouchStartX = 0;
 let fullscreenTouchStartY = 0;
 let currentFullscreenPostId = null;
@@ -5220,7 +5274,9 @@ function loadFullscreenVideo(index) {
 }
 
 function showNextFullscreenVideo() {
-    if (fullscreenVideos.length <= 1) return;
+    if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
+
+    isFullscreenVideoChanging = true;
 
     currentFullscreenVideoIndex++;
 
@@ -5232,7 +5288,9 @@ function showNextFullscreenVideo() {
 }
 
 function showPreviousFullscreenVideo() {
-    if (fullscreenVideos.length <= 1) return;
+    if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
+
+    isFullscreenVideoChanging = true;
 
     currentFullscreenVideoIndex--;
 
@@ -5243,46 +5301,60 @@ function showPreviousFullscreenVideo() {
     animateAndLoadFullscreenVideo("previous");
 }
 
-async function animateAndLoadFullscreenVideo(direction) {
+function animateAndLoadFullscreenVideo(direction) {
     const stack = document.getElementById("fullscreenVideoStack");
     const prevVideo = document.getElementById("fullscreenVideoPrev");
     const currentVideo = document.getElementById("fullscreenVideo");
     const nextVideo = document.getElementById("fullscreenVideoNext");
 
-    if (!stack) return;
+    if (!stack || !currentVideo) {
+        isFullscreenVideoChanging = false;
+        return;
+    }
 
-    const visibleVideo = direction === "next" ? nextVideo : prevVideo;
+    const targetVideo = direction === "next" ? nextVideo : prevVideo;
 
-    stack.style.transition = "transform 0.26s cubic-bezier(0.22, 1, 0.36, 1)";
+    // Empêche le son/lecture de plusieurs vidéos pendant l’animation
+    [prevVideo, currentVideo, nextVideo].forEach(v => {
+        if (!v) return;
+        v.muted = true;
+        if (v !== targetVideo) v.pause();
+    });
+
+    if (targetVideo) {
+        targetVideo.muted = false;
+        targetVideo.play().catch(() => {});
+    }
+
+    stack.style.transition = "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)";
     stack.style.transform = direction === "next"
-        ? `translateY(${-window.innerHeight * 2}px)`
-        : "translateY(0px)";
+        ? "translateY(-200vh)"
+        : "translateY(0vh)";
 
-    setTimeout(async () => {
-        if (visibleVideo) {
-            visibleVideo.muted = false;
-            visibleVideo.play().catch(() => {});
-        }
-
+    setTimeout(() => {
         loadFullscreenVideo(currentFullscreenVideoIndex);
 
-        await waitVideoReady(currentVideo);
+        requestAnimationFrame(() => {
+            stack.style.transition = "none";
+            stack.style.transform = "translateY(-100vh)";
 
-        try {
-            if (visibleVideo && currentVideo) {
-                currentVideo.currentTime = visibleVideo.currentTime || 0;
+            [prevVideo, nextVideo].forEach(v => {
+                if (!v) return;
+                v.pause();
+                v.muted = true;
+            });
+
+            if (currentVideo) {
+                currentVideo.muted = false;
+                currentVideo.play().catch(() => {});
             }
-        } catch (e) {}
 
-        stack.style.transition = "none";
-        stack.style.transform = `translateY(${-window.innerHeight}px)`;
+            setTimeout(() => {
+                isFullscreenVideoChanging = false;
+            }, 80);
+        });
 
-        if (currentVideo) {
-            currentVideo.muted = false;
-            currentVideo.play().catch(() => {});
-        }
-
-    }, 260);
+    }, 280);
 }
 
 function closeVideoFullscreen() {
@@ -5311,6 +5383,7 @@ function setupVideoFullscreenSwipe() {
     if (!overlay || !content) return;
 
     overlay.addEventListener("touchstart", (e) => {
+        if (isFullscreenVideoChanging) return;
         fullscreenTouchStartX = e.touches[0].clientX;
         fullscreenTouchStartY = e.touches[0].clientY;
         fullscreenTouchMoveY = fullscreenTouchStartY;
@@ -5324,6 +5397,7 @@ function setupVideoFullscreenSwipe() {
     });
 
     overlay.addEventListener("touchmove", (e) => {
+        if (isFullscreenVideoChanging) return;
         const stack = document.getElementById("fullscreenVideoStack");
 
         const currentX = e.touches[0].clientX;
@@ -5353,6 +5427,7 @@ function setupVideoFullscreenSwipe() {
     });
 
     overlay.addEventListener("touchend", (e) => {
+        if (isFullscreenVideoChanging) return;
         const stack = document.getElementById("fullscreenVideoStack");
 
         const endX = e.changedTouches[0].clientX;
