@@ -3285,6 +3285,7 @@ function setupVideoAutoplay() {
                 video.play().catch(err => {
                     console.log("Feed video play blocked:", err);
                 });
+                warmNextFeedVideo(video);
             } else {
                 video.pause();
             }
@@ -3298,6 +3299,18 @@ function setupVideoAutoplay() {
         video.preload = "metadata";
         feedVideoObserver.observe(video);
     });
+}
+
+function warmNextFeedVideo(activeVideo) {
+    const videos = Array.from(document.querySelectorAll(".feed-video"));
+    const index = videos.indexOf(activeVideo);
+
+    const nextVideo = videos[index + 1];
+
+    if (nextVideo) {
+        nextVideo.preload = "auto";
+        nextVideo.load();
+    }
 }
 
 function renderFeed() {
