@@ -1313,7 +1313,19 @@ def get_feed(skip: int = 0, limit: int = 10, token: str = ""):
             if len((p.caption or "").strip()) < 3:
                 spam_penalty -= 15
 
+            follow_boost = 0
+
+            if current_user_id:
+                is_followed_creator = db.query(Follow).filter(
+                    Follow.follower_id == current_user_id,
+                    Follow.following_id == p.user_id
+                ).first() is not None
+
+                if is_followed_creator:
+                    follow_boost = 80
+
             score = (
+                follow_boost +
                 base_score +
                 personal_score +
                 creator_boost +
