@@ -3256,6 +3256,46 @@ async function showFeed() {
     };
 }
 
+let feedVideoObserver = null;
+
+function setupVideoAutoplay() {
+    const videos = document.querySelectorAll(".feed-video");
+
+    if (!videos.length) return;
+
+    if (feedVideoObserver) {
+        feedVideoObserver.disconnect();
+    }
+
+    feedVideoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+
+            if (entry.isIntersecting) {
+                video.preload = "auto";
+                video.muted = true;
+                video.playsInline = true;
+                video.setAttribute("webkit-playsinline", "true");
+                if (video.readyState < 3) {
+                    video.load();
+                }
+
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        });
+    }, {
+        root: document.getElementById("feedScreen"),
+        rootMargin: "900px 0px",
+        threshold: 0.15
+    });
+
+    videos.forEach(video => {
+        feedVideoObserver.observe(video);
+    });
+}
+
 function renderFeed() {
     const container = document.getElementById("feedScreen");
 
@@ -3312,8 +3352,11 @@ function renderFeed() {
                                 poster="${post.thumbnail_url || post.image || ''}"
                                 muted 
                                 playsinline 
+                                webkit-playsinline
                                 loop 
-                                preload="metadata"
+                                preload="auto"
+                                oncanplay="this.dataset.ready='true'"
+                                onloadedmetadata="try { this.currentTime = 0.1; } catch(e) {}"
                                 onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
                             </video>`
                         : `<img 
