@@ -1545,7 +1545,7 @@ html, body, #recipePanel {
     width: 100%;
     height: 100vh;
     display: block;
-    object-fit: contain;
+    object-fit: cover;
     background: black;
 }
 
@@ -5255,7 +5255,6 @@ function closeVideoFullscreen() {
 }
 
 function setupVideoFullscreenSwipe() {
-    const stack = document.getElementById("fullscreenVideoStack");
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
 
@@ -5267,9 +5266,16 @@ function setupVideoFullscreenSwipe() {
         fullscreenTouchMoveY = fullscreenTouchStartY;
 
         content.style.transition = "none";
+
+        const stack = document.getElementById("fullscreenVideoStack");
+        if (stack) {
+            stack.style.transition = "none";
+        }
     });
 
     overlay.addEventListener("touchmove", (e) => {
+        const stack = document.getElementById("fullscreenVideoStack");
+
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
 
@@ -5278,14 +5284,16 @@ function setupVideoFullscreenSwipe() {
 
         fullscreenTouchMoveY = currentY;
 
+        // Swipe vertical : vidéo suivante / précédente
         if (Math.abs(diffY) > Math.abs(diffX)) {
             if (stack) {
                 stack.style.transition = "none";
-                stack.style.transform = `translateY(calc(-100vh + ${diffY * 0.85}px))`;
+                stack.style.transform = `translateY(${(-window.innerHeight + diffY)}px)`;
             }
             return;
         }
 
+        // Swipe horizontal vers la droite : fermer fullscreen
         const progress = Math.min(diffX / 260, 1);
         const scale = 1 - progress * 0.22;
         const radius = progress * 34;
@@ -5296,6 +5304,7 @@ function setupVideoFullscreenSwipe() {
 
     overlay.addEventListener("touchend", (e) => {
         const stack = document.getElementById("fullscreenVideoStack");
+
         const endX = e.changedTouches[0].clientX;
         const endY = e.changedTouches[0].clientY;
 
@@ -5306,6 +5315,10 @@ function setupVideoFullscreenSwipe() {
         const absY = Math.abs(diffY);
 
         content.style.transition = "transform 0.2s ease, border-radius 0.2s ease";
+
+        if (stack) {
+            stack.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
+        }
 
         // Swipe gauche -> droite = quitter plein écran
         if (diffX > 120 && absY < 120) {
@@ -5325,10 +5338,11 @@ function setupVideoFullscreenSwipe() {
             return;
         }
 
+        // Retour au centre
         if (stack) {
-            stack.style.transition = "transform 0.2s ease";
             stack.style.transform = "translateY(-100vh)";
         }
+
         content.style.transform = "scale(1)";
         content.style.borderRadius = "0px";
     });
