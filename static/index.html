@@ -4336,28 +4336,34 @@ async function deletePost(postId) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                token,
+                token: token,
                 post_id: postId
             })
         });
 
-        const data = await res.json();
+        const text = await res.text();
+        console.log("DELETE RESPONSE:", res.status, text);
+
+        let data = {};
+        try {
+            data = JSON.parse(text);
+        } catch {}
 
         if (!res.ok || data.error) {
-            alert(data.error || "Unable to delete post");
+            alert(data.error || "Delete failed");
             return;
         }
+
+        alert("Post deleted");
 
         if (currentUserProfile) {
             currentUserProfile.posts = currentUserProfile.posts.filter(p => p.id !== postId);
             renderUserProfile(currentUserProfile);
-        } else {
-            await showFeed();
         }
 
     } catch (error) {
         console.error("Delete error:", error);
-        alert("Unable to reach server");
+        alert("Server connection failed. Check Render deploy and API_BASE.");
     }
 }
 
@@ -5621,17 +5627,25 @@ function renderUserPosts(posts, filter = "all") {
 
             ${
                 post.media_type === "video"
-                    ? `<video 
-                            class="feed-img feed-video" 
-                            src="${post.video_playback_url || post.image}" 
-                            poster="${post.thumbnail_url || post.image || ''}"
-                            muted 
-                            playsinline 
-                            webkit-playsinline
-                            loop 
-                            preload="metadata"
+                    ? `<div class="feed-img" 
+                            style="position:relative; background:#333; cursor:pointer;"
                             onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
-                       </video>`
+                            <img 
+                                src="${post.thumbnail_url || post.image || 'default-food.png'}"
+                                style="width:100%; height:100%; object-fit:cover; display:block;"
+                                onerror="this.onerror=null; this.src='default-food.png';"
+                            >
+                            <div style="
+                                position:absolute;
+                                inset:0;
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                font-size:80px;
+                                color:white;
+                                text-shadow:0 4px 15px rgba(0,0,0,0.8);
+                            ">▶</div>
+                       </div>`
                     : `<img 
                             class="feed-img" 
                             src="${post.image}" 
@@ -5645,8 +5659,6 @@ function renderUserPosts(posts, filter = "all") {
             </div>
         </div>
     `).join("");
-
-    activateUserProfileVideos();
 }
 
 function filterPosts(type) {
