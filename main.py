@@ -1847,9 +1847,11 @@ def search_users(q: str = "", token: str = ""):
         if len(query) < 2:
             return []
 
+        current_user_id = get_current_user(token) if token else None
+
         users = (
             db.query(User)
-            .filter(User.username.ilike(f"%{query}%"))
+            .filter(User.name.ilike(f"%{query}%"))
             .limit(10)
             .all()
         )
@@ -1861,14 +1863,22 @@ def search_users(q: str = "", token: str = ""):
                 Follow.following_id == user.id
             ).count()
 
+            is_following = False
+            if current_user_id:
+                is_following = db.query(Follow).filter(
+                    Follow.follower_id == current_user_id,
+                    Follow.following_id == user.id
+                ).first() is not None
+
             result.append({
                 "id": user.id,
-                "username": user.username,
-                "avatar": user.avatar or "",
-                "followers": followers_count
+                "username": user.name or user.email.split("@")[0],
+                "avatar": user.avatar or "https://via.placeholder.com/180x180.png?text=User",
+                "followers": followers_count,
+                "is_following": is_following
             })
 
         return result
 
     finally:
-        db.close()    
+        db.close()
