@@ -4348,9 +4348,12 @@ async function deletePost(postId) {
             return;
         }
 
-        demoPosts = demoPosts.filter(post => post.id !== postId);
-        saveFeedPosts();
-        showProfile();
+        if (currentUserProfile) {
+            currentUserProfile.posts = currentUserProfile.posts.filter(p => p.id !== postId);
+            renderUserProfile(currentUserProfile);
+        } else {
+            await showFeed();
+        }
 
     } catch (error) {
         console.error("Delete error:", error);
@@ -5609,14 +5612,32 @@ function renderUserPosts(posts, filter = "all") {
     container.innerHTML = filtered.map(post => `
         <div class="feed-post profile-post-card">
             ${
+                currentUserProfile?.is_me
+                    ? `<div class="profile-post-actions-top">
+                        <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+                       </div>`
+                    : ""
+            }
+
+            ${
                 post.media_type === "video"
-                    ? `<video class="feed-img feed-video" src="${post.image}" muted playsinline loop preload="metadata"></video>`
+                    ? `<video 
+                            class="feed-img feed-video" 
+                            src="${post.video_playback_url || post.image}" 
+                            poster="${post.thumbnail_url || post.image || ''}"
+                            muted 
+                            playsinline 
+                            webkit-playsinline
+                            loop 
+                            preload="metadata"
+                            onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
+                       </video>`
                     : `<img 
                             class="feed-img" 
                             src="${post.image}" 
                             alt="post image"
-                            onerror="this.src='default-food.png'"
-                        >`
+                            onerror="this.onerror=null; this.src='default-food.png';"
+                       >`
             }
 
             <div class="feed-body">
@@ -5624,6 +5645,7 @@ function renderUserPosts(posts, filter = "all") {
             </div>
         </div>
     `).join("");
+
     activateUserProfileVideos();
 }
 

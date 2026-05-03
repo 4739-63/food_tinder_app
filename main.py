@@ -1743,7 +1743,12 @@ def get_user_profile(user_id: int, token: str = ""):
                     "id": p.id,
                     "image": p.image,
                     "media_type": p.media_type or "image",
-                    "caption": p.caption or ""
+                    "caption": p.caption or "",
+
+                    "video_provider": p.video_provider,
+                    "video_id": p.video_id,
+                    "video_playback_url": p.video_playback_url,
+                    "thumbnail_url": p.thumbnail_url
                 }
                 for p in posts
             ]
