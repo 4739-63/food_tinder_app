@@ -3271,27 +3271,31 @@ function setupVideoAutoplay() {
         entries.forEach(entry => {
             const video = entry.target;
 
-            if (entry.isIntersecting) {
-                video.preload = "auto";
-                video.muted = true;
-                video.playsInline = true;
-                video.setAttribute("webkit-playsinline", "true");
-                if (video.readyState < 3) {
-                    video.load();
-                }
+            video.muted = true;
+            video.playsInline = true;
+            video.setAttribute("playsinline", "");
+            video.setAttribute("webkit-playsinline", "");
 
-                video.play().catch(() => {});
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+                // pause toutes les autres vidéos pour éviter que iPhone bloque
+                document.querySelectorAll(".feed-video").forEach(v => {
+                    if (v !== video) v.pause();
+                });
+
+                video.play().catch(err => {
+                    console.log("Feed video play blocked:", err);
+                });
             } else {
                 video.pause();
             }
         });
     }, {
         root: document.getElementById("feedScreen"),
-        rootMargin: "900px 0px",
-        threshold: 0.15
+        threshold: [0, 0.55, 0.8]
     });
 
     videos.forEach(video => {
+        video.preload = "metadata";
         feedVideoObserver.observe(video);
     });
 }
@@ -3356,7 +3360,6 @@ function renderFeed() {
                                 loop 
                                 preload="auto"
                                 oncanplay="this.dataset.ready='true'"
-                                onloadedmetadata="try { this.currentTime = 0.1; } catch(e) {}"
                                 onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
                             </video>`
                         : `<img 
