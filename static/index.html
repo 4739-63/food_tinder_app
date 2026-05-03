@@ -2527,6 +2527,8 @@ async function swipe(like) {
     if (isSwiping) return;
     isSwiping = true;
 
+    const oldPlat = currentPlat;
+
     let direction = like ? 1 : -1;
 
     card.style.transition = "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease";
@@ -2539,18 +2541,36 @@ async function swipe(like) {
 
     setTimeout(async () => {
         card.style.transition = "none";
-        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
-        card.style.opacity = "1";
 
         likeLabel.style.opacity = 0;
         nopeLabel.style.opacity = 0;
 
-        await choix(like);
+        if (oldPlat) {
+            updatePreferences(oldPlat, like);
+            rememberShownMeal(oldPlat);
+        }
 
-        setTimeout(() => {
-            card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+        currentPlat = nextPlat;
+
+        if (!currentPlat) {
+            document.getElementById("nom").innerText = "Erreur ";
             isSwiping = false;
-        }, 50);
+            return;
+        }
+
+        document.getElementById("nom").innerText = currentPlat.nom;
+        document.getElementById("image").src = currentPlat.image;
+
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+
+        requestAnimationFrame(() => {
+            card.style.opacity = "1";
+            card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+        });
+
+        nextPlat = await generateBestPlat();
+
+        isSwiping = false;
     }, 300);
 }
 
