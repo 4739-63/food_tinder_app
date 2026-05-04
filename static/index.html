@@ -1538,7 +1538,7 @@ html, body, #recipePanel {
     inset: 0;
     height: 300vh;
     transform: translateY(-100vh);
-    transition: transform 0.22s ease;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
 }
 
@@ -1590,8 +1590,8 @@ html, body, #recipePanel {
 }
 
 .feed-like-stat img {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
 }
 
@@ -5155,21 +5155,25 @@ function setupStackVideo(video, post, shouldPlay = false) {
 
     const src = post.video_playback_url || post.image;
 
-    if (video.src !== src) {
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.poster = post.thumbnail_url || post.image || "";
+
+    if (video.dataset.src !== src) {
         video.pause();
+        video.removeAttribute("src");
+        video.load();
+
         video.src = src;
-        video.poster = post.thumbnail_url || post.image || "";
-        video.loop = true;
-        video.muted = !shouldPlay;
-        video.playsInline = true;
-        video.setAttribute("playsinline", "");
-        video.setAttribute("webkit-playsinline", "");
+        video.dataset.src = src;
         video.load();
     }
 
     if (shouldPlay) {
         video.muted = false;
-        video.currentTime = 0;
         video.play().catch(() => {});
     } else {
         video.pause();
@@ -5275,8 +5279,6 @@ function loadFullscreenVideo(index) {
 function showNextFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    isFullscreenVideoChanging = true;
-
     currentFullscreenVideoIndex++;
 
     if (currentFullscreenVideoIndex >= fullscreenVideos.length) {
@@ -5289,8 +5291,6 @@ function showNextFullscreenVideo() {
 function showPreviousFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    isFullscreenVideoChanging = true;
-
     currentFullscreenVideoIndex--;
 
     if (currentFullscreenVideoIndex < 0) {
@@ -5300,7 +5300,11 @@ function showPreviousFullscreenVideo() {
     animateAndLoadFullscreenVideo("previous");
 }
 
-function animateAndLoadFullscreenVideo(direction) {
+async function animateAndLoadFullscreenVideo(direction) {
+    if (isFullscreenVideoChanging) return;
+
+    isFullscreenVideoChanging = true;
+
     const stack = document.getElementById("fullscreenVideoStack");
     const prevVideo = document.getElementById("fullscreenVideoPrev");
     const currentVideo = document.getElementById("fullscreenVideo");
@@ -5313,11 +5317,12 @@ function animateAndLoadFullscreenVideo(direction) {
 
     const targetVideo = direction === "next" ? nextVideo : prevVideo;
 
-    // Empêche le son/lecture de plusieurs vidéos pendant l’animation
     [prevVideo, currentVideo, nextVideo].forEach(v => {
         if (!v) return;
-        v.muted = true;
-        if (v !== targetVideo) v.pause();
+        if (v !== currentVideo && v !== targetVideo) {
+            v.pause();
+            v.muted = true;
+        }
     });
 
     if (targetVideo) {
@@ -5325,7 +5330,7 @@ function animateAndLoadFullscreenVideo(direction) {
         targetVideo.play().catch(() => {});
     }
 
-    stack.style.transition = "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)";
+    stack.style.transition = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
     stack.style.transform = direction === "next"
         ? "translateY(-200vh)"
         : "translateY(0vh)";
@@ -5350,10 +5355,9 @@ function animateAndLoadFullscreenVideo(direction) {
 
             setTimeout(() => {
                 isFullscreenVideoChanging = false;
-            }, 80);
+            }, 120);
         });
-
-    }, 280);
+    }, 320);
 }
 
 function closeVideoFullscreen() {
@@ -5376,6 +5380,8 @@ function closeVideoFullscreen() {
 }
 
 function setupVideoFullscreenSwipe() {
+    if (fullscreenSwipeReady) return;
+        fullscreenSwipeReady = true;
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
 
@@ -5383,6 +5389,7 @@ function setupVideoFullscreenSwipe() {
 
     overlay.addEventListener("touchstart", (e) => {
         if (isFullscreenVideoChanging) return;
+        fullscreenDragDirection = null;
         fullscreenTouchStartX = e.touches[0].clientX;
         fullscreenTouchStartY = e.touches[0].clientY;
         fullscreenTouchMoveY = fullscreenTouchStartY;
