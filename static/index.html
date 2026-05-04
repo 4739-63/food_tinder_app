@@ -1148,7 +1148,7 @@ html, body, #recipePanel {
 #videoFullscreenOverlay video {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     background: black;
 }
 
@@ -5160,10 +5160,38 @@ function getFullscreenPost(index) {
     return fullscreenVideos[index];
 }
 
+function waitVideoReady(video, timeout = 900) {
+    return new Promise(resolve => {
+        if (!video) return resolve(false);
+
+        if (video.readyState >= 3) {
+            return resolve(true);
+        }
+
+        let done = false;
+
+        const finish = (ok) => {
+            if (done) return;
+            done = true;
+            video.removeEventListener("canplay", onReady);
+            video.removeEventListener("canplaythrough", onReady);
+            resolve(ok);
+        };
+
+        const onReady = () => finish(true);
+
+        video.addEventListener("canplay", onReady, { once: true });
+        video.addEventListener("canplaythrough", onReady, { once: true });
+
+        setTimeout(() => finish(false), timeout);
+    });
+}
+
 function setupStackVideo(video, post, shouldPlay = false) {
     if (!video || !post) return;
 
     const src = post.video_playback_url || post.image;
+    if (!src) return;
 
     video.loop = true;
     video.playsInline = true;
@@ -5186,8 +5214,16 @@ function setupStackVideo(video, post, shouldPlay = false) {
         video.muted = false;
         video.play().catch(() => {});
     } else {
-        video.pause();
+        // 🔥 précharge en silence sans couper l’image
         video.muted = true;
+        video.play()
+            .then(() => {
+                setTimeout(() => {
+                    video.pause();
+                    video.currentTime = 0;
+                }, 120);
+            })
+            .catch(() => {});
     }
 }
 
@@ -5312,7 +5348,6 @@ function showPreviousFullscreenVideo() {
 
 async function animateAndLoadFullscreenVideo(direction) {
     if (isFullscreenVideoChanging) return;
-
     isFullscreenVideoChanging = true;
 
     const stack = document.getElementById("fullscreenVideoStack");
@@ -5327,20 +5362,15 @@ async function animateAndLoadFullscreenVideo(direction) {
 
     const targetVideo = direction === "next" ? nextVideo : prevVideo;
 
-    [prevVideo, currentVideo, nextVideo].forEach(v => {
-        if (!v) return;
-        if (v !== currentVideo && v !== targetVideo) {
-            v.pause();
-            v.muted = true;
-        }
-    });
+    // 🔥 Attend un minimum que la vidéo cible soit prête
+    await waitVideoReady(targetVideo, 700);
 
     if (targetVideo) {
         targetVideo.muted = false;
         targetVideo.play().catch(() => {});
     }
 
-    stack.style.transition = "transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)";
+    stack.style.transition = "transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)";
     stack.style.transform = direction === "next"
         ? "translateY(-200vh)"
         : "translateY(0vh)";
@@ -5354,20 +5384,17 @@ async function animateAndLoadFullscreenVideo(direction) {
 
             [prevVideo, nextVideo].forEach(v => {
                 if (!v) return;
-                v.pause();
                 v.muted = true;
             });
 
-            if (currentVideo) {
-                currentVideo.muted = false;
-                currentVideo.play().catch(() => {});
-            }
+            currentVideo.muted = false;
+            currentVideo.play().catch(() => {});
 
             setTimeout(() => {
                 isFullscreenVideoChanging = false;
-            }, 120);
+            }, 150);
         });
-    }, 320);
+    }, 340);
 }
 
 function closeVideoFullscreen() {
@@ -5426,10 +5453,13 @@ function setupVideoFullscreenSwipe() {
 
         // Swipe vertical : vidéo suivante / précédente
         if (Math.abs(diffY) > Math.abs(diffX)) {
+            e.preventDefault();
+
             if (stack) {
                 stack.style.transition = "none";
-                stack.style.transform = `translateY(${(-window.innerHeight + diffY)}px)`;
+                stack.style.transform = `translateY(calc(-100vh + ${diffY}px))`;
             }
+
             return;
         }
 
