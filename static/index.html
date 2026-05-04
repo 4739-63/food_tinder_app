@@ -3266,12 +3266,19 @@ document.addEventListener("deviceready", () => {
 
 // 🔥 uniquement pour le splash (visuel)
 window.addEventListener("load", () => {
-    setupVideoFullscreenSwipe();
-    
     setTimeout(() => {
-        document.getElementById("splash").style.display = "none";
+        const splash = document.getElementById("splash");
+        if (splash) splash.style.display = "none";
+
         document.body.classList.remove("splash-active");
+        showSwipe();
     }, 1200);
+
+    try {
+        setupVideoFullscreenSwipe();
+    } catch (error) {
+        console.error("Fullscreen swipe setup error:", error);
+    }
 });
 
 function restorePurchases() {
@@ -5104,6 +5111,9 @@ function setupVideoAutoplay() {
         observer.observe(video);
     });
 }
+
+let fullscreenSwipeReady = false;
+let fullscreenDragDirection = null;
 
 let isFullscreenVideoChanging = false;
 let fullscreenTouchStartX = 0;
