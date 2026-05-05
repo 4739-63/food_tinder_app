@@ -1183,7 +1183,7 @@ html, body, #recipePanel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 22px;
+    gap: 46px;
 }
 
 .video-action-btn {
@@ -6014,12 +6014,27 @@ async function toggleFollow(userId) {
         }
 
         const fullscreenBtn = document.getElementById("fullscreenFollowBtn");
-        if (fullscreenBtn) {
-            const activeVideo = fullscreenVideos[currentFullscreenVideoIndex];
-            if (activeVideo && activeVideo.user_id === userId) {
+            if (fullscreenBtn && Number(fullscreenBtn.dataset.followUserId) === Number(userId)) {
                 fullscreenBtn.textContent = isFollowing ? "Unfollow" : "Follow";
             }
-        }
+
+            if (isFollowing) {
+                const postUser = demoPosts.find(p => Number(p.user_id) === Number(userId));
+
+                if (postUser && !followingUsers.some(u => Number(u.id) === Number(userId))) {
+                    followingUsers.push({
+                        id: userId,
+                        username: postUser.author,
+                        avatar: postUser.avatar
+                    });
+                }
+} else {
+    followingUsers = followingUsers.filter(u => Number(u.id) !== Number(userId));
+}
+
+if (currentFeedMode === "following") {
+    renderFeed();
+}
 
         const count = document.getElementById("userFollowersCount");
         if (count && currentUserProfile?.id === userId) {
@@ -6168,6 +6183,8 @@ function loadFullscreenVideoInfo(post) {
     if (followBtn) {
         followBtn.style.display = post.user_id ? "inline-block" : "none";
         followBtn.textContent = post.is_following ? "Unfollow" : "Follow";
+        followBtn.dataset.followUserId = post.user_id;
+
         followBtn.onclick = async (e) => {
             e.stopPropagation();
             await toggleFollow(post.user_id);
