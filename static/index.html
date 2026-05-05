@@ -5194,8 +5194,8 @@ function setupStackVideo(video, post, shouldPlay = false) {
     if (!src) return;
 
     video.loop = true;
-    video.playsInline = true;
     video.preload = "auto";
+    video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     video.poster = post.thumbnail_url || post.image || "";
@@ -5203,8 +5203,6 @@ function setupStackVideo(video, post, shouldPlay = false) {
     if (video.dataset.src !== src) {
         video.pause();
         video.removeAttribute("src");
-        video.load();
-
         video.src = src;
         video.dataset.src = src;
         video.load();
@@ -5212,18 +5210,22 @@ function setupStackVideo(video, post, shouldPlay = false) {
 
     if (shouldPlay) {
         video.muted = false;
-        video.play().catch(() => {});
+        video.currentTime = 0;
+
+        const playPromise = video.play();
+        if (playPromise) {
+            playPromise.catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
+            });
+        }
     } else {
-        // 🔥 précharge en silence sans couper l’image
+        video.pause();
         video.muted = true;
-        video.play()
-            .then(() => {
-                setTimeout(() => {
-                    video.pause();
-                    video.currentTime = 0;
-                }, 120);
-            })
-            .catch(() => {});
+
+        try {
+            video.currentTime = 0;
+        } catch (e) {}
     }
 }
 
@@ -5362,15 +5364,17 @@ async function animateAndLoadFullscreenVideo(direction) {
 
     const targetVideo = direction === "next" ? nextVideo : prevVideo;
 
-    // 🔥 Attend un minimum que la vidéo cible soit prête
-    await waitVideoReady(targetVideo, 700);
-
     if (targetVideo) {
         targetVideo.muted = false;
-        targetVideo.play().catch(() => {});
+        targetVideo.currentTime = 0;
+
+        targetVideo.play().catch(() => {
+            targetVideo.muted = true;
+            targetVideo.play().catch(() => {});
+        });
     }
 
-    stack.style.transition = "transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)";
+    stack.style.transition = "transform 0.30s cubic-bezier(0.22, 1, 0.36, 1)";
     stack.style.transform = direction === "next"
         ? "translateY(-200vh)"
         : "translateY(0vh)";
@@ -5382,30 +5386,49 @@ async function animateAndLoadFullscreenVideo(direction) {
             stack.style.transition = "none";
             stack.style.transform = "translateY(-100vh)";
 
+            const newCurrentVideo = document.getElementById("fullscreenVideo");
+
+            if (newCurrentVideo) {
+                newCurrentVideo.muted = false;
+                newCurrentVideo.currentTime = 0;
+
+                newCurrentVideo.play().catch(() => {
+                    newCurrentVideo.muted = true;
+                    newCurrentVideo.play().catch(() => {});
+                });
+            }
+
             [prevVideo, nextVideo].forEach(v => {
                 if (!v) return;
+                v.pause();
                 v.muted = true;
             });
 
-            currentVideo.muted = false;
-            currentVideo.play().catch(() => {});
-
             setTimeout(() => {
                 isFullscreenVideoChanging = false;
-            }, 150);
+            }, 120);
         });
-    }, 340);
+    }, 300);
 }
 
 function closeVideoFullscreen() {
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
-    const video = document.getElementById("fullscreenVideo");
+    const videos = [
+        document.getElementById("fullscreenVideoPrev"),
+        document.getElementById("fullscreenVideo"),
+        document.getElementById("fullscreenVideoNext")
+    ];
 
-    if (!overlay || !content || !video) return;
+    if (!overlay || !content) return;
 
-    video.pause();
-    video.src = "";
+    videos.forEach(v => {
+        if (!v) return;
+        v.pause();
+        v.removeAttribute("src");
+        v.load();
+        v.dataset.src = "";
+    });
 
     content.style.transform = "scale(1)";
     content.style.borderRadius = "0px";
