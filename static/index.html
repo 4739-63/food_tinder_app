@@ -3343,7 +3343,9 @@ function setupVideoAutoplay() {
         entries.forEach(entry => {
             const video = entry.target;
 
-            video.muted = true;
+            if (video.dataset.userSound !== "on") {
+                video.muted = true;
+            }
             video.playsInline = true;
             video.setAttribute("playsinline", "");
             video.setAttribute("webkit-playsinline", "");
@@ -3442,19 +3444,15 @@ function renderFeed() {
                                     poster="${post.thumbnail_url || post.image || ''}"
                                     muted 
                                     playsinline 
-                                    webkit-playsinline
                                     loop 
                                     preload="metadata"
-                                    oncanplay="this.dataset.ready='true'"
-                                    onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id}, ${feedIndex})"
+                                    onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id}, ${feedIndex})">
                                 </video>
 
-                                <button 
-                                    class="feed-sound-btn"
-                                    onclick="event.stopPropagation(); toggleFeedVideoSound(this);">
+                                <button class="feed-sound-btn" onclick="toggleFeedSound(event, ${post.id})">
                                     🔇
                                 </button>
-                           </div>`
+                            </div>`
                         : `<img 
                                 class="feed-img" 
                                 src="${post.image}" 
@@ -5240,13 +5238,27 @@ function waitUntilVideoCanPlay(video, timeout = 1200) {
 }
 
 async function setupStackVideo(video, post, shouldPlay = false) {
-    if (!video || !post) return;
+    if (!video) return;
+
+    // 🔥 Important : les vidéos prev/next ne chargent plus de src
+    // Ça évite les conflits mobile qui font figer la vidéo.
+    if (!shouldPlay) {
+        video.pause();
+        video.removeAttribute("src");
+        video.dataset.src = "";
+        video.poster = post?.thumbnail_url || post?.image || "";
+        video.load();
+        video.muted = true;
+        return;
+    }
+
+    if (!post) return;
 
     const src = post.video_playback_url || post.image;
     if (!src) return;
 
     video.loop = true;
-    video.preload = shouldPlay ? "auto" : "metadata";
+    video.preload = "auto";
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
@@ -5260,15 +5272,9 @@ async function setupStackVideo(video, post, shouldPlay = false) {
         video.load();
     }
 
-    if (!shouldPlay) {
-        video.pause();
-        video.muted = true;
-        return;
-    }
-
     video.muted = false;
 
-    await waitUntilVideoCanPlay(video, 1200);
+    await waitUntilVideoCanPlay(video, 1500);
 
     try {
         video.currentTime = 0;
@@ -5303,9 +5309,14 @@ async function loadFullscreenVideo(index) {
 
     currentFullscreenPostId = post.id;
 
+    document.querySelectorAll(".feed-video").forEach(v => {
+        v.pause();
+        v.muted = true;
+    });
+
+    await setupStackVideo(currentVideo, post, true);
     setupStackVideo(prevVideo, prevPost, false);
     setupStackVideo(nextVideo, nextPost, false);
-    await setupStackVideo(currentVideo, post, true);
 
 
     if (userAvatar) {
@@ -5938,6 +5949,31 @@ function renderUserPosts(posts, filter = "all") {
 function filterPosts(type) {
     if (!currentUserProfile) return;
     renderUserPosts(currentUserProfile.posts || [], type);
+}
+
+function toggleFeedSound(event, postId) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const btn = event.currentTarget;
+    const postElement = btn.closest(".feed-post");
+    const video = postElement?.querySelector(".feed-video");
+
+    if (!video) return;
+
+    document.querySelectorAll(".feed-video").forEach(v => {
+        if (v !== video) {
+            v.muted = true;
+            v.dataset.userSound = "off";
+        }
+    });
+
+    video.muted = !video.muted;
+    video.dataset.userSound = video.muted ? "off" : "on";
+
+    btn.textContent = video.muted ? "🔇" : "🔊";
+
+    video.play().catch(() => {});
 }
 
 async function toggleFollow(userId) {
