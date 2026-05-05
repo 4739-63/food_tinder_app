@@ -3319,7 +3319,7 @@ async function showFeed() {
         const nearBottom =
             container.scrollTop + container.clientHeight >= container.scrollHeight - 300;
 
-        if (nearBottom && !isLoadingFeed) {
+        if (nearBottom && !isLoadingFeed && hasMoreFeed) {
             await loadFeedFromBackend(false);
             demoPosts = buildMultiLayerFeed(demoPosts); // ✅ ici aussi
             renderFeed();
@@ -4214,6 +4214,8 @@ async function loadFeedFromBackend(reset = false) {
         demoPosts = [];
     }
 
+    if (!hasMoreFeed) return;
+
     isLoadingFeed = true;
 
     try {
@@ -4224,15 +4226,15 @@ async function loadFeedFromBackend(reset = false) {
         const res = await fetch(feedUrl);
         const data = await res.json();
 
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
             const newPosts = data.map(post => ({
                 id: post.id,
-                user_id: post.user_id,
+                user_id: post.user_id, // 🔥 IMPORTANT
                 author: post.author,
                 avatar: post.avatar || "https://via.placeholder.com/100x100.png?text=User",
                 image: post.image,
                 media_type: post.media_type || "image",
-                caption: post.caption || "",
+                caption: post.caption,
                 likes: post.likes || 0,
                 liked: post.liked || false,
                 comments: Array(post.comments || 0).fill({ author: "", text: "" }),
@@ -4244,45 +4246,21 @@ async function loadFeedFromBackend(reset = false) {
                 thumbnail_url: post.thumbnail_url || ""
             }));
 
-            const existingIds = new Set(demoPosts.map(p => p.id));
-            const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p.id));
-
-            if (uniqueNewPosts.length > 0) {
-                demoPosts = rankFeedPosts([...demoPosts, ...uniqueNewPosts]);
-            } else {
-                demoPosts = [...demoPosts, ...shufflePosts(demoPosts).slice(0, FEED_PAGE_SIZE)];
-            }
-
+            const rankedPosts = rankFeedPosts(reset ? newPosts : [...demoPosts, ...newPosts]);
+            demoPosts = rankedPosts;
             feedSkip += newPosts.length;
 
-        } else {
-            // plus rien de nouveau : on recycle les anciennes publications
-            demoPosts = [...demoPosts, ...shufflePosts(demoPosts).slice(0, FEED_PAGE_SIZE)];
+            if (newPosts.length < FEED_PAGE_SIZE) {
+                hasMoreFeed = false;
+            }
+
+            saveFeedPosts();
         }
-
-        hasMoreFeed = true;
-        saveFeedPosts();
-
     } catch (error) {
         console.error("Feed load error:", error);
-
-        if (demoPosts.length > 0) {
-            demoPosts = [...demoPosts, ...shufflePosts(demoPosts).slice(0, FEED_PAGE_SIZE)];
-        }
     } finally {
         isLoadingFeed = false;
     }
-}
-
-function shufflePosts(posts) {
-    return [...posts]
-        .map(post => ({ post, rand: Math.random() }))
-        .sort((a, b) => a.rand - b.rand)
-        .map(item => ({
-            ...item.post,
-            recycledCopy: true,
-            recycleKey: Date.now() + "-" + Math.random()
-        }));
 }
 
 async function pickPostImage() {
@@ -5230,17 +5208,24 @@ function setupStackVideo(video, post, shouldPlay = false) {
         video.load();
     }
 
-    video.muted = !shouldPlay;
-
     if (shouldPlay) {
-        setTimeout(() => {
-            video.play().catch(() => {
+        video.muted = false;
+        video.currentTime = 0;
+
+        const playPromise = video.play();
+        if (playPromise) {
+            playPromise.catch(() => {
                 video.muted = true;
                 video.play().catch(() => {});
             });
-        }, 80);
+        }
     } else {
         video.pause();
+        video.muted = true;
+
+        try {
+            video.currentTime = 0;
+        } catch (e) {}
     }
 }
 
@@ -5342,8 +5327,11 @@ function loadFullscreenVideo(index) {
 function showNextFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    currentFullscreenVideoIndex =
-        (currentFullscreenVideoIndex + 1) % fullscreenVideos.length;
+    currentFullscreenVideoIndex++;
+
+    if (currentFullscreenVideoIndex >= fullscreenVideos.length) {
+        currentFullscreenVideoIndex = 0;
+    }
 
     animateAndLoadFullscreenVideo("next");
 }
@@ -5351,8 +5339,11 @@ function showNextFullscreenVideo() {
 function showPreviousFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    currentFullscreenVideoIndex =
-        (currentFullscreenVideoIndex - 1 + fullscreenVideos.length) % fullscreenVideos.length;
+    currentFullscreenVideoIndex--;
+
+    if (currentFullscreenVideoIndex < 0) {
+        currentFullscreenVideoIndex = fullscreenVideos.length - 1;
+    }
 
     animateAndLoadFullscreenVideo("previous");
 }
@@ -5374,16 +5365,13 @@ async function animateAndLoadFullscreenVideo(direction) {
     const targetVideo = direction === "next" ? nextVideo : prevVideo;
 
     if (targetVideo) {
-        targetVideo.muted = true;
-        targetVideo.playsInline = true;
-        targetVideo.setAttribute("playsinline", "");
-        targetVideo.setAttribute("webkit-playsinline", "");
+        targetVideo.muted = false;
+        targetVideo.currentTime = 0;
 
-        try {
-            targetVideo.currentTime = 0;
-        } catch (e) {}
-
-        await targetVideo.play().catch(() => {});
+        targetVideo.play().catch(() => {
+            targetVideo.muted = true;
+            targetVideo.play().catch(() => {});
+        });
     }
 
     stack.style.transition = "transform 0.30s cubic-bezier(0.22, 1, 0.36, 1)";
@@ -5392,10 +5380,6 @@ async function animateAndLoadFullscreenVideo(direction) {
         : "translateY(0vh)";
 
     setTimeout(() => {
-        currentFullscreenVideoIndex =
-            ((currentFullscreenVideoIndex % fullscreenVideos.length) + fullscreenVideos.length) %
-            fullscreenVideos.length;
-
         loadFullscreenVideo(currentFullscreenVideoIndex);
 
         requestAnimationFrame(() => {
@@ -5406,21 +5390,23 @@ async function animateAndLoadFullscreenVideo(direction) {
 
             if (newCurrentVideo) {
                 newCurrentVideo.muted = false;
-                newCurrentVideo.playsInline = true;
-                newCurrentVideo.setAttribute("playsinline", "");
-                newCurrentVideo.setAttribute("webkit-playsinline", "");
+                newCurrentVideo.currentTime = 0;
 
-                setTimeout(() => {
-                    newCurrentVideo.play().catch(() => {
-                        newCurrentVideo.muted = true;
-                        newCurrentVideo.play().catch(() => {});
-                    });
-                }, 80);
+                newCurrentVideo.play().catch(() => {
+                    newCurrentVideo.muted = true;
+                    newCurrentVideo.play().catch(() => {});
+                });
             }
+
+            [prevVideo, nextVideo].forEach(v => {
+                if (!v) return;
+                v.pause();
+                v.muted = true;
+            });
 
             setTimeout(() => {
                 isFullscreenVideoChanging = false;
-            }, 180);
+            }, 120);
         });
     }, 300);
 }
