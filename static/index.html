@@ -1624,6 +1624,41 @@ html, body, #recipePanel {
     color: black;
 }
 
+.feed-following-list {
+    padding: 16px 12px 24px;
+}
+
+.feed-following-title {
+    color: white;
+    font-size: 30px;
+    font-weight: 900;
+    margin-bottom: 16px;
+}
+
+.feed-following-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 20px;
+    background: rgba(20,20,20,0.55);
+    color: white;
+    cursor: pointer;
+}
+
+.feed-following-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.feed-following-name {
+    font-size: 24px;
+    font-weight: 900;
+}
+
 </style>
 </head>
 
@@ -1710,6 +1745,7 @@ let selectedPostVideoPlaybackUrl = "";
 let selectedPostThumbnailUrl = "";
 
 let selectedProfileImage = "";
+
 
 let feedSkip = 0;
 const FEED_PAGE_SIZE = 10;
@@ -1920,7 +1956,7 @@ function buildMultiLayerFeed(posts) {
 }
 
 let currentFeedMode = "home"; // "home" ou "video"
-
+let followingUsers = [];
 //  préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
     // anciens axes
@@ -3420,19 +3456,9 @@ function renderFeed() {
     container.innerHTML = `
         <div class="feed-topbar">
             <div class="feed-filter-tabs">
-                <button 
-                    class="feed-tab-btn ${currentFeedMode === 'home' ? 'active' : ''}" 
-                    onclick="setFeedMode('home')"
-                >
-                    Home
-                </button>
-
-                <button 
-                    class="feed-tab-btn ${currentFeedMode === 'video' ? 'active' : ''}" 
-                    onclick="setFeedMode('video')"
-                >
-                    Video
-                </button>
+                <button class="feed-tab-btn ${currentFeedMode === 'home' ? 'active' : ''}" onclick="setFeedMode('home')">Home</button>
+                <button class="feed-tab-btn ${currentFeedMode === 'video' ? 'active' : ''}" onclick="setFeedMode('video')">Video</button>
+                <button class="feed-tab-btn ${currentFeedMode === 'following' ? 'active' : ''}" onclick="setFeedMode('following')">Following</button>
             </div>
 
             <button class="feed-create-btn" onclick="showCreatePost()">Create Post</button>
@@ -3545,6 +3571,11 @@ function renderFeed() {
                 <p>Loading more posts...</p>
             </div>
         `;
+    }
+
+    if (currentFeedMode === "following") {
+        renderFollowingList(container);
+        return;
     }
 }
 
@@ -5175,29 +5206,43 @@ function openVideoFullscreen(videoUrl, postId, feedIndex = null) {
     const content = document.getElementById("videoFullscreenContent");
     const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !content || !video) return;
+    if (!overlay || !content || !video) {
+        console.error("Missing fullscreen elements");
+        return;
+    }
 
     const post = demoPosts.find(p => {
         const src = p.video_playback_url || p.image;
-        return p.id === postId && src === videoUrl;
-    }) || demoPosts.find(p => p.id === postId);
+        return String(p.id) === String(postId) && src === videoUrl;
+    }) || demoPosts.find(p => String(p.id) === String(postId));
 
-    if (!post) return;
+    if (!post) {
+        console.error("Post not found for fullscreen", { videoUrl, postId });
+        return;
+    }
 
-    learnFromPost(post, 1);
-    currentFullscreenPostId = post.id;
+    const src = post.video_playback_url || post.image;
+    if (!src) {
+        console.error("No video src for fullscreen", post);
+        return;
+    }
 
     document.querySelectorAll(".feed-video").forEach(v => {
         v.pause();
         v.muted = true;
     });
 
-    const src = post.video_playback_url || post.image;
+    currentFullscreenPostId = post.id;
+
+    overlay.style.display = "block";
+    content.style.transform = "scale(1)";
+    content.style.borderRadius = "0px";
 
     video.pause();
     video.removeAttribute("src");
     video.src = src;
     video.poster = post.thumbnail_url || post.image || "";
+    video.controls = false;
     video.loop = true;
     video.muted = false;
     video.playsInline = true;
@@ -5205,14 +5250,12 @@ function openVideoFullscreen(videoUrl, postId, feedIndex = null) {
     video.setAttribute("webkit-playsinline", "");
     video.load();
 
-    overlay.style.display = "block";
-    content.style.transform = "scale(1)";
-    content.style.borderRadius = "0px";
-
-    video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(() => {});
-    });
+    video.onloadeddata = () => {
+        video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+        });
+    };
 
     loadFullscreenVideoInfo(post);
 }
@@ -5441,12 +5484,11 @@ function closeVideoFullscreen() {
     video.removeAttribute("src");
     video.load();
 
+    overlay.style.display = "none";
     content.style.transform = "scale(1)";
     content.style.borderRadius = "0px";
-    overlay.style.display = "none";
 
     currentFullscreenPostId = null;
-
     setupVideoAutoplay();
 }
 
@@ -6175,6 +6217,73 @@ function loadFullscreenVideoInfo(post) {
     }
 }
 
+async function setFeedMode(mode) {
+    currentFeedMode = mode;
+
+    if (mode === "following") {
+        await loadFollowingUsers();
+    }
+
+    renderFeed();
+    setupVideoAutoplay();
+
+    const container = document.getElementById("feedScreen");
+    if (container) container.scrollTop = 0;
+}
+
+async function loadFollowingUsers() {
+    if (!token) {
+        followingUsers = [];
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/following?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        followingUsers = Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("Following load error:", error);
+        followingUsers = [];
+    }
+}
+
+function renderFollowingList(container) {
+    if (!token) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>Please login to see who you follow.</p>
+            </div>
+        `;
+        return;
+    }
+
+    if (!followingUsers.length) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>You are not following anyone yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML += `
+        <div class="feed-following-list">
+            <div class="feed-following-title">Following</div>
+
+            ${followingUsers.map(user => `
+                <div class="feed-following-card" onclick="openUserProfile(${user.id})">
+                    <img 
+                        class="feed-following-avatar" 
+                        src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
+                    >
+                    <div class="feed-following-name">${user.username || user.author || "User"}</div>
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
+
 </script>
 
 <div id="premiumScreen" style="display:none;">
@@ -6306,42 +6415,38 @@ if (registerBtn) {
 
 <div id="videoFullscreenOverlay">
     <div id="videoFullscreenContent">
-        <div id="fullscreenVideoStack">
-            <video id="fullscreenVideoPrev" class="fullscreen-stack-video" playsinline webkit-playsinline loop></video>
-            <video id="fullscreenVideo" class="fullscreen-stack-video" playsinline webkit-playsinline loop></video>
-            <video id="fullscreenVideoNext" class="fullscreen-stack-video" playsinline webkit-playsinline loop></video>
+        <video 
+            id="fullscreenVideo"
+            playsinline
+            webkit-playsinline
+            loop
+        ></video>
+
+        <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">×</button>
+
+        <div class="video-side-actions">
+            <button id="fullscreenLikeBtn" class="video-action-btn">
+                <img src="like.png" alt="like">
+            </button>
+
+            <button id="fullscreenCommentBtn" class="video-action-btn">
+                <img src="comments.png" alt="comments">
+            </button>
+
+            <button id="fullscreenMenuBtn" class="video-action-btn">
+                ⋯
+            </button>
         </div>
-
-        <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">←</button>
-
-        <button class="video-search-btn" onclick="openSearchFromVideo()">
-            <img src="loupe.png" alt="search">
-        </button>
 
         <div class="video-fullscreen-user-info">
             <div class="video-user-row">
-                <img id="fullscreenUserAvatar" class="video-user-avatar" src="">
+                <img id="fullscreenUserAvatar" class="video-user-avatar">
                 <span id="fullscreenUserName" class="video-user-name"></span>
                 <button id="fullscreenFollowBtn" class="video-follow-btn">Follow</button>
             </div>
 
             <button id="fullscreenSeeMoreBtn" class="video-see-more">See more</button>
             <div id="fullscreenCaptionBox" class="video-caption-box"></div>
-        </div>
-
-        <div class="video-side-actions">
-            <button class="video-action-btn" id="fullscreenLikeBtn">
-                <img src="like.png" alt="like">
-            </button>
-            <div class="video-action-label">Like</div>
-
-            <button class="video-action-btn" id="fullscreenCommentBtn">
-                <img src="comments.png" alt="comments">
-            </button>
-            <div class="video-action-label">Comment</div>
-
-            <button class="video-action-btn" id="fullscreenMenuBtn">⋯</button>
-            <div class="video-action-label">More</div>
         </div>
     </div>
 </div>
