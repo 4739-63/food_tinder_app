@@ -3465,6 +3465,12 @@ function renderFeed() {
         </div>
     `;
 
+    // 🔥 IMPORTANT : STOP ici si following
+    if (currentFeedMode === "following") {
+        renderFollowingList(container);
+        return;
+    }
+
     const postsToRender = currentFeedMode === "video"
         ? demoPosts.filter(post => post.media_type === "video")
         : demoPosts;
@@ -3489,13 +3495,11 @@ function renderFeed() {
                     <img 
                         class="feed-avatar" 
                         src="${post.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
-                        alt="avatar"
-                        style="cursor:pointer; position:relative; z-index:10;"
                         onclick="event.stopPropagation(); openUserProfile(${post.user_id})"
                     >
 
                     <div class="feed-user-text">
-                        <strong class="feed-author-name">${post.author}</strong>
+                        <strong>${post.author}</strong>
 
                         <div class="feed-caption-top">
                             <span id="caption-${post.id}">${shortCaption}</span>
@@ -3526,57 +3530,35 @@ function renderFeed() {
                                     🔇
                                 </button>
                             </div>`
-                        : `<img 
-                                class="feed-img" 
-                                src="${post.image}" 
-                                alt="post image"
-                                onerror="this.onerror=null; this.src='default-food.png';"
-                           >`
+                        : `<img class="feed-img" src="${post.image}">`
                 }
 
                 <div class="feed-body">
 
                     <div class="feed-stats-row">
                         <div class="feed-like-stat">
-                            <img src="nb_like.png" alt="likes">
-                            <span data-like-count="${post.id}">${post.likes}</span>
+                            <img src="nb_like.png">
+                            <span>${post.likes}</span>
                         </div>
 
                         <div class="feed-comments-stat">
-                            ${post.commentsCount ?? post.comments?.length ?? 0} comments
+                            ${post.commentsCount ?? 0} comments
                         </div>
                     </div>
 
                     <div class="feed-actions">
-                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
-                            <img 
-                                class="action-icon-img ${post.liked ? 'liked' : ''}" 
-                                src="${post.liked ? 'like_t.png' : 'like.png'}"
-                                data-like-icon="${post.id}"
-                            >
+                        <button onclick="likePost(${post.id})">
+                            <img src="${post.liked ? 'like_t.png' : 'like.png'}">
                         </button>
 
-                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="comments.png" alt="comments">
+                        <button onclick="showComments(${post.id})">
+                            <img src="comments.png">
                         </button>
                     </div>
                 </div>
             </div>
         `;
     });
-
-    if (isLoadingFeed) {
-        container.innerHTML += `
-            <div class="screen-box">
-                <p>Loading more posts...</p>
-            </div>
-        `;
-    }
-
-    if (currentFeedMode === "following") {
-        renderFollowingList(container);
-        return;
-    }
 }
 
 function showProfile() { 
@@ -6415,6 +6397,7 @@ if (registerBtn) {
 
 <div id="videoFullscreenOverlay">
     <div id="videoFullscreenContent">
+
         <video 
             id="fullscreenVideo"
             playsinline
@@ -6422,15 +6405,21 @@ if (registerBtn) {
             loop
         ></video>
 
+        <!-- 🔙 bouton fermer -->
         <button class="video-fullscreen-back" onclick="closeVideoFullscreen()">×</button>
+
+    <!-- 🔍 bouton loupe -->
+        <button class="video-search-btn" onclick="openSearchFromVideo()">
+            <img src="loupe.png" alt="search">
+        </button>
 
         <div class="video-side-actions">
             <button id="fullscreenLikeBtn" class="video-action-btn">
-                <img src="like.png" alt="like">
+                <img src="like.png">
             </button>
 
             <button id="fullscreenCommentBtn" class="video-action-btn">
-                <img src="comments.png" alt="comments">
+                <img src="comments.png">
             </button>
 
             <button id="fullscreenMenuBtn" class="video-action-btn">
@@ -6445,9 +6434,10 @@ if (registerBtn) {
                 <button id="fullscreenFollowBtn" class="video-follow-btn">Follow</button>
             </div>
 
-            <button id="fullscreenSeeMoreBtn" class="video-see-more">See more</button>
-            <div id="fullscreenCaptionBox" class="video-caption-box"></div>
+            <button id="fullscreenSeeMoreBtn">See more</button>
+            <div id="fullscreenCaptionBox"></div>
         </div>
+
     </div>
 </div>
 
