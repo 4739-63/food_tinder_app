@@ -1599,6 +1599,31 @@ html, body, #recipePanel {
     text-align: right;
 }
 
+.feed-topbar {
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.feed-filter-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.feed-tab-btn {
+    border: none;
+    border-radius: 16px;
+    padding: 14px 18px;
+    font-size: 17px;
+    font-weight: 800;
+    background: rgba(20,20,20,0.45);
+    color: white;
+}
+
+.feed-tab-btn.active {
+    background: white;
+    color: black;
+}
+
 </style>
 </head>
 
@@ -1893,6 +1918,8 @@ function buildMultiLayerFeed(posts) {
 
     return mixed;
 }
+
+let currentFeedMode = "home"; // "home" ou "video"
 
 //  préférences (session uniquement)
 let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
@@ -3392,11 +3419,31 @@ function renderFeed() {
 
     container.innerHTML = `
         <div class="feed-topbar">
+            <div class="feed-filter-tabs">
+                <button 
+                    class="feed-tab-btn ${currentFeedMode === 'home' ? 'active' : ''}" 
+                    onclick="setFeedMode('home')"
+                >
+                    Home
+                </button>
+
+                <button 
+                    class="feed-tab-btn ${currentFeedMode === 'video' ? 'active' : ''}" 
+                    onclick="setFeedMode('video')"
+                >
+                    Video
+                </button>
+            </div>
+
             <button class="feed-create-btn" onclick="showCreatePost()">Create Post</button>
         </div>
     `;
 
-    demoPosts.forEach((post, feedIndex) => {
+    const postsToRender = currentFeedMode === "video"
+        ? demoPosts.filter(post => post.media_type === "video")
+        : demoPosts;
+
+    postsToRender.forEach((post, feedIndex) => {
         const shortCaption =
             post.caption.length > 120
                 ? post.caption.slice(0, 120) + "..."
@@ -5126,52 +5173,48 @@ let fullscreenTouchMoveY = 0;
 function openVideoFullscreen(videoUrl, postId, feedIndex = null) {
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
+    const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !content) return;
+    if (!overlay || !content || !video) return;
 
-    fullscreenVideos = demoPosts
-        .map((post, index) => ({
-            ...post,
-            _feedIndex: index
-        }))
-        .filter(post => post.media_type === "video");
+    const post = demoPosts.find(p => {
+        const src = p.video_playback_url || p.image;
+        return p.id === postId && src === videoUrl;
+    }) || demoPosts.find(p => p.id === postId);
 
-    currentFullscreenVideoIndex = -1;
+    if (!post) return;
 
-    if (feedIndex !== null && feedIndex !== undefined) {
-        currentFullscreenVideoIndex = fullscreenVideos.findIndex(
-            post => post._feedIndex === Number(feedIndex)
-        );
-    }
+    learnFromPost(post, 1);
+    currentFullscreenPostId = post.id;
 
-    if (currentFullscreenVideoIndex < 0) {
-        currentFullscreenVideoIndex = fullscreenVideos.findIndex(post => {
-            const src = post.video_playback_url || post.image;
-            return post.id === postId && src === videoUrl;
-        });
-    }
+    document.querySelectorAll(".feed-video").forEach(v => {
+        v.pause();
+        v.muted = true;
+    });
 
-    if (currentFullscreenVideoIndex < 0) {
-        currentFullscreenVideoIndex = fullscreenVideos.findIndex(
-            post => post.id === postId
-        );
-    }
+    const src = post.video_playback_url || post.image;
 
-    if (currentFullscreenVideoIndex < 0) {
-        console.error("Fullscreen video not found:", { videoUrl, postId, feedIndex });
-        return;
-    }
-
-    const watchedPost = fullscreenVideos[currentFullscreenVideoIndex];
-    if (watchedPost) {
-        learnFromPost(watchedPost, 1);
-    }
+    video.pause();
+    video.removeAttribute("src");
+    video.src = src;
+    video.poster = post.thumbnail_url || post.image || "";
+    video.loop = true;
+    video.muted = false;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.load();
 
     overlay.style.display = "block";
-    content.style.transform = "translateY(0px) scale(1)";
+    content.style.transform = "scale(1)";
     content.style.borderRadius = "0px";
 
-    loadFullscreenVideo(currentFullscreenVideoIndex);
+    video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+    });
+
+    loadFullscreenVideoInfo(post);
 }
 
 function getFullscreenPost(index) {
@@ -5386,71 +5429,17 @@ async function loadFullscreenVideo(index) {
     }
 }
 
-function showNextFullscreenVideo() {
-    if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
-
-    currentFullscreenVideoIndex =
-        (currentFullscreenVideoIndex + 1) % fullscreenVideos.length;
-
-    animateAndLoadFullscreenVideo("next");
-}
-
-function showPreviousFullscreenVideo() {
-    if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
-
-    currentFullscreenVideoIndex =
-        (currentFullscreenVideoIndex - 1 + fullscreenVideos.length) % fullscreenVideos.length;
-
-    animateAndLoadFullscreenVideo("previous");
-}
-
-async function animateAndLoadFullscreenVideo(direction) {
-    if (isFullscreenVideoChanging) return;
-    isFullscreenVideoChanging = true;
-
-    const stack = document.getElementById("fullscreenVideoStack");
-
-    if (!stack || fullscreenVideos.length === 0) {
-        isFullscreenVideoChanging = false;
-        return;
-    }
-
-    stack.style.transition = "transform 0.30s cubic-bezier(0.22, 1, 0.36, 1)";
-    stack.style.transform = direction === "next"
-        ? "translateY(-200vh)"
-        : "translateY(0vh)";
-
-    setTimeout(async () => {
-        stack.style.transition = "none";
-        stack.style.transform = "translateY(-100vh)";
-
-        await loadFullscreenVideo(currentFullscreenVideoIndex);
-
-        setTimeout(() => {
-            isFullscreenVideoChanging = false;
-        }, 180);
-
-    }, 300);
-}
 
 function closeVideoFullscreen() {
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
-    const videos = [
-        document.getElementById("fullscreenVideoPrev"),
-        document.getElementById("fullscreenVideo"),
-        document.getElementById("fullscreenVideoNext")
-    ];
+    const video = document.getElementById("fullscreenVideo");
 
-    if (!overlay || !content) return;
+    if (!overlay || !content || !video) return;
 
-    videos.forEach(v => {
-        if (!v) return;
-        v.pause();
-        v.removeAttribute("src");
-        v.load();
-        v.dataset.src = "";
-    });
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
 
     content.style.transform = "scale(1)";
     content.style.borderRadius = "0px";
@@ -5463,52 +5452,29 @@ function closeVideoFullscreen() {
 
 function setupVideoFullscreenSwipe() {
     if (fullscreenSwipeReady) return;
-        fullscreenSwipeReady = true;
+    fullscreenSwipeReady = true;
+
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
 
     if (!overlay || !content) return;
 
     overlay.addEventListener("touchstart", (e) => {
-        if (isFullscreenVideoChanging) return;
-        fullscreenDragDirection = null;
         fullscreenTouchStartX = e.touches[0].clientX;
         fullscreenTouchStartY = e.touches[0].clientY;
-        fullscreenTouchMoveY = fullscreenTouchStartY;
 
         content.style.transition = "none";
-
-        const stack = document.getElementById("fullscreenVideoStack");
-        if (stack) {
-            stack.style.transition = "none";
-        }
     });
 
     overlay.addEventListener("touchmove", (e) => {
-        if (isFullscreenVideoChanging) return;
-        const stack = document.getElementById("fullscreenVideoStack");
-
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
 
         const diffX = Math.max(0, currentX - fullscreenTouchStartX);
         const diffY = currentY - fullscreenTouchStartY;
 
-        fullscreenTouchMoveY = currentY;
+        if (Math.abs(diffX) < Math.abs(diffY)) return;
 
-        // Swipe vertical : vidéo suivante / précédente
-        if (Math.abs(diffY) > Math.abs(diffX)) {
-            e.preventDefault();
-
-            if (stack) {
-                stack.style.transition = "none";
-                stack.style.transform = `translateY(calc(-100vh + ${diffY}px))`;
-            }
-
-            return;
-        }
-
-        // Swipe horizontal vers la droite : fermer fullscreen
         const progress = Math.min(diffX / 260, 1);
         const scale = 1 - progress * 0.22;
         const radius = progress * 34;
@@ -5518,45 +5484,17 @@ function setupVideoFullscreenSwipe() {
     });
 
     overlay.addEventListener("touchend", (e) => {
-        if (isFullscreenVideoChanging) return;
-        const stack = document.getElementById("fullscreenVideoStack");
-
         const endX = e.changedTouches[0].clientX;
         const endY = e.changedTouches[0].clientY;
 
         const diffX = endX - fullscreenTouchStartX;
         const diffY = endY - fullscreenTouchStartY;
 
-        const absX = Math.abs(diffX);
-        const absY = Math.abs(diffY);
-
         content.style.transition = "transform 0.2s ease, border-radius 0.2s ease";
 
-        if (stack) {
-            stack.style.transition = "transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)";
-        }
-
-        // Swipe gauche -> droite = quitter plein écran
-        if (diffX > 120 && absY < 120) {
+        if (diffX > 120 && Math.abs(diffY) < 120) {
             closeVideoFullscreen();
             return;
-        }
-
-        // Swipe vers le haut = vidéo suivante
-        if (diffY < -110 && absY > absX) {
-            showNextFullscreenVideo();
-            return;
-        }
-
-        // Swipe vers le bas = vidéo précédente
-        if (diffY > 110 && absY > absX) {
-            showPreviousFullscreenVideo();
-            return;
-        }
-
-        // Retour au centre
-        if (stack) {
-            stack.style.transform = "translateY(-100vh)";
         }
 
         content.style.transform = "scale(1)";
@@ -6147,6 +6085,93 @@ function toggleFeedVideoSound(btn) {
         });
 
         video.play().catch(() => {});
+    }
+}
+
+function setFeedMode(mode) {
+    currentFeedMode = mode;
+    renderFeed();
+    setupVideoAutoplay();
+
+    const container = document.getElementById("feedScreen");
+    if (container) container.scrollTop = 0;
+}
+
+function loadFullscreenVideoInfo(post) {
+    const likeBtn = document.getElementById("fullscreenLikeBtn");
+    const commentBtn = document.getElementById("fullscreenCommentBtn");
+    const menuBtn = document.getElementById("fullscreenMenuBtn");
+    const userAvatar = document.getElementById("fullscreenUserAvatar");
+    const userName = document.getElementById("fullscreenUserName");
+    const followBtn = document.getElementById("fullscreenFollowBtn");
+    const seeMoreBtn = document.getElementById("fullscreenSeeMoreBtn");
+    const captionBox = document.getElementById("fullscreenCaptionBox");
+
+    if (userAvatar) {
+        userAvatar.src = post.avatar || "https://via.placeholder.com/180x180.png?text=Profile";
+        userAvatar.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (userName) {
+        userName.textContent = post.author || "User";
+        userName.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (followBtn) {
+        followBtn.style.display = post.user_id ? "inline-block" : "none";
+        followBtn.textContent = post.is_following ? "Unfollow" : "Follow";
+        followBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await toggleFollow(post.user_id);
+        };
+    }
+
+    if (captionBox) {
+        captionBox.style.display = "none";
+        captionBox.textContent = post.caption || "";
+    }
+
+    if (seeMoreBtn) {
+        seeMoreBtn.style.display = post.caption ? "block" : "none";
+        seeMoreBtn.textContent = "See more";
+        seeMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = captionBox.style.display === "block";
+            captionBox.style.display = isOpen ? "none" : "block";
+            seeMoreBtn.textContent = isOpen ? "See more" : "See less";
+        };
+    }
+
+    if (likeBtn) {
+        const likeImg = likeBtn.querySelector("img");
+        if (likeImg) likeImg.src = post.liked ? "like_t.png" : "like.png";
+
+        likeBtn.onclick = async () => {
+            await likePost(post.id);
+            const updatedPost = demoPosts.find(p => p.id === post.id);
+            const img = likeBtn.querySelector("img");
+
+            if (img && updatedPost) {
+                img.src = updatedPost.liked ? "like_t.png" : "like.png";
+            }
+        };
+    }
+
+    if (commentBtn) {
+        commentBtn.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => showComments(post.id), 100);
+        };
+    }
+
+    if (menuBtn) {
+        menuBtn.onclick = () => reportPost(post.id);
     }
 }
 
