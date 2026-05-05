@@ -3394,7 +3394,7 @@ function renderFeed() {
         </div>
     `;
 
-    demoPosts.forEach(post => {
+    demoPosts.forEach((post, feedIndex) => {
         const shortCaption =
             post.caption.length > 120
                 ? post.caption.slice(0, 120) + "..."
@@ -3446,7 +3446,7 @@ function renderFeed() {
                                     loop 
                                     preload="metadata"
                                     oncanplay="this.dataset.ready='true'"
-                                    onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
+                                    onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id}, ${feedIndex})"
                                 </video>
 
                                 <button 
@@ -5125,23 +5125,48 @@ let currentFullscreenVideoIndex = 0;
 
 let fullscreenTouchMoveY = 0;
 
-function openVideoFullscreen(videoUrl, postId) {
-
-    const watchedPost = demoPosts.find(p => p.id === postId);
-        if (watchedPost) {
-            learnFromPost(watchedPost, 1);
-        }
-
+function openVideoFullscreen(videoUrl, postId, feedIndex = null) {
     const overlay = document.getElementById("videoFullscreenOverlay");
     const content = document.getElementById("videoFullscreenContent");
 
     if (!overlay || !content) return;
 
-    fullscreenVideos = demoPosts.filter(p => p.media_type === "video");
-    currentFullscreenVideoIndex = fullscreenVideos.findIndex(p => p.id === postId);
+    fullscreenVideos = demoPosts
+        .map((post, index) => ({
+            ...post,
+            _feedIndex: index
+        }))
+        .filter(post => post.media_type === "video");
+
+    currentFullscreenVideoIndex = -1;
+
+    if (feedIndex !== null && feedIndex !== undefined) {
+        currentFullscreenVideoIndex = fullscreenVideos.findIndex(
+            post => post._feedIndex === Number(feedIndex)
+        );
+    }
 
     if (currentFullscreenVideoIndex < 0) {
-        currentFullscreenVideoIndex = 0;
+        currentFullscreenVideoIndex = fullscreenVideos.findIndex(post => {
+            const src = post.video_playback_url || post.image;
+            return post.id === postId && src === videoUrl;
+        });
+    }
+
+    if (currentFullscreenVideoIndex < 0) {
+        currentFullscreenVideoIndex = fullscreenVideos.findIndex(
+            post => post.id === postId
+        );
+    }
+
+    if (currentFullscreenVideoIndex < 0) {
+        console.error("Fullscreen video not found:", { videoUrl, postId, feedIndex });
+        return;
+    }
+
+    const watchedPost = fullscreenVideos[currentFullscreenVideoIndex];
+    if (watchedPost) {
+        learnFromPost(watchedPost, 1);
     }
 
     overlay.style.display = "block";
@@ -5187,14 +5212,41 @@ function waitVideoReady(video, timeout = 900) {
     });
 }
 
-function setupStackVideo(video, post, shouldPlay = false) {
+function waitUntilVideoCanPlay(video, timeout = 1200) {
+    return new Promise(resolve => {
+        if (!video) return resolve(false);
+
+        if (video.readyState >= 3) {
+            return resolve(true);
+        }
+
+        let finished = false;
+
+        const done = (ok) => {
+            if (finished) return;
+            finished = true;
+            video.removeEventListener("canplay", onReady);
+            video.removeEventListener("loadeddata", onReady);
+            resolve(ok);
+        };
+
+        const onReady = () => done(true);
+
+        video.addEventListener("canplay", onReady, { once: true });
+        video.addEventListener("loadeddata", onReady, { once: true });
+
+        setTimeout(() => done(false), timeout);
+    });
+}
+
+async function setupStackVideo(video, post, shouldPlay = false) {
     if (!video || !post) return;
 
     const src = post.video_playback_url || post.image;
     if (!src) return;
 
     video.loop = true;
-    video.preload = "auto";
+    video.preload = shouldPlay ? "auto" : "metadata";
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
@@ -5203,33 +5255,32 @@ function setupStackVideo(video, post, shouldPlay = false) {
     if (video.dataset.src !== src) {
         video.pause();
         video.removeAttribute("src");
-        video.src = src;
         video.dataset.src = src;
+        video.src = src;
         video.load();
     }
 
-    if (shouldPlay) {
-        video.muted = false;
-        video.currentTime = 0;
-
-        const playPromise = video.play();
-        if (playPromise) {
-            playPromise.catch(() => {
-                video.muted = true;
-                video.play().catch(() => {});
-            });
-        }
-    } else {
+    if (!shouldPlay) {
         video.pause();
         video.muted = true;
-
-        try {
-            video.currentTime = 0;
-        } catch (e) {}
+        return;
     }
+
+    video.muted = false;
+
+    await waitUntilVideoCanPlay(video, 1200);
+
+    try {
+        video.currentTime = 0;
+    } catch (e) {}
+
+    video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+    });
 }
 
-function loadFullscreenVideo(index) {
+async function loadFullscreenVideo(index) {
     const prevVideo = document.getElementById("fullscreenVideoPrev");
     const currentVideo = document.getElementById("fullscreenVideo");
     const nextVideo = document.getElementById("fullscreenVideoNext");
@@ -5253,8 +5304,8 @@ function loadFullscreenVideo(index) {
     currentFullscreenPostId = post.id;
 
     setupStackVideo(prevVideo, prevPost, false);
-    setupStackVideo(currentVideo, post, true);
     setupStackVideo(nextVideo, nextPost, false);
+    await setupStackVideo(currentVideo, post, true);
 
 
     if (userAvatar) {
@@ -5327,11 +5378,8 @@ function loadFullscreenVideo(index) {
 function showNextFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    currentFullscreenVideoIndex++;
-
-    if (currentFullscreenVideoIndex >= fullscreenVideos.length) {
-        currentFullscreenVideoIndex = 0;
-    }
+    currentFullscreenVideoIndex =
+        (currentFullscreenVideoIndex + 1) % fullscreenVideos.length;
 
     animateAndLoadFullscreenVideo("next");
 }
@@ -5339,11 +5387,8 @@ function showNextFullscreenVideo() {
 function showPreviousFullscreenVideo() {
     if (fullscreenVideos.length <= 1 || isFullscreenVideoChanging) return;
 
-    currentFullscreenVideoIndex--;
-
-    if (currentFullscreenVideoIndex < 0) {
-        currentFullscreenVideoIndex = fullscreenVideos.length - 1;
-    }
+    currentFullscreenVideoIndex =
+        (currentFullscreenVideoIndex - 1 + fullscreenVideos.length) % fullscreenVideos.length;
 
     animateAndLoadFullscreenVideo("previous");
 }
@@ -5353,25 +5398,10 @@ async function animateAndLoadFullscreenVideo(direction) {
     isFullscreenVideoChanging = true;
 
     const stack = document.getElementById("fullscreenVideoStack");
-    const prevVideo = document.getElementById("fullscreenVideoPrev");
-    const currentVideo = document.getElementById("fullscreenVideo");
-    const nextVideo = document.getElementById("fullscreenVideoNext");
 
-    if (!stack || !currentVideo) {
+    if (!stack || fullscreenVideos.length === 0) {
         isFullscreenVideoChanging = false;
         return;
-    }
-
-    const targetVideo = direction === "next" ? nextVideo : prevVideo;
-
-    if (targetVideo) {
-        targetVideo.muted = false;
-        targetVideo.currentTime = 0;
-
-        targetVideo.play().catch(() => {
-            targetVideo.muted = true;
-            targetVideo.play().catch(() => {});
-        });
     }
 
     stack.style.transition = "transform 0.30s cubic-bezier(0.22, 1, 0.36, 1)";
@@ -5379,35 +5409,16 @@ async function animateAndLoadFullscreenVideo(direction) {
         ? "translateY(-200vh)"
         : "translateY(0vh)";
 
-    setTimeout(() => {
-        loadFullscreenVideo(currentFullscreenVideoIndex);
+    setTimeout(async () => {
+        stack.style.transition = "none";
+        stack.style.transform = "translateY(-100vh)";
 
-        requestAnimationFrame(() => {
-            stack.style.transition = "none";
-            stack.style.transform = "translateY(-100vh)";
+        await loadFullscreenVideo(currentFullscreenVideoIndex);
 
-            const newCurrentVideo = document.getElementById("fullscreenVideo");
+        setTimeout(() => {
+            isFullscreenVideoChanging = false;
+        }, 180);
 
-            if (newCurrentVideo) {
-                newCurrentVideo.muted = false;
-                newCurrentVideo.currentTime = 0;
-
-                newCurrentVideo.play().catch(() => {
-                    newCurrentVideo.muted = true;
-                    newCurrentVideo.play().catch(() => {});
-                });
-            }
-
-            [prevVideo, nextVideo].forEach(v => {
-                if (!v) return;
-                v.pause();
-                v.muted = true;
-            });
-
-            setTimeout(() => {
-                isFullscreenVideoChanging = false;
-            }, 120);
-        });
     }, 300);
 }
 
