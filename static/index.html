@@ -6301,6 +6301,11 @@ function renderFollowingList(container) {
     `;
 }
 
+function resetPremiumLocalDebug() {
+    localStorage.removeItem("premium");
+    alert("Local premium reset. Restart the app and test purchase again.");
+}
+
 </script>
 
 <div id="premiumScreen" style="display:none;">
@@ -6412,6 +6417,10 @@ function renderFollowingList(container) {
     </div>
 
 </div>
+
+<button class="big-back-btn" onclick="resetPremiumLocalDebug()">
+    Reset Premium Test
+</button>
 
 <script>
 
