@@ -6223,6 +6223,7 @@ async function loadFollowingUsers() {
         const data = await res.json();
 
         followingUsers = Array.isArray(data) ? data : [];
+
     } catch (error) {
         console.error("Following load error:", error);
         followingUsers = [];
@@ -6265,32 +6266,6 @@ function renderFollowingList(container) {
     `;
 }
 
-async function resetPremiumFullDebug() {
-    localStorage.removeItem("premium");
-
-    if (!token) {
-        alert("Premium local reset. No user logged in.");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_BASE}/debug-reset-premium`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token })
-        });
-
-        const data = await res.json();
-
-        if (data.message) {
-            alert("Premium fully reset. Restart the app and test purchase again.");
-        } else {
-            alert(data.error || "Backend reset failed");
-        }
-    } catch (e) {
-        alert("Unable to reset backend premium");
-    }
-}
 
 </script>
 

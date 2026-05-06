@@ -1884,3 +1884,34 @@ def debug_reset_premium(data: dict):
         return {"message": "Premium reset"}
     finally:
         db.close()        
+
+@app.get("/following")
+def get_following(token: str = ""):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(token)
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        follows = db.query(Follow).filter(
+            Follow.follower_id == user_id
+        ).all()
+
+        result = []
+
+        for follow in follows:
+            user = db.query(User).filter(User.id == follow.following_id).first()
+
+            if user:
+                result.append({
+                    "id": user.id,
+                    "username": user.name or user.email.split("@")[0],
+                    "avatar": user.avatar or "https://via.placeholder.com/100x100.png?text=User",
+                    "bio": user.bio or "Food lover 🍽️"
+                })
+
+        return result
+
+    finally:
+        db.close()        
