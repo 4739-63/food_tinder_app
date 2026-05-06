@@ -2114,9 +2114,9 @@ function setupAppleIAP() {
 
             if (activated) {
                 await transaction.finish();
-                alert("Premium activated ");
+                console.log("Premium activated");
             } else {
-                alert("Purchase approved, but premium activation failed.");
+                console.log("Premium activation failed");
             }
         });
 
@@ -2136,12 +2136,10 @@ function setupAppleIAP() {
     store.when()
         .unverified(receipt => {
             console.log("Receipt unverified:", receipt);
-            alert("Receipt unverified");
         });
 
     store.error(err => {
         console.log("Store error:", err);
-        alert("Store error: " + JSON.stringify(err));
     });
 
     store.initialize([Platform.APPLE_APPSTORE])
@@ -2149,24 +2147,6 @@ function setupAppleIAP() {
             console.log("Store initialized");
 
             await store.update();
-
-// debug
-            alert("Store update done");
-
-            const debugProduct = store.get(
-                APPLE_SUBSCRIPTION_ID,
-                Platform.APPLE_APPSTORE
-            );
-
-            alert("Product debug: " + JSON.stringify({
-                productIdExpected: APPLE_SUBSCRIPTION_ID,
-                exists: !!debugProduct,
-                id: debugProduct?.id,
-                title: debugProduct?.title,
-                state: debugProduct?.state,
-                offers: debugProduct?.offers?.length || 0
-            }));
-// debug
 
             const product = store.get(
                 APPLE_SUBSCRIPTION_ID,
@@ -2179,10 +2159,8 @@ function setupAppleIAP() {
         })
         .catch(err => {
             console.log("Store init failed:", err);
-            alert("Store init failed: " + JSON.stringify(err));
         });
 }
-// debug
 
 
 // 🔥 analyser un plat API
@@ -3299,25 +3277,11 @@ async function showSubscription() {
     }
 }
 
-async function cancelSubscription() {
-    if (!token) {
-        alert("You must login first");
-        return;
-    }
-
-    const res = await fetch(`${API_BASE}/cancel-subscription`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ token: token })
-    });
-
-    const data = await res.json();
-
-    if (data.message) {
-        alert("Subscription canceled ❌");
-    } else {
-        alert("Error canceling");
-    }
+function manageSubscription() {
+    alert(
+        "To manage or cancel your subscription:\n\n" +
+        "iPhone Settings → Apple ID → Subscriptions"
+    );
 }
 
 // 🔥 IMPORTANT : pour les plugins (IAP)
@@ -6428,9 +6392,9 @@ async function resetPremiumFullDebug() {
 
         <p id="subStatus">Loading...</p>
 
-        <button onclick="cancelSubscription()" 
-                style="background:red; color:white; padding:10px; border:none; border-radius:10px;">
-            Cancel Subscription
+        <button onclick="manageSubscription()" 
+                style="background:white; color:black; padding:14px 18px; border:none; border-radius:12px; font-weight:700;">
+            Manage Subscription
         </button>
 
         <br><br>
@@ -6505,10 +6469,6 @@ if (registerBtn) {
 
 <div id="searchScreen" style="display:none;"></div>
 
-
-<button class="big-back-btn" onclick="resetPremiumFullDebug()">
-    Reset Premium Full Test
-</button>
 
 
 </body>
