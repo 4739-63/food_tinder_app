@@ -29,19 +29,26 @@ load_dotenv()
 
 from firebase_admin import credentials, messaging
 import firebase_admin
+import json
+import os
 
-firebase_credentials_path = os.getenv(
-    "FIREBASE_CREDENTIALS",
-    "firebase-service-account.json"
-)
+firebase_cred_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 
 if not firebase_admin._apps:
-    if os.path.exists(firebase_credentials_path):
-        cred = credentials.Certificate(firebase_credentials_path)
+
+    if firebase_cred_json:
+        cred_dict = json.loads(firebase_cred_json)
+        cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
-        print("🔥 Firebase initialized")
+        print("🔥 Firebase initialized from ENV")
+
+    elif os.path.exists("firebase-service-account.json"):
+        cred = credentials.Certificate("firebase-service-account.json")
+        firebase_admin.initialize_app(cred)
+        print("🔥 Firebase initialized from local file")
+
     else:
-        print("⚠️ Firebase credentials file missing")
+        print("⚠️ Firebase credentials missing")
 # ========================
 # CONFIG
 # ========================
