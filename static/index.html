@@ -6301,9 +6301,31 @@ function renderFollowingList(container) {
     `;
 }
 
-function resetPremiumLocalDebug() {
+async function resetPremiumFullDebug() {
     localStorage.removeItem("premium");
-    alert("Local premium reset. Restart the app and test purchase again.");
+
+    if (!token) {
+        alert("Premium local reset. No user logged in.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/debug-reset-premium`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (data.message) {
+            alert("Premium fully reset. Restart the app and test purchase again.");
+        } else {
+            alert(data.error || "Backend reset failed");
+        }
+    } catch (e) {
+        alert("Unable to reset backend premium");
+    }
 }
 
 </script>
@@ -6418,10 +6440,6 @@ function resetPremiumLocalDebug() {
 
 </div>
 
-<button class="big-back-btn" onclick="resetPremiumLocalDebug()">
-    Reset Premium Test
-</button>
-
 <script>
 
 if (registerBtn) {
@@ -6486,6 +6504,12 @@ if (registerBtn) {
 </div>
 
 <div id="searchScreen" style="display:none;"></div>
+
+
+<button class="big-back-btn" onclick="resetPremiumFullDebug()">
+    Reset Premium Full Test
+</button>
+
 
 </body>
 </html>

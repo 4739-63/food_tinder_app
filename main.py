@@ -1911,3 +1911,28 @@ def search_users(q: str = "", token: str = ""):
 
     finally:
         db.close()
+
+@app.post("/debug-reset-premium")
+def debug_reset_premium(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data.get("token"))
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
+
+        user.is_premium = False
+        user.plan_type = "free"
+        user.subscription_status = None
+        user.current_period_end = None
+
+        db.commit()
+
+        return {"message": "Premium reset"}
+    finally:
+        db.close()        
