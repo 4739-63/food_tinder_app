@@ -6271,41 +6271,38 @@ function renderFollowingList(container) {
 
 
 async function setupPushNotifications() {
-    console.log("setupPushNotifications called");
+    alert("setupPushNotifications started");
 
     try {
-
         if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
-            console.log("PushNotifications plugin not available");
+            alert("Push plugin not available");
             return;
         }
 
         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
 
         if (!token) {
-            console.log("No user token available");
+            alert("No user token available");
             return;
         }
+
+        alert("Requesting permission...");
 
         const permission = await PushNotifications.requestPermissions();
 
-        console.log("Push permission result:", permission);
+        alert("Permission result: " + JSON.stringify(permission));
 
         if (permission.receive !== "granted") {
-            console.log("Push permission denied");
+            alert("Permission denied");
             return;
         }
 
-        console.log("Registering iPhone push notifications...");
-
-        await PushNotifications.register();
+        alert("Registering push...");
 
         PushNotifications.addListener("registration", async (tokenData) => {
-
-            console.log("✅ iPhone push token:", tokenData.value);
+            alert("Registration token received");
 
             try {
-
                 const res = await fetch(`${API_BASE}/register-push-token`, {
                     method: "POST",
                     headers: {
@@ -6319,28 +6316,23 @@ async function setupPushNotifications() {
                 });
 
                 const data = await res.json();
-
-                console.log("✅ Push token saved:", data);
+                alert("Backend response: " + JSON.stringify(data));
 
             } catch (err) {
-                console.error("❌ Failed saving push token:", err);
+                alert("Fetch error: " + err.message);
             }
         });
 
         PushNotifications.addListener("registrationError", (error) => {
-            console.error("❌ Push registration error:", error);
+            alert("Registration error: " + JSON.stringify(error));
         });
 
-        PushNotifications.addListener("pushNotificationReceived", (notification) => {
-            console.log("📩 Push received:", notification);
-        });
+        await PushNotifications.register();
 
-        PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
-            console.log("👆 Push clicked:", notification);
-        });
+        alert("Register call finished");
 
     } catch (err) {
-        console.error("❌ setupPushNotifications error:", err);
+        alert("setup error: " + err.message);
     }
 }
 
