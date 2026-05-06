@@ -6389,6 +6389,32 @@ async function setupPushNotifications() {
     }
 }
 
+async function debugPushSetup() {
+    alert("Button clicked ✅");
+
+    try {
+        if (!window.Capacitor) {
+            alert("Capacitor not found ❌");
+            return;
+        }
+
+        alert("Capacitor found ✅ platform: " + Capacitor.getPlatform());
+
+        if (!window.Capacitor.Plugins.PushNotifications) {
+            alert("PushNotifications plugin not found ❌");
+            return;
+        }
+
+        alert("Push plugin found ✅");
+
+        await setupPushNotifications();
+
+    } catch (error) {
+        alert("Push debug error: " + error.message);
+        console.error(error);
+    }
+}
+
 </script>
 
 <div id="premiumScreen" style="display:none;">
@@ -6566,8 +6592,11 @@ if (registerBtn) {
 
 <div id="searchScreen" style="display:none;"></div>
 
-
-<button onclick="setupPushNotifications()">Test Push Setup</button>
+<div style="position:fixed;top:80px;right:10px;z-index:999999;">
+    <button onclick="debugPushSetup()">
+        Test Push Setup
+    </button>
+</div>
 
 
 </body>
