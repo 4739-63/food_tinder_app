@@ -3295,6 +3295,7 @@ document.addEventListener("deviceready", () => {
 // 🔥 uniquement pour le splash (visuel)
 window.addEventListener("load", () => {
     setupPushNotifications();
+    console.log("setupPushNotifications called");
     setTimeout(() => {
         const splash = document.getElementById("splash");
         if (splash) splash.style.display = "none";
@@ -6315,43 +6316,77 @@ async function setupPushNotifications() {
 }
 
 async function setupPushNotifications() {
-    if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
-        console.log("PushNotifications not available");
-        return;
-    }
+    console.log("setupPushNotifications called");
 
-    const PushNotifications = window.Capacitor.Plugins.PushNotifications;
+    try {
 
-    const permission = await PushNotifications.requestPermissions();
+        if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
+            console.log("PushNotifications plugin not available");
+            return;
+        }
 
-    if (permission.receive !== "granted") {
-        console.log("Push permission denied");
-        return;
-    }
+        const PushNotifications = window.Capacitor.Plugins.PushNotifications;
 
-    await PushNotifications.register();
+        if (!token) {
+            console.log("No user token available");
+            return;
+        }
 
-    PushNotifications.addListener("registration", async (tokenData) => {
-        console.log("iPhone push token:", tokenData.value);
+        const permission = await PushNotifications.requestPermissions();
 
-        if (!token) return;
+        console.log("Push permission result:", permission);
 
-        await fetch(`${API_BASE}/register-push-token`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                token: token,
-                push_token: tokenData.value,
-                platform: "ios"
-            })
+        if (permission.receive !== "granted") {
+            console.log("Push permission denied");
+            return;
+        }
+
+        console.log("Registering iPhone push notifications...");
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener("registration", async (tokenData) => {
+
+            console.log("✅ iPhone push token:", tokenData.value);
+
+            try {
+
+                const res = await fetch(`${API_BASE}/register-push-token`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        token: token,
+                        push_token: tokenData.value,
+                        platform: "ios"
+                    })
+                });
+
+                const data = await res.json();
+
+                console.log("✅ Push token saved:", data);
+
+            } catch (err) {
+                console.error("❌ Failed saving push token:", err);
+            }
         });
-    });
 
-    PushNotifications.addListener("registrationError", (error) => {
-        console.error("Push registration error:", error);
-    });
+        PushNotifications.addListener("registrationError", (error) => {
+            console.error("❌ Push registration error:", error);
+        });
+
+        PushNotifications.addListener("pushNotificationReceived", (notification) => {
+            console.log("📩 Push received:", notification);
+        });
+
+        PushNotifications.addListener("pushNotificationActionPerformed", (notification) => {
+            console.log("👆 Push clicked:", notification);
+        });
+
+    } catch (err) {
+        console.error("❌ setupPushNotifications error:", err);
+    }
 }
 
 </script>
