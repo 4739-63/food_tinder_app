@@ -238,120 +238,70 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v1",
         "nom": "Vegan Burger",
-        "image": "https://images.unsplash.com/photo-1550547660-d9450f859349",
-        "recette": "Cook plant-based patty, assemble with bun, lettuce and sauce.",
-        "ingredients": ["Vegan bun", "Plant-based patty", "Lettuce", "Tomato"],
-
-        "vegan": True,
-        "gluten": True,
-        "arachide": False,
-
-        "style_comfort": True,
-        "base_bread_wrap": True,
-        "rapide": True,
-
-        "categoryName": "Burger",
-        "areaName": "Global"
+        "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Cook the plant-based patty in a hot pan until both sides are golden and slightly crispy. Toast the vegan bun for extra texture. Add lettuce, tomato, onion and your favorite vegan sauce. Assemble everything while the patty is still warm and serve immediately with fries, salad or roasted vegetables.",
+        "ingredients": ["Vegan bun", "Plant-based patty", "Lettuce", "Tomato", "Onion", "Vegan sauce"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True, "base_bread_wrap": True, "rapide": True,
+        "categoryName": "Burger", "areaName": "Global"
     },
     {
         "idMeal": "internal_v2",
         "nom": "Quinoa Salad",
-        "image": "https://images.unsplash.com/photo-1505253210343-d5f897a4c1e3?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Mix cooked quinoa with fresh vegetables, olive oil and lemon.",
-        "ingredients": ["Quinoa", "Tomato", "Cucumber", "Olive oil"],
-
-        "vegan": True,
-        "gluten": False,
-        "arachide": False,
-
-        "style_comfort": False,
-        "base_bread_wrap": False,
-        "rapide": True,
-
-        "categoryName": "Healthy",
-        "areaName": "Global"
+        "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Cook the quinoa, then let it cool slightly. Chop tomatoes, cucumber and fresh herbs into small pieces. Mix everything with olive oil, lemon juice, salt and pepper. For more flavor, add avocado, chickpeas or roasted vegetables. Serve cold or slightly warm.",
+        "ingredients": ["Quinoa", "Tomato", "Cucumber", "Olive oil", "Lemon juice", "Fresh herbs"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "style_comfort": False, "base_bread_wrap": False, "rapide": True,
+        "categoryName": "Healthy", "areaName": "Global"
     },
     {
         "idMeal": "internal_v3",
         "nom": "Vegan Pad Thai",
-        "image": "https://images.unsplash.com/photo-1604908176997-431f0c6c2c3b?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Cook rice noodles, add tofu, vegetables and sauce, then mix well.",
-        "ingredients": ["Rice noodles", "Tofu", "Carrot", "Bean sprouts", "Soy sauce"],
-
-        "vegan": True,
-        "gluten": False,
-        "arachide": True,
-
-        "style_comfort": True,
-        "base_bread_wrap": False,
-        "rapide": True,
-
-        "categoryName": "Asian",
-        "areaName": "Thailand"
+        "image": "https://images.unsplash.com/photo-1559314809-0d155014e29e?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Soak or cook the rice noodles according to the package instructions. In a hot pan, sauté tofu until golden, then add carrots, bean sprouts and green onions. Mix soy sauce, lime juice, a little sugar and chili to create a simple Pad Thai sauce. Add the noodles, toss everything together and finish with fresh lime, herbs and crushed peanuts if desired.",
+        "ingredients": ["Rice noodles", "Tofu", "Carrot", "Bean sprouts", "Soy sauce", "Lime", "Green onion"],
+        "vegan": True, "gluten": False, "arachide": True,
+        "style_comfort": True, "base_bread_wrap": False, "rapide": True,
+        "categoryName": "Asian", "areaName": "Thailand"
     },
     {
-       "idMeal": "internal_v4",
+        "idMeal": "internal_v4",
         "nom": "Vegan Tacos",
-        "image": "https://images.unsplash.com/photo-1600891964599-f61ba0e24092",
-        "recette": "Fill tortillas with black beans, avocado, veggies and vegan sauce.",
-        "ingredients": ["Tortilla", "Black beans", "Avocado", "Tomato", "Lettuce"],
-
-        "vegan": True,
-        "gluten": True,
-        "arachide": False,
-
-        "style_comfort": True,
-        "base_bread_wrap": True,
-        "rapide": True,
-
-        "categoryName": "Mexican",
-        "areaName": "Mexico"
+        "image": "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Warm the tortillas in a pan. Fill them with black beans, avocado, tomato, lettuce and a vegan sauce. Add lime juice, salt, pepper and chili flakes for extra flavor. Serve right away while the tortillas are warm.",
+        "ingredients": ["Tortilla", "Black beans", "Avocado", "Tomato", "Lettuce", "Lime"],
+        "vegan": True, "gluten": True, "arachide": False,
+        "style_comfort": True, "base_bread_wrap": True, "rapide": True,
+        "categoryName": "Mexican", "areaName": "Mexico"
     },
     {
         "idMeal": "internal_v5",
         "nom": "Vegan Buddha Bowl",
-        "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd",
-        "recette": "Combine rice, roasted vegetables, chickpeas and tahini sauce.",
-        "ingredients": ["Rice", "Chickpeas", "Broccoli", "Carrot", "Tahini"],
-
-        "vegan": True,
-        "gluten": False,
-        "arachide": False,
-
-        "style_comfort": False,
-        "base_bread_wrap": False,
-        "rapide": True,
-
-        "categoryName": "Healthy",
-        "areaName": "Global"
+        "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Cook rice or quinoa as a base. Roast broccoli, carrots and chickpeas with olive oil, salt and spices. Place everything in a bowl and drizzle with tahini sauce mixed with lemon juice and a little water. Add seeds or avocado for a richer meal.",
+        "ingredients": ["Rice", "Chickpeas", "Broccoli", "Carrot", "Tahini", "Lemon juice"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "style_comfort": False, "base_bread_wrap": False, "rapide": True,
+        "categoryName": "Healthy", "areaName": "Global"
     },
     {
         "idMeal": "internal_v6",
         "nom": "Vegan Chocolate Dessert",
-        "image": "https://images.unsplash.com/photo-1541783245831-57d6fb0926d3",
-        "recette": "Mix cocoa, plant milk and sugar, chill and serve.",
-        "ingredients": ["Cocoa", "Plant milk", "Sugar"],
-
-        "vegan": True,
-        "gluten": False,
-        "arachide": False,
-
-        "sucre": True,
-        "dessert": True,
-
-        "style_comfort": True,
-        "base_bread_wrap": False,
-        "rapide": True,
-
-        "categoryName": "Dessert",
-        "areaName": "Global"
+        "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Mix cocoa powder with plant milk and sugar until smooth. Heat gently while stirring until the texture becomes creamy. Let it cool, then chill in the fridge. Serve with fruit, coconut flakes or crushed dark chocolate.",
+        "ingredients": ["Cocoa", "Plant milk", "Sugar", "Dark chocolate", "Fruit"],
+        "vegan": True, "gluten": False, "arachide": False,
+        "sucre": True, "dessert": True,
+        "style_comfort": True, "base_bread_wrap": False, "rapide": True,
+        "categoryName": "Dessert", "areaName": "Global"
     },
     {
         "idMeal": "internal_v7",
         "nom": "Vegan Pasta Primavera",
-        "image": "https://images.unsplash.com/photo-1525755662778-989d0524087e",
-        "recette": "Cook pasta and mix with sautéed vegetables and olive oil.",
-        "ingredients": ["Pasta", "Zucchini", "Tomato", "Olive oil"],
+        "image": "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Cook pasta until al dente. In a large pan, sauté zucchini, tomatoes and garlic with olive oil. Add the cooked pasta and a small amount of pasta water to create a light sauce. Season with salt, pepper and fresh basil.",
+        "ingredients": ["Pasta", "Zucchini", "Tomato", "Olive oil", "Garlic", "Basil"],
         "vegan": True, "gluten": True, "arachide": False,
         "style_comfort": True, "base_bread_wrap": False, "rapide": True,
         "categoryName": "Italian", "areaName": "Italy"
@@ -359,9 +309,9 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v8",
         "nom": "Vegan Smoothie Bowl",
-        "image": "https://images.unsplash.com/photo-1490645935967-10de6ba17061",
-        "recette": "Blend fruits and top with granola and seeds.",
-        "ingredients": ["Banana", "Berries", "Granola"],
+        "image": "https://images.unsplash.com/photo-1494597564530-871f2b93ac55?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Blend frozen banana and berries with a little plant milk until thick and creamy. Pour into a bowl and top with granola, seeds and fresh fruit. Serve immediately for the best texture.",
+        "ingredients": ["Banana", "Berries", "Plant milk", "Granola", "Seeds"],
         "vegan": True, "gluten": False, "arachide": False,
         "sucre": True, "dessert": True,
         "style_comfort": False, "rapide": True,
@@ -371,8 +321,8 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v9",
         "nom": "Vegan Curry",
         "image": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Cook vegetables with coconut milk and curry spices.",
-        "ingredients": ["Coconut milk", "Carrot", "Potato"],
+        "recette": "Cook onions, garlic and curry spices in a pot until fragrant. Add potatoes, carrots and coconut milk. Simmer until the vegetables are tender. Serve with rice and fresh herbs.",
+        "ingredients": ["Coconut milk", "Carrot", "Potato", "Onion", "Garlic", "Curry spices"],
         "vegan": True, "gluten": False, "arachide": False,
         "style_comfort": True, "rapide": True,
         "categoryName": "Indian", "areaName": "India"
@@ -380,9 +330,9 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v10",
         "nom": "Vegan Avocado Toast",
-        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
-        "recette": "Spread avocado on toasted bread with seasoning.",
-        "ingredients": ["Bread", "Avocado", "Salt"],
+        "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Toast the bread until crispy. Mash avocado with lemon juice, salt and pepper. Spread it on the toast and add chili flakes, tomato slices or seeds. Serve immediately.",
+        "ingredients": ["Bread", "Avocado", "Lemon juice", "Salt", "Pepper", "Chili flakes"],
         "vegan": True, "gluten": True, "arachide": False,
         "rapide": True, "base_bread_wrap": True,
         "categoryName": "Breakfast", "areaName": "Global"
@@ -390,9 +340,9 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v11",
         "nom": "Vegan Falafel Wrap",
-        "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Wrap falafel with veggies and sauce.",
-        "ingredients": ["Falafel", "Wrap", "Salad"],
+        "image": "https://images.unsplash.com/photo-1547058881-aa0edd92aab3?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Warm the wrap, then add falafel, lettuce, tomato and cucumber. Drizzle with tahini or vegan garlic sauce. Roll tightly and toast lightly in a pan if you want a crispy outside.",
+        "ingredients": ["Falafel", "Wrap", "Lettuce", "Tomato", "Cucumber", "Tahini sauce"],
         "vegan": True, "gluten": True, "arachide": False,
         "style_comfort": True, "base_bread_wrap": True,
         "categoryName": "Middle Eastern", "areaName": "Lebanon"
@@ -401,17 +351,17 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v12",
         "nom": "Vegan Sushi",
         "image": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Roll rice with vegetables in seaweed.",
-        "ingredients": ["Rice", "Nori", "Cucumber"],
+        "recette": "Cook sushi rice and let it cool slightly. Place nori on a flat surface, spread rice evenly and add cucumber, avocado or carrot. Roll tightly, slice with a sharp knife and serve with soy sauce.",
+        "ingredients": ["Rice", "Nori", "Cucumber", "Avocado", "Carrot", "Soy sauce"],
         "vegan": True, "gluten": False, "arachide": False,
         "categoryName": "Asian", "areaName": "Japan"
     },
     {
         "idMeal": "internal_v13",
         "nom": "Vegan Pancakes",
-        "image": "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0",
-        "recette": "Cook pancakes with plant milk and flour.",
-        "ingredients": ["Flour", "Plant milk", "Sugar"],
+        "image": "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Mix flour, plant milk, sugar and baking powder until smooth. Cook small portions of batter in a hot pan until bubbles appear, then flip. Serve with maple syrup, fruit or vegan chocolate.",
+        "ingredients": ["Flour", "Plant milk", "Sugar", "Baking powder", "Maple syrup"],
         "vegan": True, "gluten": True, "arachide": False,
         "sucre": True, "dessert": True,
         "style_comfort": True,
@@ -421,8 +371,8 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v14",
         "nom": "Vegan Chili",
         "image": "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Cook beans with tomato sauce and spices.",
-        "ingredients": ["Beans", "Tomato", "Spices"],
+        "recette": "Cook onions and garlic in a pot. Add beans, tomato sauce and spices. Let everything simmer until thick and flavorful. Serve with rice, tortilla chips or avocado.",
+        "ingredients": ["Beans", "Tomato sauce", "Onion", "Garlic", "Spices", "Avocado"],
         "vegan": True, "gluten": False, "arachide": False,
         "style_comfort": True,
         "categoryName": "Mexican", "areaName": "Mexico"
@@ -430,18 +380,18 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v15",
         "nom": "Vegan Caesar Salad",
-        "image": "https://images.unsplash.com/photo-1550304943-4f24f54ddde9",
-        "recette": "Mix lettuce with vegan dressing and croutons.",
-        "ingredients": ["Lettuce", "Croutons", "Dressing"],
+        "image": "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Chop romaine lettuce and prepare a vegan Caesar dressing with lemon, mustard, garlic and olive oil. Add croutons and toss everything together. Serve fresh with black pepper.",
+        "ingredients": ["Lettuce", "Croutons", "Lemon", "Mustard", "Garlic", "Olive oil"],
         "vegan": True, "gluten": True, "arachide": False,
         "categoryName": "Healthy", "areaName": "Global"
     },
     {
         "idMeal": "internal_v16",
         "nom": "Vegan Burrito Bowl",
-        "image": "https://images.unsplash.com/photo-1546069901-5ec6a79120b0?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Combine rice, beans, avocado and salsa.",
-        "ingredients": ["Rice", "Beans", "Avocado"],
+        "image": "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Prepare rice as the base, then add beans, avocado, salsa and corn. Season with lime juice, salt and cumin. Mix gently and serve warm or cold.",
+        "ingredients": ["Rice", "Beans", "Avocado", "Salsa", "Corn", "Lime"],
         "vegan": True, "gluten": False, "arachide": False,
         "style_comfort": True,
         "categoryName": "Mexican", "areaName": "Mexico"
@@ -450,8 +400,8 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v17",
         "nom": "Vegan Ice Cream",
         "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Blend frozen fruits into creamy texture.",
-        "ingredients": ["Frozen banana", "Cocoa"],
+        "recette": "Blend frozen bananas with cocoa or berries until smooth and creamy. Add a splash of plant milk if needed. Serve immediately as soft-serve or freeze for a firmer texture.",
+        "ingredients": ["Frozen banana", "Cocoa", "Plant milk", "Berries"],
         "vegan": True, "gluten": False, "arachide": False,
         "sucre": True, "dessert": True,
         "categoryName": "Dessert", "areaName": "Global"
@@ -460,8 +410,8 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v18",
         "nom": "Vegan Ramen",
         "image": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Cook noodles in vegetable broth.",
-        "ingredients": ["Noodles", "Broth", "Veggies"],
+        "recette": "Simmer vegetable broth with garlic, ginger and soy sauce. Cook noodles separately, then add them to the broth with mushrooms, green onions and vegetables. Serve hot with sesame seeds.",
+        "ingredients": ["Noodles", "Vegetable broth", "Garlic", "Ginger", "Mushrooms", "Green onion"],
         "vegan": True, "gluten": True, "arachide": False,
         "style_comfort": True,
         "categoryName": "Asian", "areaName": "Japan"
@@ -470,8 +420,8 @@ INTERNAL_MEALS = [
         "idMeal": "internal_v19",
         "nom": "Vegan Energy Balls",
         "image": "https://images.unsplash.com/photo-1590080874088-eec64895b423?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Mix oats, dates and cocoa into balls.",
-        "ingredients": ["Oats", "Dates", "Cocoa"],
+        "recette": "Blend oats, dates and cocoa until sticky. Roll the mixture into small balls and chill them in the fridge. Add coconut flakes, seeds or dark chocolate for extra flavor.",
+        "ingredients": ["Oats", "Dates", "Cocoa", "Coconut flakes", "Seeds"],
         "vegan": True, "gluten": False, "arachide": False,
         "sucre": True, "dessert": True,
         "rapide": True,
@@ -480,15 +430,13 @@ INTERNAL_MEALS = [
     {
         "idMeal": "internal_v20",
         "nom": "Vegan Pizza",
-        "image": "https://images.unsplash.com/photo-1601924582975-7e2d6c9f2c6f?auto=format&fit=crop&w=1200&q=80",
-        "recette": "Top pizza with veggies and vegan cheese.",
-        "ingredients": ["Dough", "Tomato", "Vegan cheese"],
+        "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80",
+        "recette": "Spread tomato sauce over the pizza dough, then add vegetables and vegan cheese. Bake in a hot oven until the crust is golden and crispy. Finish with basil, olive oil and chili flakes if desired.",
+        "ingredients": ["Pizza dough", "Tomato sauce", "Vegan cheese", "Vegetables", "Basil", "Olive oil"],
         "vegan": True, "gluten": True, "arachide": False,
         "style_comfort": True,
         "categoryName": "Italian", "areaName": "Italy"
     }
-
-
 ]
 
 # ========================
