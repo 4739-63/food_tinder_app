@@ -1999,3 +1999,10 @@ def send_push_notification(push_token: str, title: str, body: str):
 
     except Exception as e:
         print("PUSH ERROR:", str(e))                
+
+@app.get("/debug-firebase")
+def debug_firebase():
+    return {
+        "firebase_apps": len(firebase_admin._apps),
+        "has_env_json": bool(os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON"))
+    }        
