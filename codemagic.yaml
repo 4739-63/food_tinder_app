@@ -28,20 +28,29 @@ workflows:
         script: |
           npm run build || true
 
-      - name: Set iOS build number
-        script: |
-          cd ios/App
-
-          echo "Build number: $CM_BUILD_NUMBER"
-
-          agvtool new-version -all $CM_BUILD_NUMBER
-
-          cd ../..
-
       - name: Sync Capacitor
         script: |
           chmod +x node_modules/.bin/cap || true
           npx cap sync ios
+
+      - name: Ensure iOS push entitlements
+        script: |
+          cat > ios/App/App/App.entitlements <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>aps-environment</key>
+              <string>production</string>
+          </dict>
+          </plist>
+          EOF
+
+          /usr/libexec/PlistBuddy -c "Set :UIBackgroundModes:0 remote-notification" ios/App/App/Info.plist || \
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
+
+          /usr/libexec/PlistBuddy -c "Set :CODE_SIGN_ENTITLEMENTS App/App.entitlements" ios/App/App.xcodeproj/project.pbxproj || true
 
       - name: Set up code signing
         script: |
@@ -49,8 +58,9 @@ workflows:
 
           app-store-connect fetch-signing-files "com.chris.foodtinder" \
             --type IOS_APP_STORE \
-            --create
-
+            --create \
+            --force
+          
           keychain add-certificates
           xcode-project use-profiles
 

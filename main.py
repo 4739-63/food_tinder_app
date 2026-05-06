@@ -23,11 +23,33 @@ from sqlalchemy.orm import sessionmaker
 
 import json
 from fastapi import Request
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from firebase_admin import credentials, messaging
+import firebase_admin
+
+firebase_credentials_path = os.getenv(
+    "FIREBASE_CREDENTIALS",
+    "firebase-service-account.json"
+)
+
+if not firebase_admin._apps:
+    if os.path.exists(firebase_credentials_path):
+        cred = credentials.Certificate(firebase_credentials_path)
+        firebase_admin.initialize_app(cred)
+        print("🔥 Firebase initialized")
+    else:
+        print("⚠️ Firebase credentials file missing")
 # ========================
 # CONFIG
 # ========================
 
-SECRET = os.getenv("SECRET_KEY", "dev-secret")
+SECRET = os.getenv("SECRET_KEY")
+
+if not SECRET:
+    raise RuntimeError("SECRET_KEY environment variable is missing")
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -53,7 +75,10 @@ def verify_password(password: str, stored_password: str) -> bool:
         return False
 
 # lien webhook
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_88258daee3745fa170a37bae7b5be12b3f1a0eb67db594e9cfa8b3311a99aed6")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+if not STRIPE_WEBHOOK_SECRET:
+    print("⚠️ STRIPE_WEBHOOK_SECRET missing")
 
 def get_current_user(token: str):
     try:
@@ -536,6 +561,15 @@ class Follow(Base):
     following_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(Integer, default=lambda: int(time.time()))
 
+class PushToken(Base):
+    __tablename__ = "push_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, nullable=False)
+    platform = Column(String, nullable=True)
+    created_at = Column(Integer, default=lambda: int(time.time()))
+
 #===========
 # mémoire algo
 #==========
@@ -592,55 +626,33 @@ Base.metadata.create_all(bind=engine)
 
 from sqlalchemy import text
 
-with engine.connect() as conn:
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';
-    """))
-    conn.commit()
+def add_column_if_missing(table_name, column_name, column_definition):
+    with engine.connect() as conn:
+        if DATABASE_URL.startswith("sqlite"):
+            existing_columns = conn.execute(
+                text(f"PRAGMA table_info({table_name})")
+            ).fetchall()
 
-with engine.connect() as conn:
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_provider VARCHAR;
-    """))
+            column_names = [col[1] for col in existing_columns]
 
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_id VARCHAR;
-    """))
+            if column_name not in column_names:
+                conn.execute(
+                    text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
+                )
+                conn.commit()
+        else:
+            conn.execute(text(
+                f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {column_definition}"
+            ))
+            conn.commit()
 
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS video_playback_url VARCHAR;
-    """))
 
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR;
-    """))
-
-    conn.commit()
-
-from sqlalchemy import text
-
-with engine.connect() as conn:
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;
-    """))
-
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS reports (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id),
-            post_id INTEGER NOT NULL REFERENCES posts(id),
-            reason VARCHAR,
-            created_at INTEGER
-        );
-    """))
-
-    conn.commit()
-
-with engine.connect() as conn:
-    conn.execute(text("""
-        ALTER TABLE posts ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';
-    """))
-    conn.commit()
+add_column_if_missing("posts", "media_type", "VARCHAR DEFAULT 'image'")
+add_column_if_missing("posts", "video_provider", "VARCHAR")
+add_column_if_missing("posts", "video_id", "VARCHAR")
+add_column_if_missing("posts", "video_playback_url", "VARCHAR")
+add_column_if_missing("posts", "thumbnail_url", "VARCHAR")
+add_column_if_missing("posts", "is_hidden", "BOOLEAN DEFAULT FALSE")
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -1102,6 +1114,22 @@ def create_post(data: dict):
 
         db.add(post)
         db.commit()
+
+        followers = db.query(Follow).filter(
+            Follow.following_id == user.id
+        ).all()
+
+        for follow in followers:
+            tokens = db.query(PushToken).filter(
+                PushToken.user_id == follow.follower_id
+            ).all()
+
+            for saved_token in tokens:
+                send_push_notification(
+                    saved_token.token,
+                    "New post",
+                    f"{user.name or user.email.split('@')[0]} made a new post"
+                )
 
         return {"message": "Post created"}
 
@@ -1915,3 +1943,52 @@ def get_following(token: str = ""):
 
     finally:
         db.close()        
+
+@app.post("/register-push-token")
+def register_push_token(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data.get("token"))
+        push_token = data.get("push_token")
+        platform = data.get("platform")
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        if not push_token:
+            return JSONResponse(content={"error": "Missing push token"}, status_code=400)
+
+        existing = db.query(PushToken).filter(
+            PushToken.user_id == user_id,
+            PushToken.token == push_token
+        ).first()
+
+        if not existing:
+            db.add(PushToken(
+                user_id=user_id,
+                token=push_token,
+                platform=platform,
+                created_at=int(time.time())
+            ))
+            db.commit()
+
+        return {"message": "push token saved"}
+
+    finally:
+        db.close()
+
+def send_push_notification(push_token: str, title: str, body: str):
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body
+            ),
+            token=push_token
+        )
+
+        response = messaging.send(message)
+        print("Push sent:", response)
+
+    except Exception as e:
+        print("PUSH ERROR:", str(e))                

@@ -66,5 +66,10 @@
 
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>MealSwipe needs permission to save media if needed.</string>
+
+	<key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
 </dict>
 </plist>
