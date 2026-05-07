@@ -1789,7 +1789,7 @@ function renderFeed() {
                                 class="feed-img" 
                                 src="${post.image}" 
                                 alt="post image"
-                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                                onerror="this.onerror=null; this.src='logo.png';"
                            >`
                 }
 
@@ -1797,7 +1797,7 @@ function renderFeed() {
 
                     <div class="feed-stats-row">
                         <div class="feed-like-stat">
-                            <img src="/static/nb_like.png" alt="likes">
+                            <img src="nb_like.png" alt="likes">
                             <span data-like-count="${post.id}">${post.likes}</span>
                         </div>
 
@@ -1810,13 +1810,13 @@ function renderFeed() {
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
                             <img 
                                 class="action-icon-img ${post.liked ? 'liked' : ''}" 
-                                src="${post.liked ? '/static/like_t.png' : '/static/like.png'}"
+                                src="${post.liked ? 'like_t.png' : 'like.png'}"
                                 data-like-icon="${post.id}"
                             >
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="/static/comments.png" alt="comments">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
                         </button>
                     </div>
                 </div>
@@ -1909,7 +1909,7 @@ function showProfile() {
 
                     <div class="feed-stats-row">
                         <div class="feed-like-stat">
-                            <img src="/static/nb_like.png" alt="likes">
+                            <img src="nb_like.png" alt="likes">
                             <span data-like-count="${post.id}">${post.likes ?? 0}</span>
                         </div>
 
@@ -1922,13 +1922,13 @@ function showProfile() {
                         <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
                             <img 
                                 class="action-icon-img ${post.liked ? 'liked' : ''}" 
-                                src="${post.liked ? '/static/like_t.png' : '/static/like.png'}"
+                                src="${post.liked ? 'like_t.png' : 'like.png'}"
                                 data-like-icon="${post.id}"
                             >
                         </button>
 
                         <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
-                            <img class="action-icon-img" src="/static/comments.png" alt="comments">
+                            <img class="action-icon-img" src="comments.png" alt="comments">
                         </button>
                     </div>
                 </div>
@@ -2036,7 +2036,7 @@ function updatePostButtons(postId) {
     if (!post) return;
 
     document.querySelectorAll(`[data-like-icon="${postId}"]`).forEach(img => {
-        img.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+        img.src = post.liked ? "like_t.png" : "like.png";
     });
 
     document.querySelectorAll(`[data-like-count="${postId}"]`).forEach(span => {
@@ -3705,13 +3705,13 @@ async function loadFullscreenVideo(index) {
 
     if (likeBtn) {
         const likeImg = likeBtn.querySelector("img");
-        if (likeImg) likeImg.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+        if (likeImg) likeImg.src = post.liked ? "like_t.png" : "like.png";
 
         likeBtn.onclick = async () => {
             await likePost(post.id);
             const updatedPost = demoPosts.find(p => p.id === post.id);
             const img = likeBtn.querySelector("img");
-            if (img && updatedPost) img.src = updatedPost.liked ? "/static/like_t.png" : "/static/like.png";
+            if (img && updatedPost) img.src = updatedPost.liked ? "like_t.png" : "like.png";
         };
     }
 
@@ -4021,7 +4021,7 @@ function renderSearchResults() {
                                 class="feed-img" 
                                 src="${post.image}" 
                                 alt="post image"
-                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                                onerror="this.onerror=null; this.src='logo.png';"
                            >`
                 }
             </div>
@@ -4151,9 +4151,9 @@ function renderUserPosts(posts, filter = "all") {
                             style="position:relative; background:#333; cursor:pointer;"
                             onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
                             <img 
-                                src="${post.thumbnail_url || post.image || '/static/logo.png'}"
+                                src="${post.thumbnail_url || post.image || 'logo.png'}"
                                 style="width:100%; height:100%; object-fit:cover; display:block;"
-                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                                onerror="this.onerror=null; this.src='logo.png';"
                             >
                             <div style="
                                 position:absolute;
@@ -4170,7 +4170,7 @@ function renderUserPosts(posts, filter = "all") {
                             class="feed-img" 
                             src="${post.image}" 
                             alt="post image"
-                            onerror="this.onerror=null; this.src='/static/logo.png';"
+                            onerror="this.onerror=null; this.src='logo.png';"
                        >`
             }
 
@@ -4464,7 +4464,7 @@ function loadFullscreenVideoInfo(post) {
 
     if (likeBtn) {
         const likeImg = likeBtn.querySelector("img");
-        if (likeImg) likeImg.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+        if (likeImg) likeImg.src = post.liked ? "like_t.png" : "like.png";
 
         likeBtn.onclick = async () => {
             await likePost(post.id);
@@ -4472,7 +4472,7 @@ function loadFullscreenVideoInfo(post) {
             const img = likeBtn.querySelector("img");
 
             if (img && updatedPost) {
-                img.src = updatedPost.liked ? "/static/like_t.png" : "/static/like.png";
+                img.src = updatedPost.liked ? "like_t.png" : "like.png";
             }
         };
     }

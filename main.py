@@ -682,6 +682,18 @@ app.mount(
     name="static"
 )
 
+app.mount(
+    "/css",
+    StaticFiles(directory=os.path.join(base_dir, "static", "css")),
+    name="css"
+)
+
+app.mount(
+    "/js",
+    StaticFiles(directory=os.path.join(base_dir, "static", "js")),
+    name="js"
+)
+
 
 # ========================
 # ROUTES AUTH
@@ -889,6 +901,24 @@ def manifest_redirect():
 @app.get("/index.html")
 def index_redirect():
     return FileResponse(os.path.join(base_dir, "static", "index.html"))
+
+@app.get("/{asset_name}")
+def static_root_asset(asset_name: str):
+    allowed_assets = {
+        "comments.png",
+        "like.png",
+        "like_t.png",
+        "logo_1.png",
+        "loupe.png",
+        "nb_like.png",
+        "titre.png",
+        "service-worker.js",
+    }
+
+    if asset_name not in allowed_assets:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    return FileResponse(os.path.join(base_dir, "static", asset_name))
 
 
 
