@@ -1665,7 +1665,7 @@ html, body, #recipePanel {
 .topBrand {
     display: none;
     width: 100%;
-    display: flex;
+    align-items: center;
     align-items: center;
     justify-content: center;
 
@@ -1682,6 +1682,10 @@ html, body, #recipePanel {
     backdrop-filter: blur(10px);
 
     z-index: 9998;
+}
+
+.topBrand.active {
+    display: flex;
 }
 
 .brandLogo {
@@ -1705,15 +1709,12 @@ html, body, #recipePanel {
     <img src="./logo.png" id="logo">
 </div>    
 
-<div class="topBrand">
-    <img src="logo_1.png" class="brandLogo">
-    <img src="titre.png" class="brandTitle">
-</div>
-
 <div id="discoverBrand" class="topBrand">
     <img src="/static/logo_1.png" class="brandLogo">
     <img src="/static/titre.png" class="brandTitle">
 </div>
+
+<div class="card" id="card">
     <div id="likeLabel" class="label likeLabel"> LIKE</div>
     <div id="nopeLabel" class="label nopeLabel"> NOPE</div>
 
@@ -1738,9 +1739,9 @@ html, body, #recipePanel {
         <img src="/static/logo_1.png" class="brandLogo">
         <img src="/static/titre.png" class="brandTitle">
     </div>
-    <div class="topBrand">
-        <img src="logo_1.png" class="brandLogo">
-        <img src="titre.png" class="brandTitle">
+    <div id="feedBrand" class="topBrand">
+        <img src="/static/logo_1.png" class="brandLogo">
+        <img src="/static/titre.png" class="brandTitle">
     </div>
 
 </div>
