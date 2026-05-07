@@ -1663,6 +1663,7 @@ html, body, #recipePanel {
 }
 
 .topBrand {
+    display: none;
     width: 100%;
     display: flex;
     align-items: center;
@@ -1671,10 +1672,10 @@ html, body, #recipePanel {
     gap: 14px;
 
     position: fixed;
-    top: 20px;
+    top: 30px;
     left: 0;
 
-    padding-top: 30px;
+    padding-top: 40px;
     padding-bottom: 14px;
 
     background: rgba(0,0,0,0.28);
@@ -1705,11 +1706,14 @@ html, body, #recipePanel {
 </div>    
 
 <div class="topBrand">
+    <img src="logo_1.png" class="brandLogo">
+    <img src="titre.png" class="brandTitle">
+</div>
+
+<div id="discoverBrand" class="topBrand">
     <img src="/static/logo_1.png" class="brandLogo">
     <img src="/static/titre.png" class="brandTitle">
 </div>
-
-<div class="card" id="card">
     <div id="likeLabel" class="label likeLabel"> LIKE</div>
     <div id="nopeLabel" class="label nopeLabel"> NOPE</div>
 
@@ -1730,7 +1734,10 @@ html, body, #recipePanel {
 <div id="favorisScreen" style="display:none;"></div>
 
 <div id="feedScreen" style="display:none;">
-
+    <div id="feedBrand" class="topBrand">
+        <img src="/static/logo_1.png" class="brandLogo">
+        <img src="/static/titre.png" class="brandTitle">
+    </div>
     <div class="topBrand">
         <img src="logo_1.png" class="brandLogo">
         <img src="titre.png" class="brandTitle">
@@ -2862,6 +2869,7 @@ card.addEventListener("pointerup", () => {
 
 function showFavoris() {
     hideAllScreens();
+    updateBrandHeader(null);
     document.getElementById("card").style.display = "none";
     document.getElementById("recipePanel").classList.remove("open");
 
@@ -2919,7 +2927,7 @@ function showFavoris() {
 
 function showSwipe() {
     hideAllScreens();
-
+    updateBrandHeader("discover");
     const card = document.getElementById("card");
     const image = document.getElementById("image");
 
@@ -2946,6 +2954,7 @@ function showSwipe() {
 
 async function showAdvanced() {
     hideAllScreens();
+    updateBrandHeader(null);
 
     const localPremium = localStorage.getItem("premium") === "true";
     const premium = localPremium || await isPremium();
@@ -3381,7 +3390,7 @@ function restorePurchases() {
 
 async function showFeed() {
     hideAllScreens();
-
+    updateBrandHeader("feed");
     applyTimeDecay(); // 
 
     const container = document.getElementById("feedScreen");
@@ -4669,6 +4678,7 @@ async function loadCommentsFromBackend(postId) {
 }
 
 function openProfileEntry() {
+    updateBrandHeader(null);
     if (token) {
         showProfile();
     } else {
@@ -6380,6 +6390,22 @@ async function debugPushSetup() {
     } catch (error) {
         alert("Push debug error: " + error.message);
         console.error(error);
+    }
+}
+
+function updateBrandHeader(screen) {
+    const discoverBrand = document.getElementById("discoverBrand");
+    const feedBrand = document.getElementById("feedBrand");
+
+    if (discoverBrand) discoverBrand.classList.remove("active");
+    if (feedBrand) feedBrand.classList.remove("active");
+
+    if (screen === "discover" && discoverBrand) {
+        discoverBrand.classList.add("active");
+    }
+
+    if (screen === "feed" && feedBrand) {
+        feedBrand.classList.add("active");
     }
 }
 
