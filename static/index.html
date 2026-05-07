@@ -106,7 +106,10 @@ body {
     z-index: 1;
     width: calc(100% - 48px);
     height: 70vh;
+
     margin: 24px auto;
+    margin-top: 120px;
+
     border-radius: 28px;
     overflow: hidden;
     background: var(--card);
@@ -510,21 +513,21 @@ body {
 }
 
 #recipePanel h3 {
-    font-size: 26px;
+    font-size: 38px;
 }
 
 #recipePanel h4 {
-    font-size: 22px;
+    font-size: 30px;
 }
 
 #recipePanel p {
-    font-size: 18px;
-    line-height: 1.7;
+    font-size: 26px;
+    line-height: 1.9;
 }
 
 #recipePanel li {
-    font-size: 18px;
-    margin-bottom: 6px;
+    font-size: 26px;
+    margin-bottom: 14px;
 }
 
 #recipePanel,
@@ -632,7 +635,7 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 
-    padding: 0px;
+    padding: calc(env(safe-area-inset-top, 0px) + 110px) 0 0 0;
     box-sizing: border-box;
 }
 
@@ -1659,6 +1662,38 @@ html, body, #recipePanel {
     font-weight: 900;
 }
 
+.topBrand {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 14px;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-bottom: 14px;
+
+    background: rgba(0,0,0,0.28);
+    backdrop-filter: blur(10px);
+
+    z-index: 9998;
+}
+
+.brandLogo {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+}
+
+.brandTitle {
+    height: 42px;
+    object-fit: contain;
+}
+
 </style>
 </head>
 
@@ -1668,6 +1703,11 @@ html, body, #recipePanel {
 <div id="splash">
     <img src="./logo.png" id="logo">
 </div>    
+
+<div class="topBrand">
+    <img src="logo_1.png" class="brandLogo">
+    <img src="titre.png" class="brandTitle">
+</div>
 
 <div class="card" id="card">
     <div id="likeLabel" class="label likeLabel"> LIKE</div>
@@ -1689,7 +1729,14 @@ html, body, #recipePanel {
 
 <div id="favorisScreen" style="display:none;"></div>
 
-<div id="feedScreen" style="display:none;"></div>
+<div id="feedScreen" style="display:none;">
+
+    <div class="topBrand">
+        <img src="logo_1.png" class="brandLogo">
+        <img src="titre.png" class="brandTitle">
+    </div>
+
+</div>
 
 <div id="createPostScreen" style="display:none;"></div>
 
