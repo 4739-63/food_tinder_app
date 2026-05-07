@@ -1,0 +1,4641 @@
+const API_BASE = "https://food-tinder-backend.onrender.com";
+const APPLE_SUBSCRIPTION_ID = "com.mealswipe.advanced";
+
+const SUPABASE_URL = "https://cqqdiyfuuslmfpkllbne.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_LNbbz9hEziziarS3dfGqNA_jSsquxTq";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const FREE_RECIPE_LIMIT = 10;
+
+const CameraPlugin =
+    window.Capacitor &&
+    window.Capacitor.Plugins &&
+    window.Capacitor.Plugins.Camera
+        ? window.Capacitor.Plugins.Camera
+        : null;
+
+
+
+document.body.classList.add("splash-active");
+
+let token = localStorage.getItem("token") || null;
+
+let selectedPostImage = "";
+
+let selectedPostMediaType = "image";
+
+let selectedPostVideoId = "";
+let selectedPostVideoPlaybackUrl = "";
+let selectedPostThumbnailUrl = "";
+
+let selectedProfileImage = "";
+
+
+let feedSkip = 0;
+const FEED_PAGE_SIZE = 10;
+let isLoadingFeed = false;
+let hasMoreFeed = true;
+
+let feedTaste = JSON.parse(localStorage.getItem("feedTaste")) || {
+    lang_fr: 0,
+    lang_en: 0,
+
+    pasta: 0,
+    burger: 0,
+    healthy: 0,
+    dessert: 0,
+    breakfast: 0,
+    vegan: 0,
+    spicy: 0,
+    chicken: 0,
+    beef: 0,
+    seafood: 0,
+    asian: 0,
+    italian: 0,
+    mexican: 0,
+
+    video: 0,
+    image: 0
+};
+
+function saveFeedTaste() {
+    localStorage.setItem("feedTaste", JSON.stringify(feedTaste));
+}
+
+function applyDecay() {
+    const decayFactor = 0.97; // 🔥 3% de perte
+
+    Object.keys(feedTaste).forEach(key => {
+        feedTaste[key] *= decayFactor;
+
+        // évite les valeurs infinies
+        if (Math.abs(feedTaste[key]) < 0.1) {
+            feedTaste[key] = 0;
+        }
+    });
+
+    saveFeedTaste();
+}
+
+function detectPostFeatures(post) {
+    const text = `${post.caption || ""} ${post.author || ""}`.toLowerCase();
+
+    const hasAny = (words) => words.some(w => text.includes(w));
+
+    return {
+        lang_fr: hasAny(["recette", "poulet", "boeuf", "déjeuner", "santé", "fromage", "dessert"]),
+        lang_en: hasAny(["recipe", "chicken", "beef", "breakfast", "healthy", "cheese", "dessert"]),
+
+        pasta: hasAny(["pasta", "spaghetti", "macaroni", "penne", "lasagna"]),
+        burger: hasAny(["burger", "cheeseburger"]),
+        healthy: hasAny(["healthy", "santé", "protein", "protéine", "salad", "salade"]),
+        dessert: hasAny(["dessert", "cake", "gâteau", "cookie", "chocolate", "chocolat"]),
+        breakfast: hasAny(["breakfast", "déjeuner", "eggs", "oeufs", "pancake"]),
+        vegan: hasAny(["vegan", "végane", "vegetarian", "végétarien"]),
+        spicy: hasAny(["spicy", "épicé", "hot", "chili", "jalapeno"]),
+
+        chicken: hasAny(["chicken", "poulet"]),
+        beef: hasAny(["beef", "boeuf", "steak"]),
+        seafood: hasAny(["seafood", "shrimp", "fish", "poisson", "crevette"]),
+
+        asian: hasAny(["asian", "ramen", "sushi", "thai", "teriyaki", "soy"]),
+        italian: hasAny(["italian", "pizza", "pasta", "risotto", "parmesan"]),
+        mexican: hasAny(["mexican", "taco", "burrito", "quesadilla"]),
+
+        video: post.media_type === "video",
+        image: post.media_type !== "video"
+    };
+}
+
+function learnFromPost(post, weight = 1) {
+    const features = detectPostFeatures(post);
+
+    Object.keys(features).forEach(key => {
+        if (features[key] && key in feedTaste) {
+            feedTaste[key] += weight;
+        }
+    });
+
+    applyDecay(); 
+    saveFeedTaste();
+}
+
+function applyTimeDecay() {
+    const now = Date.now();
+    const last = parseInt(localStorage.getItem("lastDecay") || "0");
+
+    if (!last) {
+        localStorage.setItem("lastDecay", now);
+        return;
+    }
+
+    const hoursPassed = (now - last) / (1000 * 60 * 60);
+
+    if (hoursPassed < 1) return;
+
+    const decayFactor = Math.pow(0.95, hoursPassed);
+
+    Object.keys(feedTaste).forEach(key => {
+        feedTaste[key] *= decayFactor;
+
+        if (Math.abs(feedTaste[key]) < 0.1) {
+            feedTaste[key] = 0;
+        }
+    });
+
+    localStorage.setItem("lastDecay", now);
+    saveFeedTaste();
+}
+
+function scoreFeedPost(post) {
+    const features = detectPostFeatures(post);
+
+    let score = 0;
+
+    Object.keys(features).forEach(key => {
+        if (features[key] && feedTaste[key]) {
+            score += feedTaste[key] * 3;
+        }
+    });
+
+    score += Math.min(post.likes || 0, 100) * 0.15;
+    score += Math.min(post.commentsCount || 0, 50) * 0.35;
+
+    if (post.liked) score += 8;
+
+    score += Math.random() * 10;
+    return score;
+}
+
+function rankFeedPosts(posts) {
+    return posts
+        .map(post => ({
+            ...post,
+            _score: scoreFeedPost(post)
+        }))
+        .sort((a, b) => b._score - a._score);
+}
+
+function getFreshnessScore(post) {
+    const created = post.created_at ? new Date(post.created_at).getTime() : Date.now();
+    const hours = Math.max(1, (Date.now() - created) / (1000 * 60 * 60));
+    return Math.max(0, 30 - hours * 0.6);
+}
+
+function scorePersonalizedLayer(post) {
+    return scoreFeedPost(post) * 1.0;
+}
+
+function scoreTrendingLayer(post) {
+    const likes = post.likes || 0;
+    const comments = post.commentsCount || 0;
+    return likes * 0.8 + comments * 1.6 + getFreshnessScore(post);
+}
+
+function scoreFreshLayer(post) {
+    return getFreshnessScore(post) + Math.random() * 8;
+}
+
+function scoreExploreLayer(post) {
+    return Math.random() * 100;
+}
+
+function buildMultiLayerFeed(posts) {
+    const cleanPosts = [...posts];
+
+    const personalized = [...cleanPosts]
+        .sort((a, b) => scorePersonalizedLayer(b) - scorePersonalizedLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.55));
+
+    const trending = [...cleanPosts]
+        .sort((a, b) => scoreTrendingLayer(b) - scoreTrendingLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.20));
+
+    const fresh = [...cleanPosts]
+        .sort((a, b) => scoreFreshLayer(b) - scoreFreshLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.15));
+
+    const explore = [...cleanPosts]
+        .sort((a, b) => scoreExploreLayer(b) - scoreExploreLayer(a))
+        .slice(0, Math.ceil(cleanPosts.length * 0.10));
+
+    const mixed = [];
+    const seen = new Set();
+
+    function addUnique(list) {
+        list.forEach(post => {
+            if (!seen.has(post.id)) {
+                seen.add(post.id);
+                mixed.push(post);
+            }
+        });
+    }
+
+    addUnique(personalized);
+    addUnique(trending);
+    addUnique(fresh);
+    addUnique(explore);
+
+    return mixed;
+}
+
+let currentFeedMode = "home"; // "home" ou "video"
+let followingUsers = [];
+//  préférences (session uniquement)
+let preferences = JSON.parse(sessionStorage.getItem("preferences")) || {
+    // anciens axes
+    sucre: 0,
+    sale: 0,
+    rapide: 0,
+    sante: 0,
+    viande: 0,
+    chaud: 0,
+
+    // catégories de repas
+    dessert: 0,
+    breakfast: 0,
+
+    // protéines
+    protein_fish: 0,
+    protein_chicken: 0,
+    protein_beef: 0,
+    protein_seafood: 0,
+    protein_pork: 0,
+    protein_lamb: 0,
+
+    // bases
+    base_pasta: 0,
+    base_rice: 0,
+    base_potato: 0,
+    base_bread_wrap: 0,
+    base_salad: 0,
+
+    // styles
+    style_spicy: 0,
+    style_creamy: 0,
+    style_light: 0,
+    style_comfort: 0,
+
+    // cuisines
+    cuisine_italian: 0,
+    cuisine_mexican: 0,
+    cuisine_asian: 0,
+    cuisine_indian: 0,
+    cuisine_american: 0,
+    cuisine_mediterranean: 0
+};
+
+let currentPlat = null;
+let nextPlat = null;
+let favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+let advancedFilters = {};
+let seenInternalMeals = new Set();
+let seenMealIds = new Set(JSON.parse(sessionStorage.getItem("seenMealIds")) || []);
+
+
+let recentCategories = JSON.parse(sessionStorage.getItem("recentCategories")) || [];
+let recentAreas = JSON.parse(sessionStorage.getItem("recentAreas")) || [];
+let recentProteins = JSON.parse(sessionStorage.getItem("recentProteins")) || [];
+
+function saveAlgoSession() {
+    sessionStorage.setItem("preferences", JSON.stringify(preferences));
+    sessionStorage.setItem("seenMealIds", JSON.stringify([...seenMealIds]));
+    sessionStorage.setItem("recentCategories", JSON.stringify(recentCategories));
+    sessionStorage.setItem("recentAreas", JSON.stringify(recentAreas));
+    sessionStorage.setItem("recentProteins", JSON.stringify(recentProteins));
+}
+
+function pushRecent(list, value, max = 3) {
+    if (!value) return;
+    list.push(value);
+    while (list.length > max) list.shift();
+}
+
+function rememberShownMeal(plat) {
+    if (!plat) return;
+
+    if (plat.idMeal) {
+        seenMealIds.add(String(plat.idMeal));
+    }
+
+    pushRecent(recentCategories, plat.categoryName || "");
+    pushRecent(recentAreas, plat.areaName || "");
+
+    if (plat.protein_fish) pushRecent(recentProteins, "fish");
+    else if (plat.protein_chicken) pushRecent(recentProteins, "chicken");
+    else if (plat.protein_beef) pushRecent(recentProteins, "beef");
+    else if (plat.protein_seafood) pushRecent(recentProteins, "seafood");
+    else if (plat.protein_pork) pushRecent(recentProteins, "pork");
+    else if (plat.protein_lamb) pushRecent(recentProteins, "lamb");
+
+    saveAlgoSession();
+}
+
+let isSwiping = false;
+
+const card = document.getElementById("card");
+
+const likeLabel = document.getElementById("likeLabel");
+const nopeLabel = document.getElementById("nopeLabel");
+
+const imageElement = document.getElementById("image");
+
+imageElement.onerror = () => {
+    imageElement.src = "";
+};
+
+let startX = 0;
+let currentX = 0;
+let isDragging = false;
+let startY = 0;
+let currentY = 0;
+
+let storeReady = false;
+
+async function hasAdvancedAccess() {
+    const localPremium = localStorage.getItem("premium") === "true";
+
+    if (localPremium) return true;
+
+    if (!token) return false;
+
+    try {
+        return await isPremium();
+    } catch {
+        return false;
+    }
+}
+
+function setupAppleIAP() {
+    console.log("setupAppleIAP called");
+
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        console.log("IAP plugin not available");
+        return;
+    }
+
+    const store = window.CdvPurchase.store;
+    const ProductType = window.CdvPurchase.ProductType;
+    const Platform = window.CdvPurchase.Platform;
+
+    store.register([{
+        id: APPLE_SUBSCRIPTION_ID,
+        type: ProductType.PAID_SUBSCRIPTION,
+        platform: Platform.APPLE_APPSTORE
+    }]);
+
+    store.when()
+        .approved(async transaction => {
+            console.log("Purchase approved:", transaction);
+
+            const receiptData =
+                transaction?.receipt ||
+                transaction?.transactionId ||
+                transaction?.id ||
+                "apple-purchase-approved";
+
+            const activated = await activatePremiumBackend(receiptData);
+
+            if (activated) {
+                await transaction.finish();
+                console.log("Premium activated");
+            } else {
+                console.log("Premium activation failed");
+            }
+        });
+
+    store.when()
+        .verified(async receipt => {
+            console.log("Receipt verified:", receipt);
+
+            const receiptData =
+                receipt?.raw ||
+                receipt?.sourceReceipt ||
+                receipt?.id ||
+                "apple-receipt-verified";
+
+            await activatePremiumBackend(receiptData);
+        });
+
+    store.when()
+        .unverified(receipt => {
+            console.log("Receipt unverified:", receipt);
+        });
+
+    store.error(err => {
+        console.log("Store error:", err);
+    });
+
+    store.initialize([Platform.APPLE_APPSTORE])
+        .then(async () => {
+            console.log("Store initialized");
+
+            await store.update();
+
+            const product = store.get(
+                APPLE_SUBSCRIPTION_ID,
+                Platform.APPLE_APPSTORE
+            );
+
+            console.log("Loaded product:", product);
+
+            storeReady = true;
+        })
+        .catch(err => {
+            console.log("Store init failed:", err);
+        });
+}
+
+
+// 🔥 analyser un plat API
+function analyserPlat(meal) {
+    const instructions = (meal.strInstructions || "").toLowerCase();
+    const category = (meal.strCategory || "").toLowerCase();
+    const area = (meal.strArea || "").toLowerCase();
+    const tags = (meal.strTags || "").toLowerCase();
+
+    const ingredients = [];
+    for (let i = 1; i <= 20; i++) {
+        const ing = meal["strIngredient" + i];
+        if (ing && ing.trim()) {
+            ingredients.push(ing.toLowerCase());
+        }
+    }
+
+    const textBlob = [
+        category,
+        area,
+        tags,
+        instructions,
+        ...ingredients
+    ].join(" ");
+
+    const hasAny = (words) => words.some(w => textBlob.includes(w));
+
+    const proteinFish = hasAny(["fish", "salmon", "tuna", "cod", "haddock"]);
+    const proteinChicken = hasAny(["chicken"]);
+    const proteinBeef = hasAny(["beef"]);
+    const proteinSeafood = hasAny(["prawn", "shrimp", "mussel", "crab", "squid", "clam", "seafood"]);
+    const proteinPork = hasAny(["pork", "bacon", "ham"]);
+    const proteinLamb = hasAny(["lamb"]);
+
+    const basePasta = hasAny(["pasta", "spaghetti", "penne", "macaroni", "tagliatelle", "noodle"]);
+    const baseRice = hasAny(["rice"]);
+    const basePotato = hasAny(["potato"]);
+    const baseBreadWrap = hasAny(["bread", "bun", "toast", "tortilla", "wrap", "pita"]);
+    const baseSalad = hasAny(["salad", "lettuce", "spinach", "cucumber"]);
+
+    const styleSpicy = hasAny(["chili", "chilli", "spicy", "curry", "pepper", "jalapeno"]);
+    const styleCreamy = hasAny(["cream", "cheese", "milk", "butter", "yogurt"]);
+    const styleLight = hasAny(["salad", "lemon", "lime", "fresh", "mint", "cucumber"]);
+    const styleComfort = hasAny(["cheese", "potato", "beef", "pasta", "bread", "butter"]);
+
+    const cuisineItalian = area.includes("italian") || hasAny(["mozzarella", "parmesan", "pasta", "risotto"]);
+    const cuisineMexican = area.includes("mexican") || hasAny(["tortilla", "jalapeno", "beans", "avocado"]);
+    const cuisineAsian = hasAny(["soy", "ginger", "sesame", "noodle", "rice"]) ||
+        ["japanese", "chinese", "thai", "vietnamese"].some(a => area.includes(a));
+    const cuisineIndian = area.includes("indian") || hasAny(["garam masala", "curry", "turmeric", "cardamom"]);
+    const cuisineAmerican = area.includes("american") || hasAny(["burger", "bbq", "bacon"]);
+    const cuisineMediterranean =
+        ["greek", "spanish", "moroccan", "turkish", "french"].some(a => area.includes(a)) ||
+        hasAny(["olive", "feta", "lemon", "chickpea"]);
+
+    const dessert = category.includes("dessert");
+    const breakfast = category.includes("breakfast");
+
+    return {
+        idMeal: String(meal.idMeal || ""),
+        nom: meal.strMeal,
+        image: meal.strMealThumb,
+        recette: meal.strInstructions,
+        ingredients: Array.from({ length: 20 }, (_, i) => {
+            const ing = meal["strIngredient" + (i + 1)];
+            const meas = meal["strMeasure" + (i + 1)];
+            return ing ? `${meas || ""} ${ing}`.trim() : null;
+        }).filter(Boolean),
+
+        categoryName: meal.strCategory || "",
+        areaName: meal.strArea || "",
+
+        // anciens axes
+        sucre: dessert,
+        dessert,
+        breakfast,
+        sale: !dessert,
+        rapide: instructions.length < 450,
+        sante: baseSalad || styleLight || hasAny(["vegetable", "broccoli", "spinach", "cucumber"]),
+        viande: proteinChicken || proteinBeef || proteinPork || proteinLamb || proteinFish || proteinSeafood,
+        chaud: !dessert,
+
+        vegan: !hasAny([
+            "chicken", "beef", "pork", "fish", "salmon", "tuna", "cod", "haddock",
+            "prawn", "shrimp", "mussel", "crab", "squid", "clam", "seafood",
+            "egg", "eggs", "milk", "cheese", "butter", "cream", "yogurt",
+            "lamb", "bacon", "ham", "honey", "gelatin", "mayonnaise"
+        ]),
+        gluten: hasAny([
+            "flour", "bread", "pasta", "wheat", "bun", "tortilla", "wrap",
+            "noodle", "spaghetti", "macaroni", "penne", "breadcrumbs",
+            "soy sauce", "pastry", "dough"
+        ]),
+        arachide: hasAny([
+            "peanut", "peanuts", "groundnut", "peanut butter"
+        ]),
+
+        // nouvelles protéines
+        protein_fish: proteinFish,
+        protein_chicken: proteinChicken,
+        protein_beef: proteinBeef,
+        protein_seafood: proteinSeafood,
+        protein_pork: proteinPork,
+        protein_lamb: proteinLamb,
+
+        // nouvelles bases
+        base_pasta: basePasta,
+        base_rice: baseRice,
+        base_potato: basePotato,
+        base_bread_wrap: baseBreadWrap,
+        base_salad: baseSalad,
+
+        // nouveaux styles
+        style_spicy: styleSpicy,
+        style_creamy: styleCreamy,
+        style_light: styleLight,
+        style_comfort: styleComfort,
+
+        // nouvelles cuisines
+        cuisine_italian: cuisineItalian,
+        cuisine_mexican: cuisineMexican,
+        cuisine_asian: cuisineAsian,
+        cuisine_indian: cuisineIndian,
+        cuisine_american: cuisineAmerican,
+        cuisine_mediterranean: cuisineMediterranean
+    };
+}
+
+function showRecipe(plat) {
+    if (!plat) return;
+
+    const panel = document.getElementById("recipePanel");
+    const content = document.getElementById("recipeContent");
+    const bottomNav = document.getElementById("bottomNav");
+
+    content.innerHTML = `
+        <h4>Ingredients:</h4>
+        <ul>
+            ${(plat.ingredients || []).map(i => `<li>${i}</li>`).join("")}
+        </ul>
+
+        <h4>Instructions:</h4>
+        <p>${plat.recette || "No recipe available"}</p>
+
+        <button id="saveRecipeBtn" class="recipe-btn" type="button">Save Recipe</button>
+    `;
+
+    const saveBtn = document.getElementById("saveRecipeBtn");
+    if (saveBtn) {
+        saveBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            saveRecipe(currentPlat);
+        });
+    }
+
+    panel.classList.add("open");
+    panel.style.bottom = "0";
+    panel.style.opacity = 1;
+
+    bottomNav.classList.add("hidden");
+}
+
+
+function hideRecipe() {
+    const panel = document.getElementById("recipePanel");
+    const bottomNav = document.getElementById("bottomNav");
+
+    panel.classList.remove("open");
+    panel.style.bottom = "-100%";
+    panel.style.opacity = 0;
+
+    bottomNav.classList.remove("hidden");
+}
+
+async function saveRecipe(plat) {
+    if (!plat) return;
+
+    favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+
+    if (favoris.some(f => f.nom === plat.nom)) {
+        alert("Recipe already saved ");
+        return;
+    }
+
+    const advanced = await hasAdvancedAccess();
+
+    if (!advanced && favoris.length >= FREE_RECIPE_LIMIT) {
+        alert("Free plan limit reached: 10 saved recipes. Upgrade to Advanced or delete one recipe.");
+        return;
+    }
+
+    const platToSave = {
+        nom: plat.nom,
+        image: plat.image,
+        recette: plat.recette,
+        ingredients: plat.ingredients
+    };
+
+    favoris.push(platToSave);
+    localStorage.setItem("favoris", JSON.stringify(favoris));
+
+    alert("Recipe saved ");
+}
+
+// 🍔 récupérer plat API
+async function getPlatFromAPI(maxRetries = 12) {
+    try {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const res = await fetch("https://www.themealdb.com/api/json/v1/1/random.php");
+
+            if (!res.ok) {
+                console.error("Erreur HTTP :", res.status);
+                continue;
+            }
+
+            const data = await res.json();
+
+            if (!data || !data.meals || !data.meals[0]) {
+                console.error("Réponse API invalide");
+                continue;
+            }
+
+            const meal = data.meals[0];
+
+            if (!meal.strMeal || !meal.strMealThumb) {
+                console.error("Plat incomplet");
+                continue;
+            }
+
+            if (meal.idMeal && seenMealIds.has(String(meal.idMeal))) {
+                continue;
+            }
+
+            return analyserPlat(meal);
+        }
+
+        return null;
+    } catch (error) {
+        console.error("Erreur API", error);
+        return null;
+    }
+}
+
+// 🧠 update préférences
+function updatePreferences(plat, like) {
+    const delta = like ? 2 : -2;
+
+    for (let key in preferences) {
+        if (plat[key] === true && key in preferences) {
+            preferences[key] += delta;
+        }
+    }
+
+    // bonus plus fort pour quelques axes importants
+    if (plat.protein_chicken) preferences.protein_chicken += like ? 1 : -1;
+    if (plat.protein_beef) preferences.protein_beef += like ? 1 : -1;
+    if (plat.protein_fish) preferences.protein_fish += like ? 1 : -1;
+    if (plat.protein_seafood) preferences.protein_seafood += like ? 1 : -1;
+    if (plat.protein_pork) preferences.protein_pork += like ? 1 : -1;
+    if (plat.protein_lamb) preferences.protein_lamb += like ? 1 : -1;
+
+    if (plat.base_pasta) preferences.base_pasta += like ? 1 : -1;
+    if (plat.base_rice) preferences.base_rice += like ? 1 : -1;
+    if (plat.base_potato) preferences.base_potato += like ? 1 : -1;
+    if (plat.base_bread_wrap) preferences.base_bread_wrap += like ? 1 : -1;
+    if (plat.base_salad) preferences.base_salad += like ? 1 : -1;
+
+    if (plat.style_spicy) preferences.style_spicy += like ? 1 : -1;
+    if (plat.style_creamy) preferences.style_creamy += like ? 1 : -1;
+    if (plat.style_light) preferences.style_light += like ? 1 : -1;
+    if (plat.style_comfort) preferences.style_comfort += like ? 1 : -1;
+
+    if (plat.cuisine_italian) preferences.cuisine_italian += like ? 1 : -1;
+    if (plat.cuisine_mexican) preferences.cuisine_mexican += like ? 1 : -1;
+    if (plat.cuisine_asian) preferences.cuisine_asian += like ? 1 : -1;
+    if (plat.cuisine_indian) preferences.cuisine_indian += like ? 1 : -1;
+    if (plat.cuisine_american) preferences.cuisine_american += like ? 1 : -1;
+    if (plat.cuisine_mediterranean) preferences.cuisine_mediterranean += like ? 1 : -1;
+
+    saveAlgoSession();
+}
+
+function passesAdvancedFilters(plat) {
+    if (!plat) return false;
+
+    // 🔒 filtres STRICTS
+    if (advancedFilters.vegan && !plat.vegan) return false;
+    if (advancedFilters.gluten && plat.gluten) return false;
+    if (advancedFilters.arachide && plat.arachide) return false;
+
+    // 🔒 Sweet strict = seulement dessert / sucré
+    if (advancedFilters.sucre && !plat.sucre && !plat.dessert) return false;
+
+    return true;
+}
+
+async function generateBestPlat() {
+    try {
+        let validPlats = [];
+
+        // 🔥 1. PRIORITÉ : base interne (avec sécurité image + filtres)
+        const internalMeals = await getInternalMeals();
+
+        if (internalMeals && internalMeals.length > 0) {
+            const cleanInternalMeals = internalMeals
+                .filter(Boolean)
+                .filter(passesAdvancedFilters)
+                .filter(meal => meal.image && meal.image.startsWith("http"));
+
+            validPlats.push(...cleanInternalMeals);
+        }
+
+        // 🔥 2. Détection filtres stricts
+        const strictFilterActive =
+            advancedFilters.vegan ||
+            advancedFilters.gluten ||
+            advancedFilters.arachide ||
+            advancedFilters.sucre;
+
+        const maxRounds = strictFilterActive ? 20 : 6;
+        const mealsPerRound = strictFilterActive ? 20 : 10;
+        for (let round = 0; round < maxRounds; round++) {
+            const candidatePromises = [];
+
+            for (let i = 0; i < mealsPerRound; i++) {
+                candidatePromises.push(getPlatFromAPI());
+            }
+
+            const results = await Promise.all(candidatePromises);
+
+            const plats = results
+                .filter(Boolean)
+                .filter(passesAdvancedFilters);
+
+            validPlats.push(...plats);
+
+            if (validPlats.length >= 10) break;
+        }
+
+        if (validPlats.length === 0) {
+            alert("No meals found with these filters.");
+            return null;
+        }
+
+        let bestPlat = null;
+        let bestScore = -Infinity;
+
+        for (let plat of validPlats) {
+            let score = 0;
+
+            if (plat.idMeal && seenInternalMeals.has(plat.idMeal)) {
+                continue;
+            }
+
+            if (plat.idMeal && seenMealIds.has(String(plat.idMeal))) {
+                continue;
+            }
+
+            // 🔥 bonus filtres stricts
+            if (advancedFilters.vegan && plat.vegan) score += 25;
+            if (advancedFilters.gluten && !plat.gluten) score += 15;
+            if (advancedFilters.arachide && !plat.arachide) score += 15;
+
+            // 🔥 bonus style (burger vegan etc)
+            if (advancedFilters.vegan && plat.style_comfort) score += 6;
+            if (advancedFilters.vegan && plat.base_bread_wrap) score += 5;
+
+            // 🔥 préférences utilisateur
+            for (let key in preferences) {
+                if (plat[key] === true && preferences[key]) {
+                    score += preferences[key];
+                }
+            }
+
+            // 🔥 bonus filtres
+            for (let key in advancedFilters) {
+                if (advancedFilters[key] && plat[key]) {
+                    score += 6;
+                }
+            }
+
+            const categoryLower = (plat.categoryName || "").toLowerCase();
+            const areaLower = (plat.areaName || "").toLowerCase();
+
+            if (recentCategories.includes(categoryLower)) score -= 4;
+            if (recentAreas.includes(areaLower)) score -= 3;
+
+            if (plat.protein_chicken && recentProteins.includes("chicken")) score -= 4;
+            if (plat.protein_beef && recentProteins.includes("beef")) score -= 4;
+            if (plat.protein_fish && recentProteins.includes("fish")) score -= 4;
+            if (plat.protein_seafood && recentProteins.includes("seafood")) score -= 4;
+            if (plat.protein_pork && recentProteins.includes("pork")) score -= 4;
+            if (plat.protein_lamb && recentProteins.includes("lamb")) score -= 4;
+            if (plat.protein_goat && recentProteins.includes("goat")) score -= 4;
+
+            score += Math.random() * 3;
+
+            if (!recentCategories.includes(categoryLower)) score += 2;
+            if (!recentAreas.includes(areaLower)) score += 2;
+
+            if (plat.rapide) score += preferences.rapide * 0.7;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestPlat = plat;
+            }
+        }
+
+        if (!bestPlat) {
+            bestPlat = validPlats[0];
+        }
+
+//  mémorise le plat utilisé
+        if (bestPlat && bestPlat.idMeal) {
+            seenInternalMeals.add(bestPlat.idMeal);
+        }
+
+//  reset intelligent
+        if (seenInternalMeals.size > 30) {
+            seenInternalMeals.clear();
+        }
+
+        return bestPlat;
+
+    } catch (error) {
+        console.error("Erreur generateBestPlat :", error);
+        return null;
+    }
+}
+
+
+async function getInternalMeals() {
+    try {
+        const res = await fetch(`${API_BASE}/internal-meals`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(advancedFilters)
+        });
+
+        return await res.json();
+    } catch (e) {
+        console.error("internal meals error", e);
+        return [];
+    }
+}
+
+
+// 👍👎 action utilisateur
+async function choix(like) {
+    if (currentPlat) {
+        updatePreferences(currentPlat, like);
+        rememberShownMeal(currentPlat);
+    }
+
+    currentPlat = nextPlat;
+
+    if (!currentPlat) {
+        document.getElementById("nom").innerText = "Erreur ";
+        return;
+    }
+
+    document.getElementById("nom").innerText = currentPlat.nom;
+    document.getElementById("image").src = currentPlat.image;
+
+    nextPlat = await generateBestPlat();
+}
+
+function preloadImage(src) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+    });
+}
+
+async function swipe(like) {
+    if (isSwiping) return;
+    isSwiping = true;
+
+    const oldPlat = currentPlat;
+    const direction = like ? 1 : -1;
+
+    card.style.transition = "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease";
+    card.style.transform = `
+        translate3d(${direction * window.innerWidth * 1.25}px, ${currentY * 0.2}px, 0)
+        rotate(${direction * 14}deg)
+        scale(0.96)
+    `;
+    card.style.opacity = "0";
+
+    setTimeout(async () => {
+        card.style.transition = "none";
+
+        likeLabel.style.opacity = 0;
+        nopeLabel.style.opacity = 0;
+
+        if (oldPlat) {
+            updatePreferences(oldPlat, like);
+            rememberShownMeal(oldPlat);
+        }
+
+        currentPlat = nextPlat;
+
+        if (!currentPlat) {
+            document.getElementById("nom").innerText = "Erreur";
+            isSwiping = false;
+            return;
+        }
+
+        const imageElement = document.getElementById("image");
+
+        imageElement.src = "";
+        document.getElementById("nom").innerText = currentPlat.nom;
+
+        await preloadImage(currentPlat.image);
+
+        imageElement.src = currentPlat.image;
+
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+
+        requestAnimationFrame(() => {
+            card.style.opacity = "1";
+            card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+        });
+
+        nextPlat = await generateBestPlat();
+
+        isSwiping = false;
+    }, 300);
+}
+
+// 🚀 démarrage
+(async () => {
+    document.getElementById("nom").innerText = "Chargement...";
+
+    // 🔥 0. détecter premium + afficher UI
+    if (token) {
+        await setupPremiumUI();
+    }
+
+    if (token) {
+        await loadUserProfileFromBackend();
+    }    
+
+    // 🔥 1. charger local en premier
+    advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
+
+    // 🔥 2. si connecté → charger backend
+    if (token) {
+        await loadFiltersBackend();
+    }
+
+    currentPlat = await generateBestPlat();
+
+    if (!currentPlat) {
+        document.getElementById("nom").innerText = "Erreur ";
+        return;
+    }
+
+    rememberShownMeal(currentPlat);
+
+    nextPlat = await generateBestPlat();
+
+    document.getElementById("nom").innerText = currentPlat.nom;
+    document.getElementById("image").src = currentPlat.image;
+
+    setTimeout(() => {
+        const splash = document.getElementById("splash");
+
+        splash.style.opacity = 0;
+
+        setTimeout(() => {
+            splash.style.display = "none";
+        }, 800);
+    }, 1800);
+})();
+
+// 🖱️ / 📱 START
+
+
+card.addEventListener("pointerdown", (e) => {
+    isDragging = true;
+
+    card.classList.add("dragging"); // 🔥 effet tactile propre
+
+    startX = e.clientX;
+    startY = e.clientY;
+
+    currentX = 0;
+    currentY = 0;
+
+    card.style.transition = "none"; // 🔥 enlève l’inertie pendant le drag
+});
+
+card.addEventListener("pointermove", (e) => {
+    if (!isDragging) return;
+
+    currentX = e.clientX - startX;
+    currentY = e.clientY - startY;
+
+    let rotation = currentX * 0.04;
+    let scale = 1 - Math.min(Math.abs(currentX) / 500, 0.05);
+
+    card.style.transform = `
+        translate3d(${currentX}px, ${currentY * 0.15}px, 0)
+        rotate(${rotation}deg)
+        scale(${scale})
+    `;
+
+    let intensity = Math.min(Math.abs(currentX) / 150, 1);
+    card.style.opacity = 1 - intensity * 0.3;
+
+    if (currentX > 0) {
+        likeLabel.style.opacity = intensity;
+        nopeLabel.style.opacity = 0;
+    } else {
+        nopeLabel.style.opacity = intensity;
+        likeLabel.style.opacity = 0;
+    }
+});
+
+// 🖱️ / 📱 END
+card.addEventListener("pointerup", () => {
+    isDragging = false;
+    card.classList.remove("dragging");
+
+    card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+
+    const movedEnough = Math.abs(currentX) > 10 || Math.abs(currentY) > 10;
+
+    if (currentX > 120) {
+        swipe(true);
+    } else if (currentX < -120) {
+        swipe(false);
+    } else if (!movedEnough) {
+        showRecipe(currentPlat); // 👉 tap simple = ouvre recette
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+        card.style.opacity = 1;
+    } else {
+        card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+        card.style.opacity = 1;
+    }
+
+    likeLabel.style.opacity = 0;
+    nopeLabel.style.opacity = 0;
+
+    currentX = 0;
+    currentY = 0;
+});
+
+function showFavoris() {
+    hideAllScreens();
+    updateBrandHeader(null);
+    document.getElementById("card").style.display = "none";
+    document.getElementById("recipePanel").classList.remove("open");
+
+    favoris = JSON.parse(localStorage.getItem("favoris")) || [];
+
+    const container = document.getElementById("favorisScreen");
+    container.style.display = "block";
+    container.scrollTop = 0;
+
+    const advanced = localStorage.getItem("premium") === "true";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>My Recipes</h2>
+            <p>${favoris.length} / ${advanced ? "Unlimited" : FREE_RECIPE_LIMIT} saved recipes</p>
+        </div>
+    `;
+
+    if (favoris.length === 0) {
+        container.innerHTML += "<p>No saved recipes</p>";
+        return;
+    }
+
+    favoris.forEach(f => {
+        container.innerHTML += `
+            <div class="screen-box" style="position:relative;">
+        
+                <h3 onclick="openFavori('${f.nom}')" style="cursor:pointer;">
+                    ${f.nom}
+                </h3>
+
+                <img class="favori-img" src="${f.image}" 
+                    onclick="openFavori('${f.nom}')">
+
+                <button onclick="deleteFavori('${f.nom}')" 
+                        style="
+                            position:absolute;
+                            top:10px;
+                            right:10px;
+                            background:red;
+                            color:white;
+                            border:none;
+                            border-radius:50%;
+                            width:30px;
+                            height:30px;
+                            font-size:16px;
+                        ">
+                    ❌
+                </button>
+
+            </div>
+        `;
+    });
+}
+
+function showSwipe() {
+    hideAllScreens();
+    updateBrandHeader("discover");
+    const card = document.getElementById("card");
+    const image = document.getElementById("image");
+
+    card.style.display = "flex";
+
+    card.classList.remove("dragging");
+    card.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+    card.style.transform = "translateX(0px) rotate(0deg) scale(1)";
+    card.style.opacity = "1";
+
+    if (image) {
+        image.style.objectFit = "cover";
+        image.style.objectPosition = "center";
+        image.style.transform = "none";
+        image.style.display = "block";
+    }
+
+    document.getElementById("recipePanel").classList.remove("open");
+    document.getElementById("recipePanel").style.bottom = "-100%";
+    document.getElementById("recipePanel").style.opacity = 0;
+
+    document.getElementById("bottomNav").classList.remove("hidden");
+}
+
+async function showAdvanced() {
+    hideAllScreens();
+    updateBrandHeader(null);
+
+    const localPremium = localStorage.getItem("premium") === "true";
+    const premium = localPremium || await isPremium();
+
+    if (!premium) {
+        showPremium();
+        return;
+    }
+
+    document.getElementById("premiumScreen").style.display = "block";
+    loadFilters();
+}
+
+async function isPremium() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch(`${API_BASE}/is-premium`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token: token })
+        });
+
+        const data = await res.json();
+        return data.premium;
+    } catch {
+        return false;
+    }
+}
+
+async function saveFilters() {
+    const getChecked = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+    };
+
+    advancedFilters = {
+        sucre: getChecked("filter_sucre"),
+        sale: getChecked("filter_sale"),
+        rapide: getChecked("filter_rapide"),
+        sante: getChecked("filter_sante"),
+        viande: getChecked("filter_viande"),
+        vegan: getChecked("filter_vegan"),
+        chaud: getChecked("filter_chaud"),
+        gluten: getChecked("filter_gluten"),
+        arachide: getChecked("filter_arachide")
+    };
+
+    localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
+
+    if (token) {
+        try {
+            const res = await fetch(`${API_BASE}/save-filters`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    token,
+                    filters: advancedFilters
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || data.error || data.detail) {
+                alert(data.error || data.detail || "Unable to save filters");
+                return;
+            }
+        } catch (error) {
+            console.error("Save filters error:", error);
+            alert("Unable to reach server");
+            return;
+        }
+    }
+
+    currentPlat = await generateBestPlat();
+    nextPlat = await generateBestPlat();
+
+    if (currentPlat) {
+        document.getElementById("nom").innerText = currentPlat.nom;
+        document.getElementById("image").src = currentPlat.image;
+    } else {
+        document.getElementById("nom").innerText = "No meal found";
+        document.getElementById("image").src = "";
+        alert("No meals found with these filters. Try removing one filter.");
+        return;
+    }
+
+    alert("Filters activated ✅");
+    showSwipe();
+}
+
+function loadFilters() {
+    advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
+
+    const setChecked = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = value || false;
+    };
+
+    setChecked("filter_sucre", advancedFilters.sucre);
+    setChecked("filter_sale", advancedFilters.sale);
+    setChecked("filter_rapide", advancedFilters.rapide);
+    setChecked("filter_sante", advancedFilters.sante);
+    setChecked("filter_viande", advancedFilters.viande);
+    setChecked("filter_vegan", advancedFilters.vegan);
+    setChecked("filter_chaud", advancedFilters.chaud);
+    setChecked("filter_gluten", advancedFilters.gluten);
+    setChecked("filter_arachide", advancedFilters.arachide);
+}
+
+function openFavori(nom) {
+    const plat = favoris.find(f => f.nom === nom);
+
+    if (!plat) return;
+
+    currentPlat = plat;
+    showRecipe(plat);
+}
+
+function deleteFavori(nom) {
+    favoris = favoris.filter(f => f.nom !== nom);
+
+    localStorage.setItem("favoris", JSON.stringify(favoris));
+
+    showFavoris();
+
+    alert("Removed ");
+}
+
+// 🔥 SERVICE WORKER DÉSACTIVÉ (DEV MODE)
+// if ("serviceWorker" in navigator) {
+//     navigator.serviceWorker.register("/static/service-worker.js")
+//         .then(() => console.log("Service Worker OK"))
+//         .catch(err => console.log("Erreur SW", err));
+// }
+
+const panel = document.getElementById("recipePanel");
+const inner = document.getElementById("recipeInner");
+
+if (panel) {
+    panel.addEventListener("click", hideRecipe);
+}
+
+async function goPremium() {
+    console.log(" CLICK BUY");
+
+    if (!token) {
+        alert("You must login first ");
+        return;
+    }
+
+    const res = await fetch(`${API_BASE}/create-checkout-session`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ token: token })
+    });
+
+    const data = await res.json();
+
+    console.log("🔥 RESPONSE:", data);
+
+    if (data.url) {
+        window.location.href = data.url;
+    } else {
+        alert("Payment error");
+    }
+}
+
+function showPremium() {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("favorisScreen").style.display = "none";
+
+    document.getElementById("paywallScreen").style.display = "block"; // ✅ PAYWALL
+    document.getElementById("premiumScreen").style.display = "none";  // ❌ cache filtres
+}
+
+async function buyPremium() {
+    if (!token) {
+        alert("Please login or create an account from the Profile page first.");
+        return;
+    }
+
+    try {
+        const checkRes = await fetch(`${API_BASE}/is-premium`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const checkData = await checkRes.json();
+
+        if (!checkRes.ok || checkData.error || checkData.detail) {
+            localStorage.removeItem("token");
+            token = null;
+            alert(checkData.error || checkData.detail || "Your session expired. Please login again before buying.");
+            return;
+        }
+    } catch (error) {
+        console.error("Premium check error:", error);
+        alert("Unable to verify your session. Please try again.");
+        return;
+    }
+
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        alert("Store not available");
+        return;
+    }
+
+    const store = window.CdvPurchase.store;
+
+    if (!storeReady) {
+        alert("Store is still loading, please try again");
+        return;
+    }
+
+    const product = store.get(
+        APPLE_SUBSCRIPTION_ID,
+        window.CdvPurchase.Platform.APPLE_APPSTORE
+    );
+
+    if (!product) {
+        alert("Subscription not available yet");
+        return;
+    }
+
+    const offer = product.getOffer ? product.getOffer() : null;
+
+    if (!offer) {
+        alert("No offer available");
+        return;
+    }
+
+    offer.order().catch(err => {
+        console.log("Order failed:", err);
+        alert("Unable to start purchase ❌");
+    });
+}
+
+async function loginUser(email, password) {
+    try {
+        const res = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (data.token) {
+            localStorage.setItem("token", data.token);
+            token = data.token;
+            setupPushNotifications();
+
+            await loadFiltersBackend();
+
+            alert("Logged in ✅");
+        } else {
+            alert(data.error || "Login failed ❌");
+        }
+    } catch (e) {
+        console.error("Login error:", e);
+        alert("Unable to reach server ❌");
+    }
+}
+
+async function registerUser(email, password) {
+    try {
+        const res = await fetch(`${API_BASE}/register`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (data.message) {
+            alert("Account created ✅");
+        } else {
+            alert(data.error || "Error");
+        }
+    } catch (e) {
+        console.error("Register error:", e);
+        alert("Unable to reach server ❌");
+    }
+}
+
+async function loadFiltersBackend() {
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/get-filters`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (data.filters) {
+            advancedFilters = data.filters;
+            localStorage.setItem("advancedFilters", JSON.stringify(advancedFilters));
+            console.log("✅ Filtres backend chargés", advancedFilters);
+        }
+    } catch (e) {
+        console.log("Erreur loadFiltersBackend", e);
+    }
+}
+
+async function checkPremium() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch(`${API_BASE}/is-premium`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+        return data.premium;
+    } catch (e) {
+        console.log("Erreur checkPremium", e);
+        return false;
+    }
+}
+
+async function setupPremiumUI() {
+    const section = document.getElementById("advancedFiltersSection");
+
+    // 🔒 sécurité : si l'élément n'existe pas
+    if (!section) return;
+
+    const isPremium = await checkPremium();
+
+    if (isPremium) {
+        section.style.display = "block";
+        console.log("💎 User premium");
+    } else {
+        section.style.display = "none";
+        console.log("🆓 User free");
+    }
+}
+
+function hideAllScreens() {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("favorisScreen").style.display = "none";
+    document.getElementById("feedScreen").style.display = "none";
+    document.getElementById("createPostScreen").style.display = "none";
+    document.getElementById("commentsScreen").style.display = "none";
+    document.getElementById("profileScreen").style.display = "none";
+    document.getElementById("editProfileScreen").style.display = "none";
+    document.getElementById("editPostScreen").style.display = "none";
+    document.getElementById("profileGateScreen").style.display = "none";
+    document.getElementById("registerProfileScreen").style.display = "none";
+    document.getElementById("loginProfileScreen").style.display = "none";
+    document.getElementById("premiumScreen").style.display = "none";
+    document.getElementById("subscriptionScreen").style.display = "none";
+    document.getElementById("paywallScreen").style.display = "none";
+    document.getElementById("searchScreen").style.display = "none";
+    document.getElementById("userProfileScreen").style.display = "none";
+}
+
+async function showSubscription() {
+
+    hideAllScreens(); // 👈 IMPORTANT (remplace tout ton code de hide)
+
+    const screen = document.getElementById("subscriptionScreen");
+    screen.style.display = "block";
+
+    const premium = await isPremium();
+    const statusText = document.getElementById("subStatus");
+
+    if (premium) {
+        statusText.innerText = "✅ You are Premium";
+    } else {
+        statusText.innerText = " Free Plan";
+    }
+}
+
+function manageSubscription() {
+    alert(
+        "To manage or cancel your subscription:\n\n" +
+        "iPhone Settings → Apple ID → Subscriptions"
+    );
+}
+
+// 🔥 IMPORTANT : pour les plugins (IAP)
+document.addEventListener("deviceready", () => {
+    console.log("Device ready");
+
+    setupAppleIAP();
+});
+
+// 🔥 uniquement pour le splash (visuel)
+window.addEventListener("load", () => {
+    setupPushNotifications();
+    console.log("setupPushNotifications called");
+    setTimeout(() => {
+        const splash = document.getElementById("splash");
+        if (splash) splash.style.display = "none";
+
+        document.body.classList.remove("splash-active");
+        showSwipe();
+    }, 1200);
+
+    try {
+        setupVideoFullscreenSwipe();
+    } catch (error) {
+        console.error("Fullscreen swipe setup error:", error);
+    }
+});
+
+function restorePurchases() {
+    if (!token) {
+        alert("Please login or create an account from the Profile page first.");
+        return;
+    }
+
+    if (!window.CdvPurchase || !window.CdvPurchase.store) {
+        alert("Store not available");
+        return;
+    }
+
+    window.CdvPurchase.store.restorePurchases()
+        .then(() => {
+            alert("Restore requested. If a valid subscription is found, Premium will reactivate.");
+        })
+        .catch(err => {
+            console.log("Restore failed:", err);
+            alert("Restore failed ");
+        });
+}
+
+async function showFeed() {
+    hideAllScreens();
+    updateBrandHeader("feed");
+    applyTimeDecay(); // 
+
+    const container = document.getElementById("feedScreen");
+    container.style.display = "block";
+    container.scrollTop = 0;
+
+    await loadFeedFromBackend(true);
+    demoPosts = buildMultiLayerFeed(demoPosts); 
+    renderFeed();
+    setupVideoAutoplay();
+    container.onscroll = async () => {
+        const nearBottom =
+            container.scrollTop + container.clientHeight >= container.scrollHeight - 300;
+
+        if (nearBottom && !isLoadingFeed && hasMoreFeed) {
+            await loadFeedFromBackend(false);
+            demoPosts = buildMultiLayerFeed(demoPosts); // ✅ ici aussi
+            renderFeed();
+            setupVideoAutoplay();
+        }
+    };
+}
+
+let feedVideoObserver = null;
+
+function setupVideoAutoplay() {
+    const videos = document.querySelectorAll(".feed-video");
+
+    if (!videos.length) return;
+
+    if (feedVideoObserver) {
+        feedVideoObserver.disconnect();
+    }
+
+    feedVideoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+
+            if (video.dataset.userSound !== "on") {
+                video.muted = true;
+            }
+            video.playsInline = true;
+            video.setAttribute("playsinline", "");
+            video.setAttribute("webkit-playsinline", "");
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+                // pause toutes les autres vidéos pour éviter que iPhone bloque
+                document.querySelectorAll(".feed-video").forEach(v => {
+                    if (v !== video) v.pause();
+                });
+
+                video.play().catch(err => {
+                    console.log("Feed video play blocked:", err);
+                });
+                warmNextFeedVideo(video);
+            } else {
+                video.pause();
+            }
+        });
+    }, {
+        root: document.getElementById("feedScreen"),
+        threshold: [0, 0.55, 0.8]
+    });
+
+    videos.forEach(video => {
+        video.preload = "metadata";
+        feedVideoObserver.observe(video);
+    });
+}
+
+function warmNextFeedVideo(activeVideo) {
+    const videos = Array.from(document.querySelectorAll(".feed-video"));
+    const index = videos.indexOf(activeVideo);
+
+    const nextVideo = videos[index + 1];
+
+    if (nextVideo) {
+        nextVideo.preload = "auto";
+        nextVideo.load();
+    }
+}
+
+function renderFeed() {
+    const container = document.getElementById("feedScreen");
+
+    container.innerHTML = `
+        <div class="feed-topbar">
+            <div class="feed-filter-tabs">
+                <button class="feed-tab-btn ${currentFeedMode === 'home' ? 'active' : ''}" onclick="setFeedMode('home')">Home</button>
+                <button class="feed-tab-btn ${currentFeedMode === 'video' ? 'active' : ''}" onclick="setFeedMode('video')">Video</button>
+                <button class="feed-tab-btn ${currentFeedMode === 'following' ? 'active' : ''}" onclick="setFeedMode('following')">Following</button>
+            </div>
+
+            <button class="feed-create-btn" onclick="showCreatePost()">Create Post</button>
+        </div>
+    `;
+
+    if (currentFeedMode === "following") {
+        renderFollowingList(container);
+        return;
+    }
+
+    const postsToRender = currentFeedMode === "video"
+        ? demoPosts.filter(post => post.media_type === "video")
+        : demoPosts;
+
+    postsToRender.forEach((post, feedIndex) => {
+        const shortCaption =
+            post.caption.length > 120
+                ? post.caption.slice(0, 120) + "..."
+                : post.caption;
+
+        const isLongCaption = post.caption.length > 120;
+
+        container.innerHTML += `
+            <div class="feed-post" style="position:relative;">
+                <button class="post-menu-btn" onclick="togglePostMenu(${post.id}, event)">⋯</button>
+
+                <div id="post-menu-${post.id}" class="post-menu">
+                    <button onclick="reportPost(${post.id})">Report</button>
+                </div>
+
+                <div class="feed-header">
+                    <img 
+                        class="feed-avatar" 
+                        src="${post.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
+                        alt="avatar"
+                        style="cursor:pointer; position:relative; z-index:10;"
+                        onclick="event.stopPropagation(); openUserProfile(${post.user_id})"
+                    >
+
+                    <div class="feed-user-text">
+                        <strong class="feed-author-name">${post.author}</strong>
+
+                        <div class="feed-caption-top">
+                            <span id="caption-${post.id}">${shortCaption}</span>
+                            ${
+                                isLongCaption
+                                    ? `<button class="see-more-btn" onclick="toggleCaption(${post.id})">See more</button>`
+                                    : ""
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                ${
+                    post.media_type === "video"
+                        ? `<div style="position:relative;">
+                                <video 
+                                    class="feed-img feed-video" 
+                                    src="${post.video_playback_url || post.image}" 
+                                    poster="${post.thumbnail_url || post.image || ''}"
+                                    muted 
+                                    playsinline 
+                                    loop 
+                                    preload="metadata"
+                                    onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id}, ${feedIndex})">
+                                </video>
+
+                                <button class="feed-sound-btn" onclick="toggleFeedSound(event, ${post.id})">
+                                    🔇
+                                </button>
+                            </div>`
+                        : `<img 
+                                class="feed-img" 
+                                src="${post.image}" 
+                                alt="post image"
+                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                           >`
+                }
+
+                <div class="feed-body">
+
+                    <div class="feed-stats-row">
+                        <div class="feed-like-stat">
+                            <img src="/static/nb_like.png" alt="likes">
+                            <span data-like-count="${post.id}">${post.likes}</span>
+                        </div>
+
+                        <div class="feed-comments-stat">
+                            ${post.commentsCount ?? post.comments?.length ?? 0} comments
+                        </div>
+                    </div>
+
+                    <div class="feed-actions">
+                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
+                            <img 
+                                class="action-icon-img ${post.liked ? 'liked' : ''}" 
+                                src="${post.liked ? '/static/like_t.png' : '/static/like.png'}"
+                                data-like-icon="${post.id}"
+                            >
+                        </button>
+
+                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+                            <img class="action-icon-img" src="/static/comments.png" alt="comments">
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    if (isLoadingFeed) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>Loading more posts...</p>
+            </div>
+        `;
+    }
+}
+
+function showProfile() { 
+    hideAllScreens();
+
+    const container = document.getElementById("profileScreen");
+    container.style.display = "block";
+
+    const userPosts = demoPosts.filter(post => post.author === userProfile.name);
+    const userPostsCount = userPosts.length;
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <img class="profile-avatar" src="${userProfile.avatar}" alt="profile avatar">
+
+                <h2 class="profile-name">${userProfile.name}</h2>
+                <p class="profile-bio">${userProfile.bio}</p>
+
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <strong>${userPostsCount}</strong>
+                        <span>Posts</span>
+                    </div>
+                </div>
+
+                <button class="buy-btn" onclick="showEditProfile()">Edit Profile</button>
+                <button class="big-back-btn" onclick="showSubscription()">Subscription</button>
+                <button class="big-back-btn" onclick="logoutUser()">Logout</button>
+            </div>
+
+            <div class="profile-posts-section">
+                <h2 class="profile-posts-title">My Posts</h2>
+                <div id="profilePostsList"></div>
+            </div>
+        </div>
+    `;
+
+    const postsList = document.getElementById("profilePostsList");
+
+    if (userPosts.length === 0) {
+        postsList.innerHTML = `
+            <div class="screen-box">
+                <p>No posts yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    userPosts.forEach(post => {
+        const commentsTotal = post.commentsCount ?? post.comments?.length ?? 0;
+
+        const shortCaption =
+            (post.caption || "").length > 120
+                ? post.caption.slice(0, 120) + "..."
+                : (post.caption || "");
+
+        postsList.innerHTML += `
+            <div class="feed-post profile-post-card">
+                <div class="profile-post-actions-top">
+                    <button class="edit-post-btn" onclick="showEditPost(${post.id})">Edit</button>
+                    <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+                </div>
+
+                <div class="feed-header">
+                    <strong>${post.author}</strong>
+                </div>
+
+                <div class="feed-caption-top">
+                    <span>${shortCaption}</span>
+                </div>
+
+                <img class="feed-img" src="${post.image}" alt="post image">
+
+                <div class="feed-body">
+
+                    <div class="feed-stats-row">
+                        <div class="feed-like-stat">
+                            <img src="/static/nb_like.png" alt="likes">
+                            <span data-like-count="${post.id}">${post.likes ?? 0}</span>
+                        </div>
+
+                        <div class="feed-comments-stat">
+                            ${commentsTotal} comments
+                        </div>
+                    </div>
+
+                    <div class="feed-actions">
+                        <button class="feed-action-btn app-icon-btn" onclick="likePost(${post.id})">
+                            <img 
+                                class="action-icon-img ${post.liked ? 'liked' : ''}" 
+                                src="${post.liked ? '/static/like_t.png' : '/static/like.png'}"
+                                data-like-icon="${post.id}"
+                            >
+                        </button>
+
+                        <button class="feed-action-btn app-icon-btn" onclick="showComments(${post.id})">
+                            <img class="action-icon-img" src="/static/comments.png" alt="comments">
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function showEditProfile() {
+    hideAllScreens();
+
+    selectedProfileImage = userProfile.avatar || "";
+
+    const container = document.getElementById("editProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Edit Profile</h2>
+
+                <img id="profilePreview" class="profile-avatar" src="${userProfile.avatar}" alt="profile preview">
+
+                <button class="buy-btn" onclick="pickProfileImage()">Choose Profile Photo</button>
+
+                <input id="profileNameInput" class="auth-input" placeholder="Name" value="${userProfile.name}">
+                <textarea id="profileBioInput" class="post-textarea" placeholder="Write a short bio...">${userProfile.bio}</textarea>
+
+                <button class="buy-btn" onclick="saveProfileChanges()">Save</button>
+                <button class="big-back-btn" onclick="showProfile()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+async function saveProfileChanges() {
+    const name = document.getElementById("profileNameInput").value.trim();
+    const bio = document.getElementById("profileBioInput").value.trim();
+
+    if (!name || !bio) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    const oldName = userProfile.name;
+
+    const updatedProfile = {
+        name,
+        bio,
+        avatar: selectedProfileImage || userProfile.avatar
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/save-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                ...updatedProfile
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        userProfile = updatedProfile;
+
+        demoPosts = demoPosts.map(post => {
+            if (post.author === oldName) {
+                return {
+                    ...post,
+                    author: name
+                };
+            }
+            return post;
+        });
+
+        saveUserProfile();
+        saveFeedPosts();
+        showProfile();
+
+    } catch (error) {
+        console.error("Save profile error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+function resetFeedPosts() {
+    demoPosts = JSON.parse(JSON.stringify(defaultPosts));
+    saveFeedPosts();
+    showFeed();
+}
+
+function updatePostButtons(postId) {
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    document.querySelectorAll(`[data-like-icon="${postId}"]`).forEach(img => {
+        img.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+    });
+
+    document.querySelectorAll(`[data-like-count="${postId}"]`).forEach(span => {
+        span.textContent = post.likes;
+    });
+}
+
+async function likePost(postId) {
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    const feedContainer = document.getElementById("feedScreen");
+    const currentScroll = feedContainer ? feedContainer.scrollTop : 0;
+
+    try {
+        const res = await fetch(`${API_BASE}/like`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                post_id: postId
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 401 || data.error === "Unauthorized") {
+            alert("Your session expired. Please login again.");
+            logoutUser();
+            return;
+        }
+
+        if (data.message) {
+            const post = demoPosts.find(p => p.id === postId);
+
+            if (post) {
+                post.liked = !post.liked;
+
+        // 🧠 ALGO (ICI EXACTEMENT)
+                if (post.liked) {
+                    learnFromPost(post, 3); // like
+                } else {
+                    learnFromPost(post, -2); // dislike implicite
+                }
+
+                post.likes += post.liked ? 1 : -1;
+
+                if (post.likes < 0) {
+                    post.likes = 0;
+                }
+            }
+
+            updatePostButtons(postId);
+        } else {
+            alert(data.error || "Unable to like post");
+        }
+    } catch (error) {
+        console.error("Like error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+const defaultPosts = [
+    {
+        id: 1,
+        author: "Chris",
+        image: "https://www.themealdb.com/images/media/meals/1525873040.jpg",
+        caption: "Homemade pasta tonight 🍝",
+        likes: 12,
+        comments: [
+            { author: "Emma", text: "Looks amazing!" },
+            { author: "Lucas", text: "I want this recipe 😍" }
+        ]
+    },
+    {
+        id: 2,
+        author: "Emma",
+        image: "https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg",
+        caption: "Healthy salmon bowl 🥗",
+        likes: 21,
+        comments: [
+            { author: "Chris", text: "Super clean plate 👏" }
+        ]
+    },
+    {
+        id: 3,
+        author: "Lucas",
+        image: "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
+        caption: "Burger night 🍔",
+        likes: 34,
+        comments: []
+    }
+];
+
+let demoPosts = JSON.parse(localStorage.getItem("feedPosts")) || JSON.parse(JSON.stringify(defaultPosts));
+
+function showCreatePost() {
+    hideAllScreens();
+
+    const container = document.getElementById("createPostScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Create Post</h2>
+            
+            <button class="buy-btn" onclick="pickPostImage()">Choose Photo</button>
+            <button class="big-back-btn" onclick="pickPostVideo()">Choose Video</button>
+
+            <div id="postPreviewArea">
+                <img id="postPreview" class="post-preview" src="" style="display:none;">
+            </div>
+
+            <textarea 
+                id="postCaption" 
+                class="post-textarea" 
+                placeholder="Write a caption. Use #pasta, #burger, #vegan..."
+                oninput="handleHashtagInput()"
+            ></textarea>
+             
+
+
+            <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
+
+            <button class="buy-btn" onclick="publishPost()">Publish</button>
+            <button class="big-back-btn" onclick="showFeed()">Back</button>
+        </div>
+    `;
+}
+
+const HASHTAG_SUGGESTIONS = [
+    // 🔥 Base existante clean
+    "pasta",
+    "burger",
+    "pizza",
+    "vegan",
+    "healthy",
+    "dessert",
+    "breakfast",
+    "chicken",
+    "beef",
+    "seafood",
+    "salad",
+    "sushi",
+    "ramen",
+    "tacos",
+    "spicy",
+    "homemade",
+    "quickmeal",
+    "comfortfood",
+    "foodlover",
+    "recipe",
+
+    // 💪 Fitness / nutrition
+    "gymfood",
+    "highprotein",
+    "lowcarb",
+    "bulking",
+    "cutting",
+    "keto",
+    "fitnessmeal",
+    "mealprep",
+    "cleanfood",
+    "postworkout",
+    "preworkout",
+    "veganprotein",
+    "macrofriendly",
+    "proteinpacked",
+    "leanmeals",
+    "healthyeating",
+    "fitfood",
+    "caloriecounting",
+
+    // 🌱 Lifestyle / diet
+    "glutenfree",
+    "dairyfree",
+    "plantbased",
+    "wholefoods",
+    "organicfood",
+    "cleaneating",
+    "lowfat",
+    "lowcalorie",
+    "sugarfree",
+
+    // 🍔 Food vibes
+    "streetfood",
+    "homestyle",
+    "comfortmeal",
+    "easyrecipes",
+    "quickrecipes",
+    "foodie",
+    "instafood",
+    "foodstagram",
+    "foodpics",
+    "foodphotography",
+    "yummyfood",
+    "deliciousfood",
+
+    // 🍳 Cooking style
+    "homecooking",
+    "chefmode",
+    "cookathome",
+    "simplecooking",
+    "easycooking",
+    "fastfoodideas",
+    "mealideas",
+    "familymeals",
+
+    // 🌍 Cuisine types
+    "italianfood",
+    "mexicanfood",
+    "asianfood",
+    "indianfood",
+    "thaifood",
+    "japanesefood",
+    "mediterraneanfood",
+    "frenchfood",
+
+    // 🍩 Dessert / sweets
+    "sweettooth",
+    "chocolate",
+    "cake",
+    "icecream",
+    "cookies",
+    "baking",
+    "pastry",
+    "sweetrecipes",
+    "dessertlover",
+
+    // 🍽️ Occasions
+    "dinnerideas",
+    "lunchideas",
+    "breakfastideas",
+    "brunch",
+    "snacks",
+    "latefood",
+    "weekendfood",
+
+    // ⚡ Trends / engagement
+    "viralfood",
+    "trendingfood",
+    "foodtrend",
+    "tiktokfood",
+    "instarecipe",
+    "musttry",
+    "foodinspo",
+    "foodinspiration",
+    "foodvideo",
+
+    // 🧠 Smart algo tags (important)
+    "quickdinner",
+    "easydinner",
+    "healthyrecipes",
+    "highproteinmeal",
+    "lowcarbmeal",
+    "veganrecipes",
+    "mealpreplife",
+    "fitnessrecipes"
+];
+
+function getCurrentHashtagQuery(text, cursorPosition) {
+    const beforeCursor = text.slice(0, cursorPosition);
+    const match = beforeCursor.match(/#([a-zA-Z0-9_]*)$/);
+    return match ? match[1].toLowerCase() : null;
+}
+
+function handleHashtagInput() {
+    const textarea = document.getElementById("postCaption");
+    const box = document.getElementById("hashtagSuggestions");
+
+    if (!textarea || !box) return;
+
+    const query = getCurrentHashtagQuery(textarea.value, textarea.selectionStart);
+
+    if (query === null) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    const matches = HASHTAG_SUGGESTIONS
+        .filter(tag =>
+            tag.includes(query) 
+        )
+        .sort((a, b) => {
+        // priorité aux débuts exacts
+            if (a.startsWith(query)) return -1;
+            if (b.startsWith(query)) return 1;
+            return 0;
+        })
+        .slice(0, 8);
+
+    if (matches.length === 0) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    box.innerHTML = matches.map(tag => `
+        <button 
+            type="button" 
+            class="hashtag-suggestion-btn" 
+            onclick="insertHashtag('${tag}')"
+        >
+            #${tag}
+        </button>
+    `).join("");
+
+    box.style.display = "flex";
+}
+
+function insertHashtag(tag) {
+    const textarea = document.getElementById("postCaption");
+    const box = document.getElementById("hashtagSuggestions");
+
+    if (!textarea) return;
+
+    const cursor = textarea.selectionStart;
+    const before = textarea.value.slice(0, cursor);
+    const after = textarea.value.slice(cursor);
+
+    const newBefore = before.replace(/#([a-zA-Z0-9_]*)$/, `#${tag} `);
+
+    textarea.value = newBefore + after;
+    textarea.focus();
+
+    const newCursor = newBefore.length;
+    textarea.setSelectionRange(newCursor, newCursor);
+
+    if (box) {
+        box.style.display = "none";
+        box.innerHTML = "";
+    }
+}
+
+async function publishPost() {
+    const caption = document.getElementById("postCaption").value.trim();
+
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    if (!selectedPostImage || !caption) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/create-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                image: selectedPostImage,
+                media_type: selectedPostMediaType || "image",
+                caption,
+
+                video_provider: selectedPostMediaType === "video" ? "cloudflare_stream" : null,
+                video_id: selectedPostVideoId || null,
+                video_playback_url: selectedPostVideoPlaybackUrl || null,
+                thumbnail_url: selectedPostThumbnailUrl || null
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 401 || data.error === "Unauthorized") {
+            alert("Your session expired. Please login again.");
+            logoutUser();
+            return;
+        }
+
+        if (data.message) {
+            selectedPostImage = "";
+            selectedPostMediaType = "image";
+            selectedPostVideoId = "";
+            selectedPostVideoPlaybackUrl = "";
+            selectedPostThumbnailUrl = "";
+
+            await showFeed();
+        } else {
+            alert(data.error || "Unable to create post");
+        }
+
+    } catch (error) {
+        console.error("Create post error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+
+async function showComments(postId) {
+    hideAllScreens();
+
+    const commentedPost = demoPosts.find(p => p.id === postId);
+        if (commentedPost) {
+            learnFromPost(commentedPost, 2);
+        }
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const comments = await loadCommentsFromBackend(postId);
+
+    const container = document.getElementById("commentsScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="comments-topbar">
+            <button class="comments-back-btn" onclick="showFeed()">← Back</button>
+        </div>
+
+        <div class="comments-post-card">
+            <div class="comments-post-header">
+                <strong>${post.author}</strong>
+            </div>
+
+            <img class="comments-post-img" src="${post.image}" alt="post image">
+
+            <div class="comments-post-caption">
+                ${post.caption}
+            </div>
+        </div>
+
+        <div class="comments-input-bar">
+            <textarea id="commentText" class="comment-input-facebook" placeholder="Write a comment..."></textarea>
+            <button class="comment-send-btn" onclick="addComment(${post.id})">Add</button>
+        </div>
+
+        <div id="commentsList"></div>
+    `;
+
+    const commentsList = document.getElementById("commentsList");
+
+    if (comments.length === 0) {
+        commentsList.innerHTML = `
+            <div class="screen-box">
+                <p>No comments yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    comments.forEach(comment => {
+        commentsList.innerHTML += `
+            <div class="comment-bubble">
+                <div class="comment-author">${comment.author}</div>
+                <div class="comment-text">${comment.text}</div>
+            </div>
+        `;
+    });
+}
+
+async function addComment(postId) {
+    const text = document.getElementById("commentText").value.trim();
+
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    if (!text) {
+        alert("Please write a comment");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/comment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                post_id: postId,
+                text
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.message) {
+            await loadFeedFromBackend();
+            await showComments(postId);
+        } else {
+            alert(data.error || "Unable to add comment");
+        }
+    } catch (error) {
+        console.error("Comment error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+function saveFeedPosts() {
+    localStorage.setItem("feedPosts", JSON.stringify(demoPosts));
+}
+
+async function loadFeedFromBackend(reset = false) {
+    if (isLoadingFeed) return;
+
+    if (reset) {
+        feedSkip = 0;
+        hasMoreFeed = true;
+        demoPosts = [];
+    }
+
+    if (!hasMoreFeed) return;
+
+    isLoadingFeed = true;
+
+    try {
+        const feedUrl = token
+            ? `${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}&token=${encodeURIComponent(token)}`
+            : `${API_BASE}/feed?skip=${feedSkip}&limit=${FEED_PAGE_SIZE}`;
+
+        const res = await fetch(feedUrl);
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+            const newPosts = data.map(post => ({
+                id: post.id,
+                user_id: post.user_id, // 🔥 IMPORTANT
+                author: post.author,
+                avatar: post.avatar || "https://via.placeholder.com/100x100.png?text=User",
+                image: post.image,
+                media_type: post.media_type || "image",
+                caption: post.caption,
+                likes: post.likes || 0,
+                liked: post.liked || false,
+                comments: Array(post.comments || 0).fill({ author: "", text: "" }),
+                commentsCount: post.comments || 0,
+                is_following: post.is_following,
+                video_provider: post.video_provider || null,
+                video_id: post.video_id || null,
+                video_playback_url: post.video_playback_url || "",
+                thumbnail_url: post.thumbnail_url || ""
+            }));
+
+            const rankedPosts = rankFeedPosts(reset ? newPosts : [...demoPosts, ...newPosts]);
+            demoPosts = rankedPosts;
+            feedSkip += newPosts.length;
+
+            if (newPosts.length < FEED_PAGE_SIZE) {
+                hasMoreFeed = false;
+            }
+
+            saveFeedPosts();
+        }
+    } catch (error) {
+        console.error("Feed load error:", error);
+    } finally {
+        isLoadingFeed = false;
+    }
+}
+
+async function pickPostImage() {
+    try {
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
+            quality: 90,
+            resultType: "dataUrl",
+            source: "PHOTOS"
+        });
+
+        const dataUrl = image.dataUrl || "";
+
+        if (!dataUrl) {
+            alert("No image data returned");
+            return;
+        }
+
+        const preview = document.getElementById("postPreviewArea");
+        if (preview) {
+            preview.innerHTML = `
+                <img id="postPreview" class="post-preview" src="${dataUrl}" style="display:block;">
+            `;
+        }
+// test 
+        const publicUrl = await uploadImageToSupabase(dataUrl, "foodposts");
+
+        if (!publicUrl) {
+            alert("Image upload failed");
+            return;
+        }
+
+        selectedPostImage = publicUrl;
+        
+        selectedPostMediaType = "image";
+    } catch (error) {
+        console.log("Image pick error:", error);
+        alert("Image error: " + (error?.message || JSON.stringify(error) || error));
+    }
+}
+
+const defaultProfile = {
+    name: "MealSwipe User",
+    bio: "Food lover 🍽️",
+    avatar: "https://via.placeholder.com/180x180.png?text=Profile"
+};
+
+let userProfile = JSON.parse(localStorage.getItem("userProfile")) || defaultProfile;
+
+function saveUserProfile() {
+    localStorage.setItem("userProfile", JSON.stringify(userProfile));
+}
+
+async function loadUserProfileFromBackend() {
+    if (!token) return false;
+
+    try {
+        const res = await fetch(`${API_BASE}/get-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+            return false;
+        }
+
+        userProfile = {
+            name: data.name || defaultProfile.name,
+            bio: data.bio || defaultProfile.bio,
+            avatar: data.avatar || defaultProfile.avatar
+        };
+
+        saveUserProfile();
+        return true;
+    } catch (error) {
+        console.error("Load profile error:", error);
+        return false;
+    }
+}
+
+async function pickProfileImage() {
+    try {
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
+            quality: 90,
+            resultType: "dataUrl",
+            source: "PHOTOS"
+        });
+
+        const dataUrl = image.dataUrl || "";
+
+        if (!dataUrl) {
+            alert("No image data returned");
+            return;
+        }
+
+        const preview = document.getElementById("profilePreview");
+        if (preview) {
+            preview.src = dataUrl;
+        }
+
+        const publicUrl = await uploadImageToSupabase(dataUrl, "avatars");
+
+        if (!publicUrl) {
+            alert("Avatar upload failed");
+            return;
+        }
+
+        selectedProfileImage = publicUrl;
+
+    } catch (error) {
+        console.log("Profile image pick error:", error);
+        alert("Unable to select profile image");
+    }
+}
+
+function toggleCaption(postId) {
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const captionElement = document.getElementById(`caption-${postId}`);
+    const button = event.target;
+
+    if (!captionElement || !button) return;
+
+    const isExpanded = button.dataset.expanded === "true";
+
+    if (isExpanded) {
+        captionElement.textContent = post.caption.slice(0, 120) + "...";
+        button.textContent = "See more";
+        button.dataset.expanded = "false";
+    } else {
+        captionElement.textContent = post.caption;
+        button.textContent = "See less";
+        button.dataset.expanded = "true";
+    }
+}
+
+async function deletePost(postId) {
+    const confirmed = confirm("Do you want to delete this post?");
+    if (!confirmed) return;
+
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/delete-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: token,
+                post_id: postId
+            })
+        });
+
+        const text = await res.text();
+        console.log("DELETE RESPONSE:", res.status, text);
+
+        let data = {};
+        try {
+            data = JSON.parse(text);
+        } catch {}
+
+        if (!res.ok || data.error) {
+            alert(data.error || "Delete failed");
+            return;
+        }
+
+        alert("Post deleted");
+
+        if (currentUserProfile) {
+            currentUserProfile.posts = currentUserProfile.posts.filter(p => p.id !== postId);
+            renderUserProfile(currentUserProfile);
+        }
+
+    } catch (error) {
+        console.error("Delete error:", error);
+        alert("Server connection failed. Check Render deploy and API_BASE.");
+    }
+}
+
+function showEditPost(postId) {
+    hideAllScreens();
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    selectedPostImage = post.image || "";
+
+    const container = document.getElementById("editPostScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Edit Post</h2>
+
+                <img id="editPostPreview" class="post-preview" src="${post.image}" alt="post preview">
+
+                <button class="buy-btn" onclick="changePostImage()">Change Photo</button>
+
+                <textarea id="editPostCaption" class="post-textarea" placeholder="Edit your caption...">${post.caption}</textarea>
+
+                <button class="buy-btn" onclick="savePostChanges(${post.id})">Save Changes</button>
+                <button class="big-back-btn" onclick="showProfile()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+function savePostChanges(postId) {
+    const newCaption = document.getElementById("editPostCaption").value.trim();
+
+    if (!newCaption) {
+        alert("Please write a caption");
+        return;
+    }
+
+    const post = demoPosts.find(p => p.id === postId);
+    if (!post) return;
+
+    post.caption = newCaption;
+    post.image = selectedPostImage || post.image;
+
+    saveFeedPosts();
+    showProfile();
+}
+
+async function changePostImage() {
+    try {
+        if (!window.Capacitor || !window.Capacitor.Plugins) {
+            alert("Capacitor not available");
+            return;
+        }
+
+        const CameraPlugin = window.Capacitor.Plugins.Camera;
+
+        if (!CameraPlugin) {
+            alert("Camera plugin not available");
+            return;
+        }
+
+        const image = await CameraPlugin.getPhoto({
+            quality: 90,
+            resultType: "uri",
+            source: "PHOTOS"
+        });
+
+        selectedPostImage = image.webPath || image.path || "";
+
+        if (!selectedPostImage) {
+            alert("No image path returned");
+            return;
+        }
+
+        const preview = document.getElementById("editPostPreview");
+        if (preview) {
+            preview.src = selectedPostImage;
+        }
+
+    } catch (error) {
+        console.log("Edit post image error:", error);
+        alert("Unable to change photo");
+    }
+}
+
+async function loadCommentsFromBackend(postId) {
+    try {
+        const res = await fetch(`${API_BASE}/comments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ post_id: postId })
+        });
+
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+            return data.map(comment => ({
+                author: comment.author || "User",
+                text: comment.text
+            }));
+        }
+
+        return [];
+    } catch (error) {
+        console.error("Comments load error:", error);
+        return [];
+    }
+}
+
+function openProfileEntry() {
+    updateBrandHeader(null);
+    if (token) {
+        showProfile();
+    } else {
+        showProfileGate();
+    }
+}
+
+function logoutUser() {
+    token = null;
+    localStorage.removeItem("token");
+    localStorage.removeItem("userProfile");
+    showProfileGate();
+}
+
+function dataURLToBlob(dataUrl) {
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+
+    if (!mimeMatch) {
+        throw new Error("Invalid data URL format");
+    }
+
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+
+    return new Blob([u8arr], { type: mime });
+}
+
+async function uploadImageToSupabase(dataUrl, bucketName) {
+    try {
+        const blob = dataURLToBlob(dataUrl);
+
+        const extension = blob.type.includes("png") ? "png" : "jpg";
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const filePath = `uploads/${fileName}`;
+
+        // 👇 AJOUTE LE DEBUG ICI
+        alert("Uploading to bucket: " + bucketName);
+
+        const { error: uploadError } = await supabaseClient
+            .storage
+            .from(bucketName)
+            .upload(filePath, blob, {
+                contentType: blob.type,
+                upsert: false
+            });
+
+        if (uploadError) {
+            console.error("Supabase upload error:", uploadError);
+            alert("Upload error: " + uploadError.message);
+            return null;
+        }
+
+        const { data: publicData } = supabaseClient
+            .storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+
+        return publicData?.publicUrl || null;
+
+    } catch (error) {
+        console.error("Upload image exception:", error);
+        alert("Upload exception: " + (error?.message || JSON.stringify(error)));
+        return null;
+    }
+}
+// debug
+async function debugSupabaseConnection() {
+    try {
+        const { data, error } = await supabaseClient.storage.listBuckets();
+
+        if (error) {
+            alert("❌ Supabase error: " + error.message);
+            return;
+        }
+
+        const bucketNames = (data || []).map(b => b.name).join(", ");
+
+        alert("✅ Buckets found: " + bucketNames);
+
+    } catch (error) {
+        alert("❌ Exception: " + (error?.message || JSON.stringify(error)));
+    }
+}
+// debug
+
+// debug 2
+async function debugUploadToSupabase() {
+    try {
+        const testDataUrl =
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn6k1QAAAAASUVORK5CYII=";
+
+        const publicUrl = await uploadImageToSupabase(testDataUrl, "Articles");
+
+        if (publicUrl) {
+            alert("✅ Upload OK:\n" + publicUrl);
+        } else {
+            alert("❌ Upload failed (no URL returned)");
+        }
+
+    } catch (error) {
+        alert("❌ Upload exception:\n" + (error?.message || JSON.stringify(error)));
+    }
+}
+// debug 2
+
+function showProfileGate() {
+    hideAllScreens();
+
+    const container = document.getElementById("profileGateScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Profile</h2>
+                <p>Create your profile or login to access your account.</p>
+
+                <button class="buy-btn" onclick="showRegisterProfile()">Create your profile</button>
+                <button class="big-back-btn" onclick="showLoginProfile()">Login</button>
+            </div>
+        </div>
+    `;
+}
+
+function showRegisterProfile() {
+    hideAllScreens();
+
+    // ✅ formulaire de création = toujours vide
+    selectedProfileImage = "";
+
+    const container = document.getElementById("registerProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Create Your Profile</h2>
+
+                <input id="registerEmailInput" class="auth-input" placeholder="Email">
+                <input id="registerPasswordInput" class="auth-input" type="password" placeholder="Password">
+
+                <img id="profilePreview" class="profile-avatar" src="${defaultProfile.avatar}" alt="profile preview">
+
+                <button class="buy-btn" onclick="pickProfileImage()">Choose Profile Photo</button>
+
+                <input id="registerNameInput" class="auth-input" placeholder="Name">
+                <textarea id="registerBioInput" class="post-textarea" placeholder="Write a short bio."></textarea>
+
+                <button class="buy-btn" onclick="createProfileAccount()">Create</button>
+                <button class="big-back-btn" onclick="showProfileGate()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+function showLoginProfile() {
+    hideAllScreens();
+
+    const container = document.getElementById("loginProfileScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <h2>Login</h2>
+
+                <input id="loginEmailInput" class="auth-input" placeholder="Email">
+                <input id="loginPasswordInput" class="auth-input" type="password" placeholder="Password">
+
+                <button class="buy-btn" onclick="loginProfileAccount()">Login</button>
+                <button class="big-back-btn" onclick="showProfileGate()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+async function createProfileAccount() {
+    const email = document.getElementById("registerEmailInput").value.trim();
+    const password = document.getElementById("registerPasswordInput").value.trim();
+    const name = document.getElementById("registerNameInput").value.trim();
+    const bio = document.getElementById("registerBioInput").value.trim();
+
+    if (!email || !password || !name || !bio) {
+        alert("Please complete all fields");
+        return;
+    }
+
+    try {
+        const registerRes = await fetch(`${API_BASE}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email,
+                password,
+                name,
+                bio,
+                avatar: selectedProfileImage || defaultProfile.avatar
+            })
+        });
+
+        const registerData = await registerRes.json();
+
+        if (registerData.error) {
+            alert(registerData.error);
+            return;
+        }
+
+        const loginRes = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const loginData = await loginRes.json();
+
+        if (!loginData.token) {
+            alert("Account created, but login failed");
+            return;
+        }
+
+        token = loginData.token;
+        localStorage.setItem("token", token);
+
+        await loadUserProfileFromBackend();
+        showProfile();
+
+    } catch (error) {
+        console.error("Create profile error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+async function loginProfileAccount() {
+    const email = document.getElementById("loginEmailInput").value.trim();
+    const password = document.getElementById("loginPasswordInput").value.trim();
+
+    if (!email || !password) {
+        alert("Please enter your email and password");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!data.token) {
+            alert(data.error || "Login failed");
+            return;
+        }
+
+        token = data.token;
+        localStorage.setItem("token", token);
+
+        await loadUserProfileFromBackend();
+        showProfile();
+
+    } catch (error) {
+        console.error("Login profile error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+async function reportPost(postId) {
+const menu = document.getElementById(`post-menu-${postId}`);
+if (menu) menu.style.display = "none"; 
+    
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    const reason = prompt("Why are you reporting this post?", "Inappropriate content");
+
+    if (!reason) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/report-post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                post_id: postId,
+                reason
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 401 || data.error === "Unauthorized") {
+            alert("Your session expired. Please login again.");
+            logoutUser();
+            return;
+        }
+
+        if (data.message) {
+            alert("Thank you. This post has been reported.");
+        } else {
+            alert(data.error || "Unable to report post");
+        }
+    } catch (error) {
+        console.error("Report error:", error);
+        alert("Unable to reach server");
+    }
+}
+
+function togglePostMenu(postId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    document.querySelectorAll(".post-menu").forEach(menu => {
+        if (menu.id !== `post-menu-${postId}`) {
+            menu.style.display = "none";
+        }
+    });
+
+    const menu = document.getElementById(`post-menu-${postId}`);
+
+    if (!menu) return;
+
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+async function activatePremiumBackend(receipt) {
+    if (!token) {
+        alert("Please login first.");
+        return false;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/verify-subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token,
+                receipt: receipt || "apple-purchase-approved"
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.status === "premium") {
+            localStorage.setItem("premium", "true");
+            await setupPremiumUI();
+            return true;
+        }
+
+        alert(data.error || "Unable to activate premium");
+        return false;
+    } catch (error) {
+        console.error("Premium backend activation error:", error);
+        alert("Unable to reach server");
+        return false;
+    }
+}
+
+async function uploadVideoToSupabase(file, bucketName) {
+    try {
+        const extension = file.name.split(".").pop() || "mp4";
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const filePath = `uploads/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient
+            .storage
+            .from(bucketName)
+            .upload(filePath, file, {
+                contentType: file.type || "video/mp4",
+                upsert: false
+            });
+
+        if (uploadError) {
+            alert("Video upload error: " + uploadError.message);
+            return null;
+        }
+
+        const { data: publicData } = supabaseClient
+            .storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+
+        return publicData?.publicUrl || null;
+
+    } catch (error) {
+        alert("Video upload exception: " + (error?.message || JSON.stringify(error)));
+        return null;
+    }
+}
+
+function pickPostVideo() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "video/*";
+
+    input.onchange = async () => {
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const file = input.files && input.files[0];
+
+        if (!file) {
+            alert("No video selected");
+            return;
+        }
+
+        const maxSizeMB = 250;
+        if (file.size > maxSizeMB * 1024 * 1024) {
+            alert(`Video is too large. Please choose a video under ${maxSizeMB} MB.`);
+            return;
+        }
+
+        const tempVideo = document.createElement("video");
+        tempVideo.preload = "metadata";
+
+        tempVideo.onloadedmetadata = async () => {
+            URL.revokeObjectURL(tempVideo.src);
+
+            if (tempVideo.duration > 300) {
+                alert("Video must be under 5 minutes.");
+                return;
+            }
+
+            if (!token) {
+                alert("You must login first");
+                return;
+            }
+
+            const preview = document.getElementById("postPreviewArea");
+            if (preview) {
+                preview.innerHTML = `
+                    <div class="screen-box">
+                        <p>Uploading video...</p>
+                    </div>
+                `;
+            }
+
+            try {
+                const uploadRes = await fetch(`${API_BASE}/create-video-upload`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token })
+                });
+
+                const uploadData = await uploadRes.json();
+
+                if (!uploadRes.ok || uploadData.error) {
+                    alert(JSON.stringify(uploadData, null, 2));
+                    return;
+                }
+
+                const uploadUrl = uploadData.upload_url;
+                const videoId = uploadData.video_id;
+
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const cloudflareRes = await fetch(uploadUrl, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!cloudflareRes.ok) {
+                    const errorText = await cloudflareRes.text();
+                    console.error("Cloudflare upload failed:", cloudflareRes.status, errorText);
+                    alert("Video upload to Cloudflare failed: " + cloudflareRes.status);
+                    return;
+                }
+
+                const playbackUrl = `https://videodelivery.net/${videoId}/manifest/video.m3u8`;
+                const thumbnailUrl = `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg`;
+
+                selectedPostImage = thumbnailUrl;
+                selectedPostMediaType = "video";
+                selectedPostVideoId = videoId;
+                selectedPostVideoPlaybackUrl = playbackUrl;
+                selectedPostThumbnailUrl = thumbnailUrl;
+
+                if (preview) {
+                    preview.innerHTML = `
+                        <video class="post-preview" src="${playbackUrl}" poster="${thumbnailUrl}" controls playsinline></video>
+                    `;
+                }
+
+            } catch (error) {
+                console.error("Cloudflare video upload error:", error);
+                alert("Video upload failed");
+            }
+        };
+
+        tempVideo.onerror = () => {
+            alert("Unable to read video duration.");
+        };
+
+        tempVideo.src = URL.createObjectURL(file);
+    };
+
+    input.click();
+}
+
+function setupVideoAutoplay() {
+    const videos = document.querySelectorAll(".feed-video");
+
+    if (!videos.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target;
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        });
+    }, {
+        threshold: [0, 0.6, 1]
+    });
+
+    videos.forEach(video => {
+        observer.observe(video);
+    });
+}
+
+let fullscreenSwipeReady = false;
+let fullscreenDragDirection = null;
+
+let isFullscreenVideoChanging = false;
+let fullscreenTouchStartX = 0;
+let fullscreenTouchStartY = 0;
+let currentFullscreenPostId = null;
+
+let fullscreenVideos = [];
+let currentFullscreenVideoIndex = 0;
+
+let fullscreenTouchMoveY = 0;
+
+function openVideoFullscreen(videoUrl, postId, feedIndex = null) {
+    const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
+    const video = document.getElementById("fullscreenVideo");
+
+    if (!overlay || !content || !video) {
+        console.error("Missing fullscreen elements");
+        return;
+    }
+
+    const post = demoPosts.find(p => {
+        const src = p.video_playback_url || p.image;
+        return String(p.id) === String(postId) && src === videoUrl;
+    }) || demoPosts.find(p => String(p.id) === String(postId));
+
+    if (!post) {
+        console.error("Post not found for fullscreen", { videoUrl, postId });
+        return;
+    }
+
+    const src = post.video_playback_url || post.image;
+    if (!src) {
+        console.error("No video src for fullscreen", post);
+        return;
+    }
+
+    document.querySelectorAll(".feed-video").forEach(v => {
+        v.pause();
+        v.muted = true;
+    });
+
+    currentFullscreenPostId = post.id;
+
+    overlay.style.display = "block";
+    content.style.transform = "scale(1)";
+    content.style.borderRadius = "0px";
+
+    video.pause();
+    video.removeAttribute("src");
+    video.src = src;
+    video.poster = post.thumbnail_url || post.image || "";
+    video.controls = false;
+    video.loop = true;
+    video.muted = false;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.load();
+
+    video.onloadeddata = () => {
+        video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+        });
+    };
+
+    loadFullscreenVideoInfo(post);
+}
+
+function getFullscreenPost(index) {
+    if (fullscreenVideos.length === 0) return null;
+
+    if (index < 0) index = fullscreenVideos.length - 1;
+    if (index >= fullscreenVideos.length) index = 0;
+
+    return fullscreenVideos[index];
+}
+
+function waitVideoReady(video, timeout = 900) {
+    return new Promise(resolve => {
+        if (!video) return resolve(false);
+
+        if (video.readyState >= 3) {
+            return resolve(true);
+        }
+
+        let done = false;
+
+        const finish = (ok) => {
+            if (done) return;
+            done = true;
+            video.removeEventListener("canplay", onReady);
+            video.removeEventListener("canplaythrough", onReady);
+            resolve(ok);
+        };
+
+        const onReady = () => finish(true);
+
+        video.addEventListener("canplay", onReady, { once: true });
+        video.addEventListener("canplaythrough", onReady, { once: true });
+
+        setTimeout(() => finish(false), timeout);
+    });
+}
+
+function waitUntilVideoCanPlay(video, timeout = 1200) {
+    return new Promise(resolve => {
+        if (!video) return resolve(false);
+
+        if (video.readyState >= 3) {
+            return resolve(true);
+        }
+
+        let finished = false;
+
+        const done = (ok) => {
+            if (finished) return;
+            finished = true;
+            video.removeEventListener("canplay", onReady);
+            video.removeEventListener("loadeddata", onReady);
+            resolve(ok);
+        };
+
+        const onReady = () => done(true);
+
+        video.addEventListener("canplay", onReady, { once: true });
+        video.addEventListener("loadeddata", onReady, { once: true });
+
+        setTimeout(() => done(false), timeout);
+    });
+}
+
+async function setupStackVideo(video, post, shouldPlay = false) {
+    if (!video) return;
+
+    // 🔥 Important : les vidéos prev/next ne chargent plus de src
+    // Ça évite les conflits mobile qui font figer la vidéo.
+    if (!shouldPlay) {
+        video.pause();
+        video.removeAttribute("src");
+        video.dataset.src = "";
+        video.poster = post?.thumbnail_url || post?.image || "";
+        video.load();
+        video.muted = true;
+        return;
+    }
+
+    if (!post) return;
+
+    const src = post.video_playback_url || post.image;
+    if (!src) return;
+
+    video.loop = true;
+    video.preload = "auto";
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.poster = post.thumbnail_url || post.image || "";
+
+    if (video.dataset.src !== src) {
+        video.pause();
+        video.removeAttribute("src");
+        video.dataset.src = src;
+        video.src = src;
+        video.load();
+    }
+
+    video.muted = false;
+
+    await waitUntilVideoCanPlay(video, 1500);
+
+    try {
+        video.currentTime = 0;
+    } catch (e) {}
+
+    video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+    });
+}
+
+async function loadFullscreenVideo(index) {
+    const prevVideo = document.getElementById("fullscreenVideoPrev");
+    const currentVideo = document.getElementById("fullscreenVideo");
+    const nextVideo = document.getElementById("fullscreenVideoNext");
+    const stack = document.getElementById("fullscreenVideoStack");
+
+    const likeBtn = document.getElementById("fullscreenLikeBtn");
+    const commentBtn = document.getElementById("fullscreenCommentBtn");
+    const menuBtn = document.getElementById("fullscreenMenuBtn");
+    const userAvatar = document.getElementById("fullscreenUserAvatar");
+    const userName = document.getElementById("fullscreenUserName");
+    const followBtn = document.getElementById("fullscreenFollowBtn");
+    const seeMoreBtn = document.getElementById("fullscreenSeeMoreBtn");
+    const captionBox = document.getElementById("fullscreenCaptionBox");
+
+    if (!currentVideo || fullscreenVideos.length === 0) return;
+
+    const post = getFullscreenPost(index);
+    const prevPost = getFullscreenPost(index - 1);
+    const nextPost = getFullscreenPost(index + 1);
+
+    currentFullscreenPostId = post.id;
+
+    document.querySelectorAll(".feed-video").forEach(v => {
+        v.pause();
+        v.muted = true;
+    });
+
+    await setupStackVideo(currentVideo, post, true);
+    setupStackVideo(prevVideo, prevPost, false);
+    setupStackVideo(nextVideo, nextPost, false);
+
+
+    if (userAvatar) {
+        userAvatar.src = post.avatar || "https://via.placeholder.com/180x180.png?text=Profile";
+        userAvatar.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (userName) {
+        userName.textContent = post.author || "User";
+        userName.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (followBtn) {
+        followBtn.style.display = post.user_id ? "inline-block" : "none";
+        followBtn.textContent = post.is_following ? "Unfollow" : "Follow";
+        followBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await toggleFollow(post.user_id);
+        };
+    }
+
+    if (captionBox) {
+        captionBox.style.display = "none";
+        captionBox.textContent = post.caption || "";
+    }
+
+    if (seeMoreBtn) {
+        seeMoreBtn.style.display = post.caption ? "block" : "none";
+        seeMoreBtn.textContent = "See more";
+        seeMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = captionBox.style.display === "block";
+            captionBox.style.display = isOpen ? "none" : "block";
+            seeMoreBtn.textContent = isOpen ? "See more" : "See less";
+        };
+    }
+
+    document.querySelectorAll(".feed-video").forEach(v => v.pause());
+
+    if (likeBtn) {
+        const likeImg = likeBtn.querySelector("img");
+        if (likeImg) likeImg.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+
+        likeBtn.onclick = async () => {
+            await likePost(post.id);
+            const updatedPost = demoPosts.find(p => p.id === post.id);
+            const img = likeBtn.querySelector("img");
+            if (img && updatedPost) img.src = updatedPost.liked ? "/static/like_t.png" : "/static/like.png";
+        };
+    }
+
+    if (commentBtn) {
+        commentBtn.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => showComments(post.id), 100);
+        };
+    }
+
+    if (menuBtn) {
+        menuBtn.onclick = () => reportPost(post.id);
+    }
+}
+
+
+function closeVideoFullscreen() {
+    const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
+    const video = document.getElementById("fullscreenVideo");
+
+    if (!overlay || !content || !video) return;
+
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+
+    overlay.style.display = "none";
+    content.style.transform = "scale(1)";
+    content.style.borderRadius = "0px";
+
+    currentFullscreenPostId = null;
+    setupVideoAutoplay();
+}
+
+function setupVideoFullscreenSwipe() {
+    if (fullscreenSwipeReady) return;
+    fullscreenSwipeReady = true;
+
+    const overlay = document.getElementById("videoFullscreenOverlay");
+    const content = document.getElementById("videoFullscreenContent");
+
+    if (!overlay || !content) return;
+
+    overlay.addEventListener("touchstart", (e) => {
+        fullscreenTouchStartX = e.touches[0].clientX;
+        fullscreenTouchStartY = e.touches[0].clientY;
+
+        content.style.transition = "none";
+    });
+
+    overlay.addEventListener("touchmove", (e) => {
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+
+        const diffX = Math.max(0, currentX - fullscreenTouchStartX);
+        const diffY = currentY - fullscreenTouchStartY;
+
+        if (Math.abs(diffX) < Math.abs(diffY)) return;
+
+        const progress = Math.min(diffX / 260, 1);
+        const scale = 1 - progress * 0.22;
+        const radius = progress * 34;
+
+        content.style.transform = `scale(${scale}) translateX(${diffX * 0.15}px)`;
+        content.style.borderRadius = `${radius}px`;
+    });
+
+    overlay.addEventListener("touchend", (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+
+        const diffX = endX - fullscreenTouchStartX;
+        const diffY = endY - fullscreenTouchStartY;
+
+        content.style.transition = "transform 0.2s ease, border-radius 0.2s ease";
+
+        if (diffX > 120 && Math.abs(diffY) < 120) {
+            closeVideoFullscreen();
+            return;
+        }
+
+        content.style.transform = "scale(1)";
+        content.style.borderRadius = "0px";
+    });
+}
+
+function waitVideoReady(video) {
+    return new Promise(resolve => {
+        if (!video) return resolve();
+
+        if (video.readyState >= 3) {
+            resolve();
+            return;
+        }
+
+        const done = () => {
+            video.removeEventListener("canplay", done);
+            video.removeEventListener("loadeddata", done);
+            resolve();
+        };
+
+        video.addEventListener("canplay", done, { once: true });
+        video.addEventListener("loadeddata", done, { once: true });
+
+        setTimeout(resolve, 900);
+    });
+}
+
+function openSearchFromVideo() {
+    closeVideoFullscreen();
+    showSearchScreen();
+}
+
+function showSearchScreen(initialQuery = "") {
+    hideAllScreens();
+
+    const container = document.getElementById("searchScreen");
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="screen-box">
+            <h2>Search</h2>
+            <input 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="Search #pasta, #burger, #healthy..."
+                value="${initialQuery}"
+                oninput="handleSearchInput()"
+            >
+
+            <div class="search-tag-list">
+                <button class="search-tag-btn" onclick="setSearchQuery('#pasta')">#pasta</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#burger')">#burger</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#healthy')">#healthy</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#dessert')">#dessert</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#breakfast')">#breakfast</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#vegan')">#vegan</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#pizza')">#pizza</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#sushi')">#sushi</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#tacos')">#tacos</button>
+                <button class="search-tag-btn" onclick="setSearchQuery('#comfortfood')">#comfortfood</button>
+            </div>
+
+            <button class="big-back-btn" onclick="showFeed()">Back</button>
+        </div>
+
+        <div id="searchResults" class="search-results"></div>
+    `;
+
+    handleSearchInput();
+}
+
+function setSearchQuery(query) {
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+
+    input.value = query;
+    handleSearchInput();
+}
+
+let searchTimeout = null;
+let lastProfileSuggestions = [];
+
+function handleSearchInput() {
+    clearTimeout(searchTimeout);
+
+    searchTimeout = setTimeout(async () => {
+        await searchProfiles();
+        renderSearchResults();
+    }, 250);
+}
+
+async function searchProfiles() {
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+
+    const query = input.value.trim();
+
+    if (query.length < 2 || query.startsWith("#")) {
+        lastProfileSuggestions = [];
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/search-users?q=${encodeURIComponent(query)}&token=${token || ""}`);
+        const data = await res.json();
+
+        console.log("PROFILE SEARCH DATA:", data);
+
+        lastProfileSuggestions = Array.isArray(data) ? data : [];
+
+    } catch (error) {
+        console.error("Search users error:", error);
+        lastProfileSuggestions = [];
+    }
+}
+
+function renderSearchResults() {
+    const input = document.getElementById("searchInput");
+    const results = document.getElementById("searchResults");
+
+    if (!input || !results) return;
+
+    const query = input.value.trim().toLowerCase();
+
+    if (!query) {
+        results.innerHTML = `
+            <div class="screen-box">
+                <p>Search for food ideas, creators, hashtags or videos.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const isHashtagSearch = query.startsWith("#");
+
+    results.innerHTML = "";
+
+    // PROFILS SEULEMENT quand ce n’est pas un hashtag
+    if (!isHashtagSearch) {
+        if (lastProfileSuggestions.length === 0) {
+            results.innerHTML = `
+                <div class="screen-box">
+                    <p>No profiles found.</p>
+                </div>
+            `;
+            return;
+        }
+
+        results.innerHTML = `
+            <div class="screen-box">
+                <h3>Profiles</h3>
+                <div class="profile-suggestions">
+                    ${lastProfileSuggestions.map(user => `
+                        <div class="profile-suggestion-card">
+                            <div class="profile-suggestion-left" onclick="openUserProfile(${user.id})">
+                                <img 
+                                    class="profile-suggestion-avatar" 
+                                    src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
+                                >
+                                <div class="profile-suggestion-name">${user.username || "User"}</div>
+                            </div>
+
+                            <button 
+                                class="profile-suggestion-follow-btn"
+                                data-follow-user-id="${user.id}"
+                                onclick="event.stopPropagation(); toggleFollow(${user.id});"
+                            >
+                                ${user.is_following ? "Unfollow" : "Follow"}
+                            </button>
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // HASHTAGS seulement quand la recherche commence par #
+    const cleanQuery = query.replace("#", "");
+
+    const filteredPosts = demoPosts.filter(post => {
+        const caption = (post.caption || "").toLowerCase();
+        return caption.includes(cleanQuery);
+    });
+
+    if (filteredPosts.length === 0) {
+        results.innerHTML = `
+            <div class="screen-box">
+                <p>No hashtag results found.</p>
+            </div>
+        `;
+        return;
+    }
+
+    filteredPosts.forEach(post => {
+        results.innerHTML += `
+            <div class="feed-post" style="position:relative;">
+                <div class="feed-header">
+                    <img 
+                        class="feed-avatar" 
+                        src="${post.avatar || 'https://via.placeholder.com/100x100.png?text=User'}" 
+                        alt="avatar"
+                        onclick="openUserProfile(${post.user_id})"
+                    >
+
+                    <div class="feed-user-text">
+                        <strong class="feed-author-name">${post.author}</strong>
+                        <div class="feed-caption-top">${post.caption}</div>
+                    </div>
+                </div>
+
+                ${
+                    post.media_type === "video"
+                        ? `<video 
+                                class="feed-img feed-video" 
+                                src="${post.video_playback_url || post.image}" 
+                                poster="${post.thumbnail_url || post.image || ''}"
+                                muted 
+                                playsinline 
+                                loop 
+                                preload="metadata"
+                                onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
+                            </video>`
+                        : `<img 
+                                class="feed-img" 
+                                src="${post.image}" 
+                                alt="post image"
+                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                           >`
+                }
+            </div>
+        `;
+    });
+
+    activateFeedVideos();
+}
+
+async function openUserProfile(userId) {
+    if (!userId) {
+        console.error("Missing userId");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/user-profile?user_id=${userId}&token=${encodeURIComponent(token || "")}`);
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to open profile");
+            return;
+        }
+
+        renderUserProfile(data);
+
+    } catch (e) {
+        console.error("Profile error:", e);
+        alert("Unable to open profile");
+    }
+}
+
+let currentUserProfile = null;
+
+function renderUserProfile(user) {
+    const container = document.getElementById("userProfileScreen");
+    if (!container) return;
+
+    currentUserProfile = user;
+
+    container.innerHTML = `
+        <div class="profile-wrapper">
+            <div class="screen-box profile-box">
+                <button class="big-back-btn" onclick="showFeed()">Back</button>
+
+                <img 
+                    src="${user.avatar || 'https://via.placeholder.com/180x180.png?text=Profile'}" 
+                    class="profile-avatar"
+                >
+
+                <h2 class="profile-name">${user.username || "User"}</h2>
+                <p class="profile-bio">${user.bio || "Food lover 🍽️"}</p>
+
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <strong id="userFollowersCount">${user.followers || 0}</strong>
+                        <span>Followers</span>
+                    </div>
+
+                    <div class="profile-stat">
+                        <strong>${user.posts?.length || 0}</strong>
+                        <span>Posts</span>
+                    </div>
+                </div>
+
+                ${
+                    user.is_me
+                        ? ""
+                        : `<button id="followBtn" class="buy-btn" onclick="toggleFollow(${user.id})">
+                            ${user.is_following ? "Unfollow" : "Follow"}
+                           </button>`
+                }
+            </div>
+
+            <div class="screen-box">
+                <div class="profile-tabs">
+                    <button onclick="filterPosts('all')">All</button>
+                    <button onclick="filterPosts('image')">Photo</button>
+                    <button onclick="filterPosts('video')">Video</button>
+                </div>
+            </div>
+
+            <div id="userPosts"></div>
+        </div>
+    `;
+
+    showScreen("userProfileScreen");
+    renderUserPosts(user.posts || [], "all");
+    setTimeout(() => {
+        document.querySelectorAll("#userPosts video").forEach(video => {
+            video.play().catch(() => {});
+        });
+    }, 300);
+}
+
+function renderUserPosts(posts, filter = "all") {
+    const container = document.getElementById("userPosts");
+    if (!container) return;
+
+    const filtered = posts.filter(post => {
+        if (filter === "all") return true;
+        return post.media_type === filter;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="screen-box">
+                <p>No posts found.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(post => `
+        <div class="feed-post profile-post-card">
+            ${
+                currentUserProfile?.is_me
+                    ? `<div class="profile-post-actions-top">
+                        <button class="delete-post-btn" onclick="deletePost(${post.id})">Delete</button>
+                       </div>`
+                    : ""
+            }
+
+            ${
+                post.media_type === "video"
+                    ? `<div class="feed-img" 
+                            style="position:relative; background:#333; cursor:pointer;"
+                            onclick="openVideoFullscreen('${post.video_playback_url || post.image}', ${post.id})">
+                            <img 
+                                src="${post.thumbnail_url || post.image || '/static/logo.png'}"
+                                style="width:100%; height:100%; object-fit:cover; display:block;"
+                                onerror="this.onerror=null; this.src='/static/logo.png';"
+                            >
+                            <div style="
+                                position:absolute;
+                                inset:0;
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                font-size:80px;
+                                color:white;
+                                text-shadow:0 4px 15px rgba(0,0,0,0.8);
+                            ">▶</div>
+                       </div>`
+                    : `<img 
+                            class="feed-img" 
+                            src="${post.image}" 
+                            alt="post image"
+                            onerror="this.onerror=null; this.src='/static/logo.png';"
+                       >`
+            }
+
+            <div class="feed-body">
+                <div class="feed-caption">${post.caption || ""}</div>
+            </div>
+        </div>
+    `).join("");
+}
+
+function filterPosts(type) {
+    if (!currentUserProfile) return;
+    renderUserPosts(currentUserProfile.posts || [], type);
+}
+
+function toggleFeedSound(event, postId) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const btn = event.currentTarget;
+    const postElement = btn.closest(".feed-post");
+    const video = postElement?.querySelector(".feed-video");
+
+    if (!video) return;
+
+    document.querySelectorAll(".feed-video").forEach(v => {
+        if (v !== video) {
+            v.muted = true;
+            v.dataset.userSound = "off";
+        }
+    });
+
+    video.muted = !video.muted;
+    video.dataset.userSound = video.muted ? "off" : "on";
+
+    btn.textContent = video.muted ? "🔇" : "🔊";
+
+    video.play().catch(() => {});
+}
+
+async function toggleFollow(userId) {
+    if (!token) {
+        alert("Please login first");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/follow`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                token,
+                user_id: userId
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to follow user");
+            return;
+        }
+
+        const isFollowing = data.following;
+        const followers = data.followers;
+
+        // update feed posts
+        demoPosts.forEach(p => {
+            if (p.user_id === userId) {
+                p.is_following = isFollowing;
+            }
+        });
+
+        // update search suggestions
+        lastProfileSuggestions.forEach(u => {
+            if (u.id === userId) {
+                u.is_following = isFollowing;
+                u.followers = followers;
+            }
+        });
+
+        // update profile page
+        if (currentUserProfile && currentUserProfile.id === userId) {
+            currentUserProfile.is_following = isFollowing;
+            currentUserProfile.followers = followers;
+        }
+
+        // update all buttons for this user
+        document.querySelectorAll(`[data-follow-user-id="${userId}"]`).forEach(btn => {
+            btn.textContent = isFollowing ? "Unfollow" : "Follow";
+        });
+
+        const profileBtn = document.getElementById("followBtn");
+        if (profileBtn && currentUserProfile?.id === userId) {
+            profileBtn.textContent = isFollowing ? "Unfollow" : "Follow";
+        }
+
+        const fullscreenBtn = document.getElementById("fullscreenFollowBtn");
+            if (fullscreenBtn && Number(fullscreenBtn.dataset.followUserId) === Number(userId)) {
+                fullscreenBtn.textContent = isFollowing ? "Unfollow" : "Follow";
+            }
+
+            if (isFollowing) {
+                const postUser = demoPosts.find(p => Number(p.user_id) === Number(userId));
+
+                if (postUser && !followingUsers.some(u => Number(u.id) === Number(userId))) {
+                    followingUsers.push({
+                        id: userId,
+                        username: postUser.author,
+                        avatar: postUser.avatar
+                    });
+                }
+} else {
+    followingUsers = followingUsers.filter(u => Number(u.id) !== Number(userId));
+}
+
+if (currentFeedMode === "following") {
+    renderFeed();
+}
+
+        const count = document.getElementById("userFollowersCount");
+        if (count && currentUserProfile?.id === userId) {
+            count.textContent = followers;
+        }
+
+    } catch (e) {
+        console.error("Follow error:", e);
+        alert("Unable to reach server");
+    }
+}
+
+function showScreen(screenId) {
+    hideAllScreens();
+    document.getElementById(screenId).style.display = "block";
+}
+
+function activateUserProfileVideos() {
+    setTimeout(() => {
+        document.querySelectorAll("#userPosts video").forEach(video => {
+            video.load();
+
+            video.onloadedmetadata = () => {
+                try {
+                    video.currentTime = 0.1;
+                } catch (e) {}
+            };
+
+            video.play().catch(() => {});
+        });
+    }, 200);
+}
+
+async function uploadVideo() {
+    const file = document.getElementById("videoInput").files[0];
+
+    if (!file) {
+        alert("Select a video");
+        return;
+    }
+
+    //  1. demander URL upload
+    const res = await fetch("/create-video-upload", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            token: localStorage.getItem("token")
+        })
+    });
+
+    const data = await res.json();
+
+    const uploadUrl = data.upload_url;
+    const videoId = data.video_id;
+
+    //  2. upload vers Cloudflare
+    await fetch(uploadUrl, {
+        method: "POST",
+        body: file
+    });
+
+    //  3. construire URLs
+    const playbackUrl = `https://videodelivery.net/${videoId}/manifest/video.m3u8`;
+    const thumbnailUrl = `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg`;
+
+    //  4. créer post
+    await fetch("/create-post", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            token: localStorage.getItem("token"),
+            media_type: "video",
+            video_provider: "cloudflare_stream",
+            video_id: videoId,
+            video_playback_url: playbackUrl,
+            thumbnail_url: thumbnailUrl,
+            caption: "My video ",
+
+        })
+    });
+
+    alert("Video uploaded ");
+}
+
+function toggleFeedVideoSound(btn) {
+    const wrapper = btn.closest("div");
+    const video = wrapper?.querySelector("video");
+
+    if (!video) return;
+
+    video.muted = !video.muted;
+    btn.textContent = video.muted ? "🔇" : "🔊";
+
+    if (!video.muted) {
+        document.querySelectorAll(".feed-video").forEach(v => {
+            if (v !== video) v.muted = true;
+        });
+
+        document.querySelectorAll(".feed-sound-btn").forEach(b => {
+            if (b !== btn) b.textContent = "🔇";
+        });
+
+        video.play().catch(() => {});
+    }
+}
+
+function setFeedMode(mode) {
+    currentFeedMode = mode;
+    renderFeed();
+    setupVideoAutoplay();
+
+    const container = document.getElementById("feedScreen");
+    if (container) container.scrollTop = 0;
+}
+
+function loadFullscreenVideoInfo(post) {
+    const likeBtn = document.getElementById("fullscreenLikeBtn");
+    const commentBtn = document.getElementById("fullscreenCommentBtn");
+    const menuBtn = document.getElementById("fullscreenMenuBtn");
+    const userAvatar = document.getElementById("fullscreenUserAvatar");
+    const userName = document.getElementById("fullscreenUserName");
+    const followBtn = document.getElementById("fullscreenFollowBtn");
+    const seeMoreBtn = document.getElementById("fullscreenSeeMoreBtn");
+    const captionBox = document.getElementById("fullscreenCaptionBox");
+
+    if (userAvatar) {
+        userAvatar.src = post.avatar || "https://via.placeholder.com/180x180.png?text=Profile";
+        userAvatar.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (userName) {
+        userName.textContent = post.author || "User";
+        userName.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => openUserProfile(post.user_id), 100);
+        };
+    }
+
+    if (followBtn) {
+        followBtn.style.display = post.user_id ? "inline-block" : "none";
+        followBtn.textContent = post.is_following ? "Unfollow" : "Follow";
+        followBtn.dataset.followUserId = post.user_id;
+
+        followBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await toggleFollow(post.user_id);
+        };
+    }
+
+    if (captionBox) {
+        captionBox.style.display = "none";
+        captionBox.textContent = post.caption || "";
+    }
+
+    if (seeMoreBtn) {
+        seeMoreBtn.style.display = post.caption ? "block" : "none";
+        seeMoreBtn.textContent = "See more";
+        seeMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = captionBox.style.display === "block";
+            captionBox.style.display = isOpen ? "none" : "block";
+            seeMoreBtn.textContent = isOpen ? "See more" : "See less";
+        };
+    }
+
+    if (likeBtn) {
+        const likeImg = likeBtn.querySelector("img");
+        if (likeImg) likeImg.src = post.liked ? "/static/like_t.png" : "/static/like.png";
+
+        likeBtn.onclick = async () => {
+            await likePost(post.id);
+            const updatedPost = demoPosts.find(p => p.id === post.id);
+            const img = likeBtn.querySelector("img");
+
+            if (img && updatedPost) {
+                img.src = updatedPost.liked ? "/static/like_t.png" : "/static/like.png";
+            }
+        };
+    }
+
+    if (commentBtn) {
+        commentBtn.onclick = () => {
+            closeVideoFullscreen();
+            setTimeout(() => showComments(post.id), 100);
+        };
+    }
+
+    if (menuBtn) {
+        menuBtn.onclick = () => reportPost(post.id);
+    }
+}
+
+async function setFeedMode(mode) {
+    currentFeedMode = mode;
+
+    if (mode === "following") {
+        await loadFollowingUsers();
+    }
+
+    renderFeed();
+    setupVideoAutoplay();
+
+    const container = document.getElementById("feedScreen");
+    if (container) container.scrollTop = 0;
+}
+
+async function loadFollowingUsers() {
+    if (!token) {
+        followingUsers = [];
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/following?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        followingUsers = Array.isArray(data) ? data : [];
+
+    } catch (error) {
+        console.error("Following load error:", error);
+        followingUsers = [];
+    }
+}
+
+function renderFollowingList(container) {
+    if (!token) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>Please login to see who you follow.</p>
+            </div>
+        `;
+        return;
+    }
+
+    if (!followingUsers.length) {
+        container.innerHTML += `
+            <div class="screen-box">
+                <p>You are not following anyone yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML += `
+        <div class="feed-following-list">
+            <div class="feed-following-title">Following</div>
+
+            ${followingUsers.map(user => `
+                <div class="feed-following-card" onclick="openUserProfile(${user.id})">
+                    <img 
+                        class="feed-following-avatar" 
+                        src="${user.avatar || 'https://via.placeholder.com/100x100.png?text=User'}"
+                    >
+                    <div class="feed-following-name">${user.username || user.author || "User"}</div>
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
+
+
+async function setupPushNotifications() {
+
+    try {
+
+        if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
+            return;
+        }
+
+        const PushNotifications = window.Capacitor.Plugins.PushNotifications;
+
+        if (!token) return;
+
+        const permission = await PushNotifications.requestPermissions();
+
+        if (permission.receive !== "granted") {
+            return;
+        }
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener("registration", async (tokenData) => {
+
+            await fetch(`${API_BASE}/register-push-token`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    token: token,
+                    push_token: tokenData.value,
+                    platform: "ios"
+                })
+            });
+        });
+
+    } catch (err) {
+
+    }
+}
+
+async function debugPushSetup() {
+    alert("Button clicked ✅");
+
+    try {
+        if (!window.Capacitor) {
+            alert("Capacitor not found ❌");
+            return;
+        }
+
+        alert("Capacitor found ✅ platform: " + Capacitor.getPlatform());
+
+        if (!window.Capacitor.Plugins.PushNotifications) {
+            alert("PushNotifications plugin not found ❌");
+            return;
+        }
+
+        alert("Push plugin found ✅");
+
+        await setupPushNotifications();
+
+    } catch (error) {
+        alert("Push debug error: " + error.message);
+        console.error(error);
+    }
+}
+
+function updateBrandHeader(screen) {
+    const discoverBrand = document.getElementById("discoverBrand");
+    const feedBrand = document.getElementById("feedBrand");
+
+    if (discoverBrand) discoverBrand.classList.remove("active");
+    if (feedBrand) feedBrand.classList.remove("active");
+
+    if (screen === "discover" && discoverBrand) {
+        discoverBrand.classList.add("active");
+    }
+
+    if (screen === "feed" && feedBrand) {
+        feedBrand.classList.add("active");
+    }
+}
