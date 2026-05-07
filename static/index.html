@@ -1783,7 +1783,12 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 const FREE_RECIPE_LIMIT = 10;
 
-const CameraPlugin = window.Capacitor.Plugins.Camera;
+const CameraPlugin =
+    window.Capacitor &&
+    window.Capacitor.Plugins &&
+    window.Capacitor.Plugins.Camera
+        ? window.Capacitor.Plugins.Camera
+        : null;
 
 
 
