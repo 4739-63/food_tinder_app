@@ -6271,68 +6271,42 @@ function renderFollowingList(container) {
 
 
 async function setupPushNotifications() {
-    alert("setupPushNotifications started");
 
     try {
+
         if (!window.Capacitor || !window.Capacitor.Plugins.PushNotifications) {
-            alert("Push plugin not available");
             return;
         }
 
         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
 
-        if (!token) {
-            alert("No user token available");
-            return;
-        }
-
-        alert("Requesting permission...");
+        if (!token) return;
 
         const permission = await PushNotifications.requestPermissions();
 
-        alert("Permission result: " + JSON.stringify(permission));
-
         if (permission.receive !== "granted") {
-            alert("Permission denied");
             return;
         }
 
-        alert("Registering push...");
-
-        PushNotifications.addListener("registration", async (tokenData) => {
-            alert("Registration token received");
-
-            try {
-                const res = await fetch(`${API_BASE}/register-push-token`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        token: token,
-                        push_token: tokenData.value,
-                        platform: "ios"
-                    })
-                });
-
-                const data = await res.json();
-                alert("Backend response: " + JSON.stringify(data));
-
-            } catch (err) {
-                alert("Fetch error: " + err.message);
-            }
-        });
-
-        PushNotifications.addListener("registrationError", (error) => {
-            alert("Registration error: " + JSON.stringify(error));
-        });
-
         await PushNotifications.register();
 
-        alert("Register call finished");
+        PushNotifications.addListener("registration", async (tokenData) => {
+
+            await fetch(`${API_BASE}/register-push-token`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    token: token,
+                    push_token: tokenData.value,
+                    platform: "ios"
+                })
+            });
+        });
 
     } catch (err) {
-        alert("setup error: " + err.message);
+
     }
 }
 
@@ -6538,13 +6512,6 @@ if (registerBtn) {
 </div>
 
 <div id="searchScreen" style="display:none;"></div>
-
-<button 
-    onclick="debugPushSetup()" 
-    style="position:fixed;top:140px;left:20px;z-index:999999999;background:red;color:white;font-size:22px;padding:18px;border-radius:12px;"
->
-    TEST PUSH
-</button>
 
 
 </body>
