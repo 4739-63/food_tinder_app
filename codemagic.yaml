@@ -50,6 +50,9 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" ios/App/App/Info.plist || true
 
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" ios/App/App/Info.plist || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" ios/App/App/Info.plist
+
           /usr/libexec/PlistBuddy -c "Set :CODE_SIGN_ENTITLEMENTS App/App.entitlements" ios/App/App.xcodeproj/project.pbxproj || true
 
       - name: Set up code signing
