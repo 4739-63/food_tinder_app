@@ -1551,6 +1551,61 @@ def save_profile(data: dict):
     finally:
         db.close()                
 
+@app.post("/delete-account")
+def delete_account(data: dict):
+    db = SessionLocal()
+    try:
+        user_id = get_current_user(data.get("token"))
+
+        if not user_id:
+            return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
+
+        if user.stripe_subscription_id:
+            try:
+                stripe.Subscription.delete(user.stripe_subscription_id)
+            except Exception as e:
+                print("STRIPE DELETE ACCOUNT ERROR:", str(e))
+
+        user_post_ids = [
+            post_id
+            for (post_id,) in db.query(Post.id).filter(Post.user_id == user_id).all()
+        ]
+
+        db.query(Like).filter(Like.user_id == user_id).delete()
+        db.query(Comment).filter(Comment.user_id == user_id).delete()
+        db.query(Report).filter(Report.user_id == user_id).delete()
+        db.query(PostView).filter(PostView.user_id == user_id).delete()
+
+        db.query(Follow).filter(Follow.follower_id == user_id).delete()
+        db.query(Follow).filter(Follow.following_id == user_id).delete()
+        db.query(PushToken).filter(PushToken.user_id == user_id).delete()
+        db.query(UserTaste).filter(UserTaste.user_id == user_id).delete()
+
+        if user_post_ids:
+            db.query(Like).filter(Like.post_id.in_(user_post_ids)).delete()
+            db.query(Comment).filter(Comment.post_id.in_(user_post_ids)).delete()
+            db.query(Report).filter(Report.post_id.in_(user_post_ids)).delete()
+            db.query(PostView).filter(PostView.post_id.in_(user_post_ids)).delete()
+            db.query(Post).filter(Post.id.in_(user_post_ids)).delete()
+
+        db.delete(user)
+        db.commit()
+
+        return {"message": "Account deleted"}
+
+    except Exception as e:
+        db.rollback()
+        print("DELETE ACCOUNT ERROR:", str(e))
+        return JSONResponse(content={"error": "Unable to delete account"}, status_code=500)
+
+    finally:
+        db.close()
+
 @app.post("/report-post")
 def report_post(data: dict):
     db = SessionLocal()

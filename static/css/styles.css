@@ -270,30 +270,6 @@ body {
     touch-action: manipulation;
 }
 
-#bottomNav button {
-    flex: 1;
-
-    /* 🔥 espace entre boutons légèrement réduit */
-    margin: 0 4px;
-
-    /* 🔥 BOUTONS PLUS PETITS */
-    padding: 48px 0;
-
-    /* 🔥 légèrement moins arrondi */
-    border-radius: 28px;
-
-    /* 🔥 texte un peu plus petit */
-    font-size: 24px;
-
-    font-weight: 600;
-
-    background: rgba(255,255,255,0.08);
-    color: white;
-
-    transition: transform 0.2s ease;
-    touch-action: manipulation;
-}
-
 #bottomNav button:active {
     transform: scale(0.95);
     background: rgba(255,255,255,0.15);
@@ -723,19 +699,6 @@ body {
     color: white;
 }
 
-#commentsScreen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 0 0 40px 0;
-    box-sizing: border-box;
-    background: linear-gradient(135deg, #ff7e00, #ffb347);
-}
-
 .post-preview {
     width: 100%;
     height: 260px;
@@ -980,22 +943,6 @@ body {
     position: relative;
 }
 
-.delete-post-btn {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    z-index: 2;
-
-    border: none;
-    border-radius: 14px;
-    padding: 10px 14px;
-    font-size: 15px;
-    font-weight: 700;
-
-    background: rgba(255, 59, 48, 0.9);
-    color: white;
-}
-
 .profile-post-actions-top {
     position: absolute;
     top: 14px;
@@ -1024,6 +971,22 @@ body {
     font-weight: 700;
     background: rgba(255, 59, 48, 0.9);
     color: white;
+}
+
+.delete-account-btn {
+    width: 100%;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 18px;
+    margin-top: 10px;
+    font-size: 17px;
+    font-weight: 700;
+    background: rgba(255, 59, 48, 0.95);
+    color: white;
+}
+
+.delete-account-btn:active {
+    transform: scale(0.98);
 }
 
 #editPostScreen {

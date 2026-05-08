@@ -1645,53 +1645,6 @@ async function showFeed() {
     };
 }
 
-let feedVideoObserver = null;
-
-function setupVideoAutoplay() {
-    const videos = document.querySelectorAll(".feed-video");
-
-    if (!videos.length) return;
-
-    if (feedVideoObserver) {
-        feedVideoObserver.disconnect();
-    }
-
-    feedVideoObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const video = entry.target;
-
-            if (video.dataset.userSound !== "on") {
-                video.muted = true;
-            }
-            video.playsInline = true;
-            video.setAttribute("playsinline", "");
-            video.setAttribute("webkit-playsinline", "");
-
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
-                // pause toutes les autres vidéos pour éviter que iPhone bloque
-                document.querySelectorAll(".feed-video").forEach(v => {
-                    if (v !== video) v.pause();
-                });
-
-                video.play().catch(err => {
-                    console.log("Feed video play blocked:", err);
-                });
-                warmNextFeedVideo(video);
-            } else {
-                video.pause();
-            }
-        });
-    }, {
-        root: document.getElementById("feedScreen"),
-        threshold: [0, 0.55, 0.8]
-    });
-
-    videos.forEach(video => {
-        video.preload = "metadata";
-        feedVideoObserver.observe(video);
-    });
-}
-
 function warmNextFeedVideo(activeVideo) {
     const videos = Array.from(document.querySelectorAll(".feed-video"));
     const index = videos.indexOf(activeVideo);
@@ -1860,6 +1813,7 @@ function showProfile() {
                 <button class="buy-btn" onclick="showEditProfile()">Edit Profile</button>
                 <button class="big-back-btn" onclick="showSubscription()">Subscription</button>
                 <button class="big-back-btn" onclick="logoutUser()">Logout</button>
+                <button class="delete-account-btn" onclick="deleteAccount()">Delete Account</button>
             </div>
 
             <div class="profile-posts-section">
@@ -2924,6 +2878,43 @@ function logoutUser() {
     showProfileGate();
 }
 
+async function deleteAccount() {
+    if (!token) {
+        alert("You must login first");
+        return;
+    }
+
+    const confirmed = confirm("Delete your account permanently? This cannot be undone.");
+
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/delete-account`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            alert(data.error || "Unable to delete account");
+            return;
+        }
+
+        token = null;
+        localStorage.removeItem("token");
+        localStorage.removeItem("userProfile");
+        userProfile = defaultProfile;
+
+        alert("Account deleted");
+        showProfileGate();
+    } catch (error) {
+        console.error("Delete account error:", error);
+        alert("Unable to delete account");
+    }
+}
+
 function dataURLToBlob(dataUrl) {
     const arr = dataUrl.split(",");
     const mimeMatch = arr[0].match(/:(.*?);/);
@@ -3522,33 +3513,6 @@ function getFullscreenPost(index) {
     if (index >= fullscreenVideos.length) index = 0;
 
     return fullscreenVideos[index];
-}
-
-function waitVideoReady(video, timeout = 900) {
-    return new Promise(resolve => {
-        if (!video) return resolve(false);
-
-        if (video.readyState >= 3) {
-            return resolve(true);
-        }
-
-        let done = false;
-
-        const finish = (ok) => {
-            if (done) return;
-            done = true;
-            video.removeEventListener("canplay", onReady);
-            video.removeEventListener("canplaythrough", onReady);
-            resolve(ok);
-        };
-
-        const onReady = () => finish(true);
-
-        video.addEventListener("canplay", onReady, { once: true });
-        video.addEventListener("canplaythrough", onReady, { once: true });
-
-        setTimeout(() => finish(false), timeout);
-    });
 }
 
 function waitUntilVideoCanPlay(video, timeout = 1200) {
@@ -4398,15 +4362,6 @@ function toggleFeedVideoSound(btn) {
 
         video.play().catch(() => {});
     }
-}
-
-function setFeedMode(mode) {
-    currentFeedMode = mode;
-    renderFeed();
-    setupVideoAutoplay();
-
-    const container = document.getElementById("feedScreen");
-    if (container) container.scrollTop = 0;
 }
 
 function loadFullscreenVideoInfo(post) {
