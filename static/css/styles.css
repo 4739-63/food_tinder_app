@@ -474,7 +474,7 @@ body {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 
-    padding: 20px;
+    padding: calc(env(safe-area-inset-top, 0px) + 96px) 20px 20px;
     box-sizing: border-box;
 }
 
@@ -1013,12 +1013,26 @@ html, body, #recipePanel {
     top: 0;
     left: 0;
     right: 0;
-    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+    padding: calc(env(safe-area-inset-top, 0px) + 96px) 20px calc(34px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     background: linear-gradient(135deg, #ff7e00, #ffb347);
+    z-index: 10000;
+}
+
+#profileGateScreen .profile-wrapper,
+#registerProfileScreen .profile-wrapper,
+#loginProfileScreen .profile-wrapper {
+    min-height: 100%;
+}
+
+#profileGateScreen .screen-box,
+#registerProfileScreen .screen-box,
+#loginProfileScreen .screen-box {
+    width: 100%;
+    min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 130px);
 }
 
 .post-menu-btn {
@@ -1646,4 +1660,18 @@ html, body, #recipePanel {
 .brandTitle {
     height: 150px;
     object-fit: contain;
+}
+
+#discoverBrand {
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    gap: 18px;
+}
+
+#discoverBrand .brandLogo {
+    width: 74px;
+    height: 180px;
+}
+
+#discoverBrand .brandTitle {
+    height: 180px;
 }
