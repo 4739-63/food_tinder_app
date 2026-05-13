@@ -1013,13 +1013,13 @@ html, body, #recipePanel {
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 96px) 20px calc(34px + env(safe-area-inset-bottom, 0px));
+    padding: calc(env(safe-area-inset-top, 0px) + 96px) 20px 24px;
     box-sizing: border-box;
     background: linear-gradient(135deg, #ff7e00, #ffb347);
-    z-index: 10000;
+    z-index: 9990;
 }
 
 #profileGateScreen .profile-wrapper,
@@ -1033,6 +1033,32 @@ html, body, #recipePanel {
 #loginProfileScreen .screen-box {
     width: 100%;
     min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 130px);
+}
+
+.subscription-details {
+    margin: 20px 0;
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.1);
+}
+
+.subscription-details p {
+    margin: 8px 0;
+}
+
+.legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.legal-links a {
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    text-decoration: underline;
 }
 
 .post-menu-btn {

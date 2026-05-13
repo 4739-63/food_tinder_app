@@ -694,6 +694,18 @@ app.mount(
     name="js"
 )
 
+@app.get("/support", include_in_schema=False)
+def support_page():
+    return FileResponse(os.path.join(base_dir, "static", "support.html"))
+
+@app.get("/privacy", include_in_schema=False)
+def privacy_page():
+    return FileResponse(os.path.join(base_dir, "static", "privacy.html"))
+
+@app.get("/terms", include_in_schema=False)
+def terms_page():
+    return FileResponse(os.path.join(base_dir, "static", "terms.html"))
+
 
 # ========================
 # ROUTES AUTH
