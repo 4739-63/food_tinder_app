@@ -99,6 +99,45 @@ def get_current_user(token: str):
 # ================
 import time
 
+APPLE_SUBSCRIPTION_ID = os.getenv("APPLE_SUBSCRIPTION_ID", "com.mealswipe.advanced")
+APPLE_SHARED_SECRET = os.getenv("APPLE_SHARED_SECRET") or os.getenv("APP_STORE_SHARED_SECRET")
+
+def get_apple_subscription_expiration(receipt: str):
+    if not receipt or not APPLE_SHARED_SECRET:
+        return None
+
+    payload = {
+        "receipt-data": receipt,
+        "password": APPLE_SHARED_SECRET,
+        "exclude-old-transactions": True
+    }
+
+    def post_to_apple(url: str):
+        return requests.post(url, json=payload, timeout=15).json()
+
+    result = post_to_apple("https://buy.itunes.apple.com/verifyReceipt")
+
+    if result.get("status") == 21007:
+        result = post_to_apple("https://sandbox.itunes.apple.com/verifyReceipt")
+
+    if result.get("status") != 0:
+        return None
+
+    now_ms = int(time.time() * 1000)
+    purchases = result.get("latest_receipt_info") or result.get("receipt", {}).get("in_app", [])
+
+    for purchase in purchases:
+        if purchase.get("product_id") != APPLE_SUBSCRIPTION_ID:
+            continue
+
+        expires_ms = int(purchase.get("expires_date_ms") or 0)
+        cancellation_date = purchase.get("cancellation_date") or purchase.get("cancellation_date_ms")
+
+        if expires_ms > now_ms and not cancellation_date:
+            return expires_ms // 1000
+
+    return None
+
 def is_subscription_valid(user):
     if not user.current_period_end:
         return False
@@ -1104,11 +1143,18 @@ def verify_subscription(data: dict):
                 status_code=400
             )
 
-        # ⚠️ VERSION TEMPORAIRE (sandbox/test)
+        expires_at = get_apple_subscription_expiration(receipt)
+
+        if not expires_at:
+            return JSONResponse(
+                content={"error": "No active Advanced subscription found"},
+                status_code=402
+            )
+
         user.is_premium = True
         user.plan_type = "premium"
         user.subscription_status = "active"
-        user.current_period_end = int(time.time()) + 60 * 60 * 24 * 30
+        user.current_period_end = expires_at
 
         db.commit()
 

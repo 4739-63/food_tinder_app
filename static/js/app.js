@@ -353,11 +353,13 @@ let currentY = 0;
 
 let storeReady = false;
 
+function clearAdvancedLocalState() {
+    localStorage.removeItem("premium");
+    localStorage.removeItem("advancedFilters");
+    advancedFilters = {};
+}
+
 async function hasAdvancedAccess() {
-    const localPremium = localStorage.getItem("premium") === "true";
-
-    if (localPremium) return true;
-
     if (!token) return false;
 
     try {
@@ -993,11 +995,14 @@ async function swipe(like) {
     }    
 
     // 🔥 1. charger local en premier
-    advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
+    const advanced = await hasAdvancedAccess();
 
     // 🔥 2. si connecté → charger backend
-    if (token) {
+    if (advanced) {
+        advancedFilters = JSON.parse(localStorage.getItem("advancedFilters")) || {};
         await loadFiltersBackend();
+    } else {
+        clearAdvancedLocalState();
     }
 
     currentPlat = await generateBestPlat();
@@ -1098,7 +1103,7 @@ card.addEventListener("pointerup", () => {
     currentY = 0;
 });
 
-function showFavoris() {
+async function showFavoris() {
     hideAllScreens();
     updateBrandHeader(null);
     document.getElementById("card").style.display = "none";
@@ -1110,7 +1115,7 @@ function showFavoris() {
     container.style.display = "block";
     container.scrollTop = 0;
 
-    const advanced = localStorage.getItem("premium") === "true";
+    const advanced = await hasAdvancedAccess();
 
     container.innerHTML = `
         <div class="screen-box">
@@ -1187,8 +1192,7 @@ async function showAdvanced() {
     hideAllScreens();
     updateBrandHeader(null);
 
-    const localPremium = localStorage.getItem("premium") === "true";
-    const premium = localPremium || await isPremium();
+    const premium = await hasAdvancedAccess();
 
     if (!premium) {
         showPremium();
@@ -1200,7 +1204,10 @@ async function showAdvanced() {
 }
 
 async function isPremium() {
-    if (!token) return false;
+    if (!token) {
+        clearAdvancedLocalState();
+        return false;
+    }
 
     try {
         const res = await fetch(`${API_BASE}/is-premium`, {
@@ -1210,13 +1217,27 @@ async function isPremium() {
         });
 
         const data = await res.json();
-        return data.premium;
+        const premium = data.premium === true;
+
+        if (premium) {
+            localStorage.setItem("premium", "true");
+        } else if (res.ok) {
+            clearAdvancedLocalState();
+        }
+
+        return premium;
     } catch {
         return false;
     }
 }
 
 async function saveFilters() {
+    if (!(await hasAdvancedAccess())) {
+        clearAdvancedLocalState();
+        showPremium();
+        return;
+    }
+
     const getChecked = (id) => {
         const el = document.getElementById(id);
         return el ? el.checked : false;
@@ -1475,6 +1496,11 @@ async function registerUser(email, password) {
 async function loadFiltersBackend() {
     if (!token) return;
 
+    if (!(await hasAdvancedAccess())) {
+        clearAdvancedLocalState();
+        return;
+    }
+
     try {
         const res = await fetch(`${API_BASE}/get-filters`, {
             method: "POST",
@@ -1505,7 +1531,15 @@ async function checkPremium() {
         });
 
         const data = await res.json();
-        return data.premium;
+        const premium = data.premium === true;
+
+        if (premium) {
+            localStorage.setItem("premium", "true");
+        } else if (res.ok) {
+            clearAdvancedLocalState();
+        }
+
+        return premium;
     } catch (e) {
         console.log("Erreur checkPremium", e);
         return false;
@@ -2875,6 +2909,7 @@ function logoutUser() {
     token = null;
     localStorage.removeItem("token");
     localStorage.removeItem("userProfile");
+    clearAdvancedLocalState();
     showProfileGate();
 }
 
