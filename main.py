@@ -745,6 +745,12 @@ def privacy_page():
 def terms_page():
     return FileResponse(os.path.join(base_dir, "static", "terms.html"))
 
+@app.post("/apple-notifications")
+async def apple_notifications(request: Request):
+    payload = await request.json()
+    print("APPLE SERVER NOTIFICATION:", payload.get("notificationType", "signedPayload"))
+    return {"status": "ok"}
+
 
 # ========================
 # ROUTES AUTH
