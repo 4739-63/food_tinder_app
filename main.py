@@ -735,15 +735,45 @@ app.mount(
 
 @app.get("/support", include_in_schema=False)
 def support_page():
-    return FileResponse(os.path.join(base_dir, "static", "support.html"))
+    return FileResponse(
+        os.path.join(base_dir, "static", "support.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+@app.get("/support.html", include_in_schema=False)
+def support_html_page():
+    return FileResponse(
+        os.path.join(base_dir, "static", "support.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 @app.get("/privacy", include_in_schema=False)
 def privacy_page():
-    return FileResponse(os.path.join(base_dir, "static", "privacy.html"))
+    return FileResponse(
+        os.path.join(base_dir, "static", "privacy.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+@app.get("/privacy.html", include_in_schema=False)
+def privacy_html_page():
+    return FileResponse(
+        os.path.join(base_dir, "static", "privacy.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 @app.get("/terms", include_in_schema=False)
 def terms_page():
-    return FileResponse(os.path.join(base_dir, "static", "terms.html"))
+    return FileResponse(
+        os.path.join(base_dir, "static", "terms.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+@app.get("/terms.html", include_in_schema=False)
+def terms_html_page():
+    return FileResponse(
+        os.path.join(base_dir, "static", "terms.html"),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 @app.post("/apple-notifications")
 async def apple_notifications(request: Request):
